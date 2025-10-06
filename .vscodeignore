@@ -1,0 +1,20 @@
+# Excluir node_modules completamente (ya está todo en el bundle)
+node_modules/**
+
+# Excluir archivos de desarrollo y configuración
+.vscode/**
+.git/**
+*.log
+tsconfig.json
+package-lock.json
+*.map
+
+# Excluir código fuente TypeScript, excepto los templates
+src/**/*.ts
+src/**/*.map
+src/**/*.test.*
+
+# ✅ Incluir explícitamente los templates
+!src/resources/**
+!dist/**
+!media/**
