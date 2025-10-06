@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Validaciones Salesforce Apex</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        body, .analysis {
+        font-family: "Segoe UI Emoji", "Arial", sans-serif;
+        }
+        h1 { background-color: #007bff; color: white; padding: 10px; }
+        h2 { color: #333; margin-top: 20px; border-bottom: 2px solid #007bff; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #333; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .summary {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+        margin: 20px 0;
+        }
+
+        .card {
+        flex: 1;
+        text-align: center;
+        padding: 15px;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        }
+        .card.red { background-color: #dc3545; }
+        .card.green { background-color: #28a745; }
+        .card.orange { background-color: #fd7e14; }
+
+        .card h3 {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+        }
+        .card p {
+        font-size: 22px;
+        margin: 0;
+        }
+        .analysis h2, .analysis h3, .analysis h4 {
+        color: #007bff;
+        margin-top: 15px;
+        }
+        .analysis ul {
+        margin: 5px 0 10px 20px;
+        }
+        .analysis code {
+        background: #f8f9fa;
+        padding: 2px 4px;
+        border-radius: 4px;
+        font-family: monospace;
+        }
+        .analysis pre {
+        background: #f0f0f0;
+        padding: 10px;
+        border-radius: 6px;
+        overflow-x: auto;
+        }
+        .class-name {
+        background-color: #0056b3;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin-top: 25px;
+        margin-bottom: 10px;
+        font-size: 20px;
+        font-weight: bold;
+        }
+        .empty-state {
+        margin: 15px 0;
+        padding: 12px;
+        border-radius: 6px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        }
+        .empty-state .icon {
+        margin-right: 8px;
+        font-size: 18px;
+        }
+        .empty-state.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        }
+        .empty-state.info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+        }
+        .empty-state.warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+        }
+
+        .summary-table {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        }
+
+        .summary-table td {
+        flex: 1;
+        text-align: center;
+        padding: 15px;
+        border-radius: 8px;
+        color: white;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Reporte de Validaciones Salesforce Apex</h1>
+    <table class="summary-table" style="width:100%; margin:20px 0; text-align:center;">
+        <tr>
+            <td style="background:#dc3545; color:white; padding:15px; border-radius:8px;">
+            <h3>Problemas</h3>
+            <p>{{ apex_results | length }}</p>
+            </td>
+            <td style="background:#28a745; color:white; padding:15px; border-radius:8px;">
+            <h3>Pruebas</h3>
+            <p>{{ test_results | length }}</p>
+            </td>
+            <td style="background:#fd7e14; color:white; padding:15px; border-radius:8px;">
+            <h3>Clases con &lt;75% cobertura</h3>
+            <p><p>{{ low_coverage_count }}</p></p>
+            </td>
+            <td style="background:#6f42c1; color:white; padding:15px; border-radius:8px;">
+            <h3>Clases con código duplicado</h3>
+            <p>{{ duplicate_class_count }}</p>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Problemas Detectados</h2>
+    {% if apex_results %}
+    <table>
+    <tr>
+        <th>Clase</th><th>Línea</th><th>Regla</th><th>Severidad</th><th>Descripción</th><th>Ver Regla</th>
+    </tr>
+    {% for issue in apex_results %}
+    <tr>
+        <td>{{ issue.clase }}</td>
+        <td>{{ issue.linea }}</td>
+        <td>{{ issue.regla }}</td>
+        <td>{{ issue.severidad }}</td>
+        <td>{{ issue.descripcion }}</td>
+        <td>
+        {% if issue.recurso %}
+            <a href="{{ issue.recurso }}" target="_blank">🔗 Abrir</a>
+        {% else %}
+            -
+        {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty-state success">
+    <span class="icon">✔</span> No se encontraron problemas.
+    </div>
+    {% endif %}
+
+    <h2>Cobertura de Código</h2>
+	{% if test_coverage %}
+	<table>
+	  <tr>
+		<th>Clase</th><th>Líneas Totales</th><th>Cubiertas</th><th>Cobertura %</th>
+	  </tr>
+	  {% for c in test_coverage %}
+	  <tr {% if c.isLowCoverage %} style="background-color:#f8d7da;color:#721c24;font-weight:bold;" {% endif %}>
+		<td>{{ c.ClassName }}</td>
+		<td>{{ c.TotalLines }}</td>
+		<td>{{ c.CoveredLines }}</td>
+		<td>{{ c.CoveragePercentage }}</td>
+	  </tr>
+	  {% endfor %}
+	</table>
+	{% else %}
+	<div class="empty-state info">
+	  <span class="icon">ℹ️</span> No hay datos de cobertura.
+	</div>
+	{% endif %}
+
+
+    <h2>Resultados de Pruebas</h2>
+    {% if test_results %}
+    <table>
+        <tr>
+            <th>Clase</th><th>Método</th><th>Resultado</th><th>Mensaje</th>
+        </tr>
+        {% for t in test_results %}
+        <tr>
+            <td>{{ t.class_name }}</td>
+            <td>{{ t.method_name }}</td>
+            <td>{{ t.outcome }}</td>
+            <td>{{ t.message }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty-state warning">
+        <span class="icon">⚠️</span> No se ejecutaron pruebas.
+    </div>
+    {% endif %}
+
+    <h2>Código Duplicado</h2>
+    {% if pmd_results %}
+    <table>
+    <tr>
+        <th>Clase</th>
+        <th>Ubicación</th>
+        <!-- <th>Fragmento de código</th> -->
+    </tr>
+    {% for dup in pmd_results %}
+        <tr>
+        <!--td>{{ dup.clases }}</td-->
+        <td>{{ dup.clases | replace(',', '<br>') | safe }}</td>
+        <td>{{ dup.lines }}</td>
+        <!-- <td><pre>{{ dup.codeSnippet }}</pre></td> -->
+        </tr>
+    {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty-state success">
+    <span class="icon">✔</span> No se encontraron duplicados.
+    </div>
+    {% endif %}
+
+    <h2>Análisis IA</h2>
+    {% if einsteinAnalysis %}
+    {% for cls, analysis in einsteinAnalysis %}
+        <h2 class="class-name">{{ cls }}</h2>
+        <div class="analysis">{{ analysis.resumenHtml | safe }}</div>
+    {% endfor %}
+    {% else %}
+    <p>El análisis IA fue omitido o no se encontraron resultados.</p>
+    {% endif %}
+
+</body>
+</html>
