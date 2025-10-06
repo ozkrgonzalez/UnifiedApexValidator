@@ -12,11 +12,11 @@
     "apex",
     "validator",
     "pmd",
+    "cpd",
     "code analyzer",
     "einstein gpt",
     "report",
-    "vs code",
-    "bankestado"
+    "vs code"
   ],
   "categories": [
     "Linters",
