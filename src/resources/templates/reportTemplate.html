@@ -222,7 +222,7 @@
         <!--td>{{ dup.clases }}</td-->
         <td>{{ dup.clases | replace(',', '<br>') | safe }}</td>
         <td>{{ dup.lines }}</td>
-        <!-- <td><pre>{{ dup.codeSnippet }}</pre></td> -->
+        <td><pre>{{ dup.codeSnippet }}</pre></td>
         </tr>
     {% endfor %}
     </table>
