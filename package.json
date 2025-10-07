@@ -3,7 +3,7 @@
   "displayName": "Unified Apex Validator",
   "description": "Salesforce Apex validation and reporting suite built natively in TypeScript for VS Code.",
   "publisher": "ozkrgonzalez",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "icon": "media/icon.png",
   "license": "GPL-3.0-only",
   "repository": "https://github.com/ozkrgonzalez/UnifiedApexValidator.git",
@@ -53,11 +53,11 @@
       "uav": [
         {
           "id": "uav.dependenciesView",
-          "name": "🔧 Dependencias"
+          "name": "🔧 Dependencies"
         },
         {
           "id": "uav.reportsView",
-          "name": "📊 Reportes"
+          "name": "📊 Reports"
         },
         {
           "id": "uav.logsView",
@@ -72,22 +72,22 @@
       },
       {
         "command": "uav.reportsView.refresh",
-        "title": "Actualizar Reportes",
+        "title": "Refresh Reports",
         "icon": "$(refresh)"
       },
       {
         "command": "uav.reportsView.openFolder",
-        "title": "Abrir Reportes",
+        "title": "Open Reports Folder",
         "icon": "$(folder-opened)"
       },
       {
         "command": "uav.logsView.refresh",
-        "title": "Actualizar Logs",
+        "title": "Refresh Logs",
         "icon": "$(refresh)"
       },
       {
         "command": "uav.logsView.openFolder",
-        "title": "Abrir Logs",
+        "title": "Open logs folder",
         "icon": "$(folder-opened)"
       }
     ],
@@ -135,87 +135,87 @@
         "UnifiedApexValidator.sfUsername": {
           "type": "string",
           "default": "",
-          "description": "Usuario de Salesforce"
+          "description": "Salesforce Username."
         },
         "UnifiedApexValidator.sfPassword": {
           "type": "string",
           "default": "",
-          "description": "Contraseña de Salesforce"
+          "description": "Salesforce Password."
         },
         "UnifiedApexValidator.sfSecurityToken": {
           "type": "string",
           "default": "",
-          "description": "Token de seguridad"
+          "description": "Salesforce Security Token."
         },
         "UnifiedApexValidator.sfClientId": {
           "type": "string",
           "default": "",
-          "description": "Client ID de la Connected App"
+          "description": "Connected App Client Id."
         },
         "UnifiedApexValidator.sfClientSecret": {
           "type": "string",
           "default": "",
-          "description": "Client Secret de la Connected App"
+          "description": "Connected App Client Secret."
         },
         "UnifiedApexValidator.sfDomain": {
           "type": "string",
-          "default": "test.salesforce.com",
-          "description": "Dominio de Salesforce"
+          "default": "MyDomain.sanboxname.sandbox.lightning.force.com",
+          "description": "Salesforce Org Domain."
         },
         "UnifiedApexValidator.sfOrgAlias": {
           "type": "string",
-          "default": "DEVSEGC",
-          "description": "Alias de la organización"
+          "default": "MySanboxName",
+          "description": "Salesforce Org Alias."
         },
         "UnifiedApexValidator.sfRepositoryDir": {
           "type": "string",
           "default": "",
-          "description": "Directorio local del repositorio Apex"
+          "description": "Apex Class Local Git Repository."
         },
         "UnifiedApexValidator.skipIAAnalysis": {
           "type": "boolean",
           "default": false,
-          "description": "Omitir análisis IA"
+          "description": "Skyp IA Analysis."
         },
         "UnifiedApexValidator.sfGptEndpoint": {
           "type": "string",
           "default": "https://api.salesforce.com/einstein/platform",
-          "description": "Endpoint IA Einstein GPT"
+          "description": "Einstein GPT Endpoint."
         },
         "UnifiedApexValidator.sfGptModel": {
           "type": "string",
           "default": "sfdc_ai__DefaultOpenAIGPT4OmniMini",
-          "description": "Modelo de IA"
+          "description": "Einstein IA Model"
         },
         "UnifiedApexValidator.iaPromptTemplate": {
           "type": "string",
-          "default": "Analiza el código Apex en busca de riesgos y optimizaciones.",
-          "description": "Prompt base para IA"
+          "default": "Analize the class {class_name}:\n {truncated_body}.",
+          "description": "Einstein Base Prompt"
         },
         "UnifiedApexValidator.maxIAClassChars": {
           "type": "integer",
           "default": 25000,
-          "description": "Maxima cantidad de caracteres apex para enviar a la IA (evita request gigantes)."
+          "description": "Class body MAX chars to pass Einstein GPT."
         },
         "UnifiedApexValidator.sfCliPath": {
           "type": "string",
           "default": "sf",
-          "description": "Ruta CLI de Salesforce"
+          "description": "Salesforce Cli Path if not defined in Path System Variable."
         },
         "UnifiedApexValidator.pmdPath": {
           "type": "string",
           "default": "pmd",
-          "description": "Ruta ejecutable de PMD"
+          "description": "PMD Path if not defined in path System Variable."
         },
         "UnifiedApexValidator.outputDir": {
           "type": "string",
           "default": "",
-          "description": "Directorio donde se guardarán los reportes"
+          "description": "Report output folder path"
         },
         "UnifiedApexValidator.keepLogFiles": {
           "type": "boolean",
           "default": true,
-          "description": "Mantener logs y archivos temporales después de la ejecución."
+          "description": "Keep Logs and Temp files after a success run."
         }
       }
     }
