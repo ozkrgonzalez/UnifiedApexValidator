@@ -157,7 +157,7 @@ If you encounter issues or have feedback:
 ## 📝 Credits
 
 Desarrollado por **Oscar González**
-En colaboración con ChatGPT, Google Gemini y Banco Estado de Chile
+En colaboración con ChatGPT, Google Gemini
 GitHub → [ozkrgonzalez](https://github.com/ozkrgonzalez)
 
 ---
