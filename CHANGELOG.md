@@ -1,5 +1,43 @@
 # 🧩 Unified Apex Validator — Changelog
 
+# 🧾 Changelog — Unified Apex Validator
+
+Todas las actualizaciones notables de esta extensión se documentarán aquí.
+El formato sigue las convenciones de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/)
+y la numeración semántica [Semantic Versioning](https://semver.org/lang/es/).
+
+---
+
+## [1.6.3] - 2025-10-08
+### ✨ Nuevo
+- Vista integrada del reporte en VS Code mediante **Webview**.
+- Detección automática del tema (`vscode-dark` / `vscode-light`).
+- CSS adaptativo con soporte para bloques de código monokai.
+- Apertura automática del reporte al finalizar la validación.
+
+### 🐛 Correcciones
+- Limpieza de logs temporales después de ejecución exitosa.
+- Mejor manejo de rutas relativas en la generación del HTML.
+
+### 🔧 Cambios internos
+- Nueva utilidad `reportViewer.ts`.
+- Refactor menor en `runUAV` para integrar visor sin alterar la lógica base.
+
+---
+
+## [1.2.2] - 2025-09-30
+### 🐞 Arreglos
+- Mejora de compatibilidad con `sf code-analyzer` versión 5.
+- Validación adicional para rutas de `package.xml`.
+
+---
+
+## [1.2.0] - 2025-09-10
+### 🚀 Añadido
+- Soporte para análisis de duplicación con **PMD CPD**.
+- Generación de reportes en HTML y PDF.
+
+
 ## [1.0.0] — 2025-10-06
 ### 🚀 Versión inicial
 
@@ -11,12 +49,12 @@ Primera versión pública del **Unified Apex Validator**, extensión de VS Code 
 
 #### 🔍 Validación de dependencias
 - Verificación automática de entorno:
-  - Node.js  
-  - Java  
-  - Salesforce CLI (`sf`)  
-  - PMD  
-  - Salesforce Code Analyzer v5  
-  - wkhtmltopdf  
+  - Node.js
+  - Java
+  - Salesforce CLI (`sf`)
+  - PMD
+  - Salesforce Code Analyzer v5
+  - wkhtmltopdf
   - Configuración de IA Einstein GPT (Client ID, Secret y Endpoint)
 - Visualización de estado (✅/❌) en panel lateral con iconos temáticos.
 

@@ -48,6 +48,7 @@ const testSuite_1 = require("./testSuite");
 const IAAnalisis_1 = require("./IAAnalisis");
 const reportGenerator_1 = require("./reportGenerator");
 const execa_1 = require("execa");
+const reportViewer_1 = require("./reportViewer");
 async function runUAV(uri) {
     const logger = new utils_1.Logger('UAVController', true);
     logger.info('🚀 Iniciando ejecución del Unified Apex Validator...');
@@ -180,6 +181,14 @@ async function runUAV(uri) {
             });
             logger.info(`✅ UAV completado. Reporte generado en: ${outputDir}`);
             vscode.window.showInformationMessage(`✅ UAV completado. Reporte generado en ${outputDir}.`);
+            // 👀 Abrir el reporte en vista integrada dentro de VS Code
+            const htmlReport = path.join(outputDir, 'reporte_validaciones.html');
+            if (fs.existsSync(htmlReport)) {
+                (0, reportViewer_1.showReport)(htmlReport, 'Reporte de Validación Apex');
+            }
+            else {
+                logger.warn(`⚠️ No se encontró el reporte HTML en ${htmlReport}`);
+            }
             // 🧹 Limpieza final si corresponde
             const keepLogFiles = config.get('keepLogFiles') ?? false;
             if (!keepLogFiles) {

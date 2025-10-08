@@ -8,6 +8,7 @@ import { TestSuite } from './testSuite';
 import { IAAnalisis } from './IAAnalisis';
 import { generateReport } from './reportGenerator';
 import { execa } from 'execa';
+import { showReport } from './reportViewer';
 
 export async function runUAV(uri: vscode.Uri)
 {
@@ -187,6 +188,17 @@ export async function runUAV(uri: vscode.Uri)
 
                 logger.info(`✅ UAV completado. Reporte generado en: ${outputDir}`);
                 vscode.window.showInformationMessage(`✅ UAV completado. Reporte generado en ${outputDir}.`);
+
+                // 👀 Abrir el reporte en vista integrada dentro de VS Code
+                const htmlReport = path.join(outputDir, 'reporte_validaciones.html');
+                if (fs.existsSync(htmlReport))
+                {
+                    showReport(htmlReport, 'Reporte de Validación Apex');
+                }
+                else
+                {
+                    logger.warn(`⚠️ No se encontró el reporte HTML en ${htmlReport}`);
+                }
 
                 // 🧹 Limpieza final si corresponde
                 const keepLogFiles = config.get<boolean>('keepLogFiles') ?? false;
