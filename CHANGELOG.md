@@ -7,6 +7,14 @@ El formato sigue las convenciones de [Keep a Changelog](https://keepachangelog.c
 y la numeración semántica [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
+## [1.6.4] - 2025-10-09
+### ✨ Nuevo
+- Ahora permite validar .xml en cualquier ubicacion y con cualquier nombre.
+- se detecta si el .xml contiene clases apex o no
+
+### 🐛 Correcciones
+- se corrije manejo de rutas relativas en MAC OS para ejecucion del validator y ubicacion del yml de reglas
+---
 
 ## [1.6.3] - 2025-10-08
 ### ✨ Nuevo
