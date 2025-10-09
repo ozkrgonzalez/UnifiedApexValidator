@@ -189,7 +189,7 @@
         },
         "UnifiedApexValidator.iaPromptTemplate": {
           "type": "string",
-          "default": "Analize the class {class_name}:\n {truncated_body}.",
+          "default": "Analiza la clase Apex llamada '{class_name}'.\n\nCódigo (parcial si fue truncado):\n{truncated_body}\n\nResponde en formato MARKDOWN con:\n## 📘 Descripción de la clase\nExplica brevemente su propósito.\n\n## ✅ Cumplimiento de buenas prácticas\nLista con viñetas usando ✅ o ⚠️ según corresponda.\n\n## 🛠️ Recomendaciones de mejora\nCada ítem debe comenzar con un emoji relacionado (⚡, ♻️, 🔒, 📨, etc.).\nSi corresponde, incluye ejemplos de código en bloques ```apex.",
           "description": "Einstein Base Prompt"
         },
         "UnifiedApexValidator.maxIAClassChars": {
