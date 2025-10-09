@@ -70267,10 +70267,6 @@ async function parseApexClassesFromPackage(pkgPath, repoDir) {
     const json = parser.parse(xml);
     const types = json?.Package?.types || [];
     const apexTypes = Array.isArray(types) ? types.find((t) => t.name === "ApexClass") : types.name === "ApexClass" ? types : null;
-    if (!apexTypes) {
-      logger3.warn("\u274C No se encontraron tipos ApexClass en package.xml");
-      throw new Error("No se encontraron clases Apex en package.xml");
-    }
     const members = Array.isArray(apexTypes.members) ? apexTypes.members : [apexTypes.members];
     logger3.info(`\u{1F4C4} Miembros detectados (${members.length}): ${members.join(", ")}`);
     const testClasses = [];
@@ -77136,8 +77132,9 @@ async function runCodeAnalyzer(classes, repoDir) {
   const tempDir = path7.join(storageRoot, "temp");
   await fs2.ensureDir(tempDir);
   const workspaceRoot = vscode2.workspace.workspaceFolders?.[0]?.uri.fsPath || path7.resolve(repoDir, "../../../..");
-  const embeddedConfig = path7.join(
+  const embeddedConfig = path7.resolve(
     __dirname,
+    "..",
     "resources",
     "templates",
     "code-analyzer.yml"
@@ -77178,7 +77175,7 @@ async function runCodeAnalyzer(classes, repoDir) {
       env: { FORCE_COLOR: "0" },
       reject: false,
       all: true,
-      shell: true
+      shell: false
     });
     const { all: all3, exitCode } = await subprocess;
     await fs2.writeFile(execLog, all3 || "(sin salida)", "utf8");
@@ -77200,7 +77197,6 @@ async function runCodeAnalyzer(classes, repoDir) {
     await fs2.appendFile(execLog, `
 [ERROR] ${err.stack || err.message}`);
     return [];
-  } finally {
   }
 }
 function filterAnalyzerFindings(findings, apexClasses) {
@@ -81400,6 +81396,12 @@ async function runUAV(uri) {
         const logDir = path11.join(storageRoot, "logs");
         await fs6.ensureDir(tempDir);
         await fs6.ensureDir(logDir);
+        const content = await fs6.readFile(pkgPath, "utf8");
+        if (!content.includes("<name>ApexClass</name>")) {
+          const msg = "\u274C No se encontraron clases Apex en este XML.";
+          logger3.error(msg);
+          throw new Error(msg);
+        }
         progress.report({ message: "Analizando package.xml..." });
         logger3.info("\u{1F4E6} Analizando package.xml...");
         ;
@@ -81440,9 +81442,9 @@ async function runUAV(uri) {
               }
               try {
                 logger3.info(`\u{1F4D8} Enviando clase a IA: ${cls}`);
-                const content = await fs6.readFile(clsPath, "utf8");
-                const truncated = content.length > sfGptMaxChar ? content.slice(0, sfGptMaxChar) : content;
-                if (content.length > sfGptMaxChar) {
+                const content2 = await fs6.readFile(clsPath, "utf8");
+                const truncated = content2.length > sfGptMaxChar ? content2.slice(0, sfGptMaxChar) : content2;
+                if (content2.length > sfGptMaxChar) {
                   logger3.warn(`\u26A0\uFE0F Clase ${cls} truncada a ${sfGptMaxChar} caracteres para an\xE1lisis.`);
                 }
                 if (!sfGptPrompt) {
@@ -81502,8 +81504,13 @@ async function runUAV(uri) {
           logger3.info("\u2705 Ejecuci\xF3n exitosa. Se conservaron los logs por configuraci\xF3n.");
         }
       } catch (err) {
-        logger3.error(`\u274C Error en proceso UAV: ${err.message}`);
-        vscode7.window.showErrorMessage(`Error en UAV: ${err.message}`);
+        if (err.message.includes("No se encontraron clases Apex")) {
+          vscode7.window.showWarningMessage(err.message);
+          logger3.warn(`\u26A0\uFE0F UAV finalizado sin ApexClass (${uri.fsPath})`);
+        } else {
+          logger3.error(`\u274C Error en proceso UAV: ${err.message}`);
+          vscode7.window.showErrorMessage(`Error en UAV: ${err.message}`);
+        }
       }
     }
   );

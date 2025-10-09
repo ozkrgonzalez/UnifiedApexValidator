@@ -92,16 +92,15 @@ async function runCodeAnalyzer(classes, repoDir) {
     const storageRoot = (0, utils_1.getStorageRoot)();
     const tempDir = path.join(storageRoot, 'temp');
     await fs.ensureDir(tempDir);
-    // Detectar raíz del workspace (donde está sfdx-project.json)
+    // 🧭 Detectar raíz del workspace (donde está sfdx-project.json)
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ||
         path.resolve(repoDir, '../../../..');
-    // Archivo de configuración embebido en la extensión
-    const embeddedConfig = path.join(__dirname, 'resources', 'templates', 'code-analyzer.yml');
+    // 🗂️ Archivo de configuración embebido en la extensión (compatible con build)
+    const embeddedConfig = path.resolve(__dirname, '..', 'resources', 'templates', 'code-analyzer.yml');
     const outputFile = path.join(tempDir, 'code_analyzer_output.json');
     const execLog = path.join(tempDir, 'code_analyzer_exec.log');
-    // 🔹 Target completo con glob absoluto (igual al que funcionó en PowerShell)
+    // 🎯 Target absoluto para todas las clases Apex
     const targetGlob = path.join(workspaceRoot, 'force-app', 'main', 'default', 'classes', '**', '*.cls');
-    // Construcción del comando
     const cmd = [
         'sf',
         'code-analyzer',
@@ -116,13 +115,13 @@ async function runCodeAnalyzer(classes, repoDir) {
     logger.info(`▶️ Ejecutando: ${cmd.join(' ')}`);
     logger.info(`📄 Log de ejecución: ${execLog}`);
     try {
-        // ✅ Usar shell:true para interpretar correctamente los globs y rutas con espacios
+        // 🚀 Sin shell, para que maneje espacios correctamente en macOS y Windows
         const subprocess = (0, execa_1.execa)(cmd[0], cmd.slice(1), {
             cwd: workspaceRoot,
             env: { FORCE_COLOR: '0' },
             reject: false,
             all: true,
-            shell: true
+            shell: false
         });
         const { all, exitCode } = await subprocess;
         await fs.writeFile(execLog, all || '(sin salida)', 'utf8');
@@ -130,7 +129,6 @@ async function runCodeAnalyzer(classes, repoDir) {
         if (exitCode !== 0 && exitCode !== undefined) {
             logger.error(`❌ Code Analyzer terminó con código ${exitCode}`);
         }
-        // 🔹 Leer directamente el archivo generado (sin waitUntilValidJson)
         if (!(await fs.pathExists(outputFile))) {
             logger.warn('⚠️ El Code Analyzer no generó el archivo de salida');
             return [];
@@ -149,10 +147,6 @@ async function runCodeAnalyzer(classes, repoDir) {
         logger.error(`❌ Error ejecutando Code Analyzer: ${err.message}`);
         await fs.appendFile(execLog, `\n[ERROR] ${err.stack || err.message}`);
         return [];
-    }
-    finally {
-        // 🔹 No eliminamos el archivo de salida para depuración
-        //await fs.remove(outputFile).catch(() => {});
     }
 }
 /**
