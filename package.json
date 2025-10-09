@@ -37,7 +37,7 @@
   },
   "activationEvents": [
     "onCommand:UnifiedApexValidator.validateApex",
-    "onLanguage:xml"
+    "workspaceContains:**/*.xml"
   ],
   "contributes": {
     "viewsContainers": {
@@ -114,17 +114,17 @@
           "group": "navigation"
         }
       ],
-      "explorer/context": [
+       "explorer/context": [
         {
           "command": "UnifiedApexValidator.validateApex",
-          "when": "resourceExtname == .xml && resourceFilename =~ /package\\.xml$/",
+          "when": "resourceExtname =~ /\\.?xml/i",
           "group": "z_unifiedApex@1"
         }
       ],
       "editor/context": [
         {
           "command": "UnifiedApexValidator.validateApex",
-          "when": "resourceExtname == .xml && editorLangId == 'xml'",
+          "when": "resourceExtname =~ /\\.?xml/i",
           "group": "z_unifiedApex@2"
         }
       ]

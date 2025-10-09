@@ -138,10 +138,11 @@ async function parseApexClassesFromPackage(pkgPath, repoDir) {
             : types.name === 'ApexClass'
                 ? types
                 : null;
-        if (!apexTypes) {
-            logger.warn('❌ No se encontraron tipos ApexClass en package.xml');
-            throw new Error('No se encontraron clases Apex en package.xml');
-        }
+        /*if (!apexTypes)
+          {
+          logger.warn('❌ No se encontraron tipos ApexClass en package.xml');
+          throw new Error('No se encontraron clases Apex en package.xml');
+        }*/
         const members = Array.isArray(apexTypes.members) ? apexTypes.members : [apexTypes.members];
         logger.info(`📄 Miembros detectados (${members.length}): ${members.join(', ')}`);
         const testClasses = [];

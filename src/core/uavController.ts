@@ -52,6 +52,26 @@ export async function runUAV(uri: vscode.Uri)
                 await fs.ensureDir(tempDir);
                 await fs.ensureDir(logDir);
 
+                const content = await fs.readFile(pkgPath, 'utf8');
+
+                // valida que el package contenga Apex Class
+                /*if (!content.includes('<name>ApexClass</name>'))
+                {
+                    const msg = '⚠️ Este XML no contiene ApexClass, se omitirá.';
+                    logger.warn(msg);
+                    progress.report({ message: msg });
+                    await new Promise((res) => setTimeout(res, 2500));
+
+                    return;
+                }*/
+
+                if (!content.includes('<name>ApexClass</name>'))
+                {
+                    const msg = '❌ No se encontraron clases Apex en este XML.';
+                    logger.error(msg);
+                    throw new Error(msg);
+                }
+
                 // 1️⃣ Parsear package.xml
                 progress.report({ message: 'Analizando package.xml...' });
                 logger.info('📦 Analizando package.xml...');;
@@ -65,7 +85,6 @@ export async function runUAV(uri: vscode.Uri)
                     logger.info(`📁 Repositorio configurado: ${repoDir}`);
                 }
 
-                // ahora sí: usar ese repoDir correcto
                 const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(pkgPath, repoDir);
 
                 // 2️⃣ Validación estática (Code Analyzer + PMD)
@@ -213,10 +232,24 @@ export async function runUAV(uri: vscode.Uri)
                 }
 
             }
-            catch (err: any)
+            /*catch (err: any)
             {
                 logger.error(`❌ Error en proceso UAV: ${err.message}`);
                 vscode.window.showErrorMessage(`Error en UAV: ${err.message}`);
+            }*/
+
+            catch (err: any)
+            {
+                if (err.message.includes('No se encontraron clases Apex'))
+                {
+                    vscode.window.showWarningMessage(err.message);
+                    logger.warn(`⚠️ UAV finalizado sin ApexClass (${uri.fsPath})`);
+                }
+                else
+                {
+                    logger.error(`❌ Error en proceso UAV: ${err.message}`);
+                    vscode.window.showErrorMessage(`Error en UAV: ${err.message}`);
+                }
             }
         }
     );
