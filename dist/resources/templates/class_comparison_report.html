@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Comparación de Clases Apex</title>
+
+    <!-- Prism.js para resaltar código -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
+
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js para el gráfico de resumen -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Estilos personalizados -->
+    <style>
+        /* Estilos para el botón de cambio de tema */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #00aaff;
+            border: none;
+            padding: 10px 15px;
+            color: white;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .theme-toggle:hover {
+            background-color: #0088cc;
+            transform: scale(1.1);
+        }
+
+        /* Estilos del tema claro */
+        .light-mode {
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .light-mode .container {
+            background-color: #ffffff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .light-mode table {
+            background-color: #f0f0f0;
+        }
+        .light-mode th {
+            background-color: #007bff;
+            color: white;
+        }
+        .light-mode button {
+            background-color: #007bff;
+            color: white;
+        }
+        .light-mode .theme-toggle {
+            background-color: #007bff;
+        }
+        .light-mode .theme-toggle:hover {
+            background-color: #0056b3;
+        }
+        .light-mode tr:nth-child(even) {
+            background-color: #ffffff !important;
+        }
+        .light-mode tr:nth-child(odd) {
+            background-color: #f0f0f0 !important;
+        }
+        .light-mode td, .light-mode th {
+            border: 1px solid #ddd !important;
+            color: #333 !important;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #181818;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 90%;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1f1f1f;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease-in-out;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #00aaff;
+            text-shadow: 0 0 5px rgba(0, 170, 255, 0.5);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #222;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+        }
+        th, td {
+            border: 1px solid #444;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #00aaff;
+            color: #ffffff;
+        }
+        tr:nth-child(even) {
+            background-color: #2a2a2a;
+        }
+        .match { color: #00ff00; font-weight: bold; }
+        .mismatch { color: #ff3333; font-weight: bold; }
+        .not-in-local { color: #ffaa00; font-weight: bold; }
+        .not-in-salesforce { color: #8888ff; font-weight: bold; }
+        .diff-container {
+            display: none;
+            padding: 15px;
+            background-color: #282828;
+            border-radius: 10px;
+            border: 1px solid #444;
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease-in-out;
+        }
+        .editor-container {
+            height: 500px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #00aaff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        button i {
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0088cc;
+            transform: scale(1.05);
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-start;
+        }
+        canvas {
+            display: block;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+        /* Resaltar la línea de diferencia actual con fondo azul */
+        .current-diff-highlight {
+            background-color: rgba(0, 170, 255, 0.2) !important;
+            border-left: 4px solid #00aaff !important;
+        }
+
+        /* Añadir un indicador en la barra lateral */
+        .current-diff-highlight-margin {
+            background-color: #00aaff !important;
+        }
+        /* Estilo del selector de idioma */
+        .language-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        #language-label {
+            font-weight: bold;
+            font-size: 16px;
+            color: #00aaff;
+        }
+
+        #language-select {
+            background-color: #00aaff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        #language-select:hover {
+            background-color: #0088cc;
+        }
+
+        #language-select:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 170, 255, 0.8);
+        }
+
+    </style>
+
+    <!-- Carga de Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+    <script>
+        require.config({
+            paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }
+        });
+    </script>
+    <script>
+        function toggleTheme() {
+            const body = document.body;
+            const themeText = document.getElementById("theme-text");
+            const icon = document.querySelector(".theme-toggle i");
+
+            if (body.classList.contains("light-mode")) {
+                body.classList.remove("light-mode");
+                localStorage.setItem("theme", "dark");
+                themeText.textContent = "Modo Claro";
+                icon.classList.replace("fa-sun", "fa-moon");
+            } else {
+                body.classList.add("light-mode");
+                localStorage.setItem("theme", "light");
+                themeText.textContent = "Modo Oscuro";
+                icon.classList.replace("fa-moon", "fa-sun");
+            }
+        }
+
+        // Cargar el tema guardado
+        window.onload = function() {
+            const savedTheme = localStorage.getItem("theme");
+            if (savedTheme === "light") {
+                document.body.classList.add("light-mode");
+                document.getElementById("theme-text").textContent = "Modo Oscuro";
+                document.querySelector(".theme-toggle i").classList.replace("fa-moon", "fa-sun");
+            }
+        };
+    </script>
+</head>
+<body>
+
+<!-- Botón para cambiar de tema -->
+<button class="theme-toggle" onclick="toggleTheme()">
+    <i class="fa fa-moon"></i> <span id="theme-text">Modo Oscuro</span>
+</button>
+
+<!-- Selector de idioma -->
+<div class="language-container">
+    <label for="language-select" id="language-label">Idioma:</label>
+    <select id="language-select">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+    </select>
+</div>
+
+<div class="container">
+    <h1 id="title"><i class="fa fa-code"></i> Reporte de Comparación de Clases Apex</h1>
+
+    <!-- 🔥 Gráfico de Pie con Chart.js -->
+    <h2 id="summaryChart"><i class="fa fa-chart-pie"></i> Resumen Gráfico</h2>
+    <canvas id="statusChart"></canvas>
+
+    <script>
+        const ctx = document.getElementById('statusChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Clases Idénticas', 'Clases con Diferencias', 'Solo en Local', 'Solo en Salesforce'],
+                datasets: [{
+                    data: [{{ match_count }}, {{ mismatch_count }}, {{ not_in_local_count }}, {{ not_in_salesforce_count }}],
+                    backgroundColor: ['#00ff00', '#ff3333', '#ffaa00', '#8888ff']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#ffffff' }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <!-- 🔥 Tabla de Resumen Restaurada -->
+    <h2 id="summary"><i class="fa fa-list-alt"></i> Resumen</h2>
+    <table>
+        <thead>
+            <tr>
+                <th id="category"><i class="fa fa-layer-group"></i> Categoría</th>
+                <th id="quantity"><i class="fa fa-hashtag"></i> Cantidad</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><i class="fa fa-check-circle" style="color: #00ff00;"></i> Clases Idénticas</td>
+                <td class="match">{{ match_count }}</td>
+            </tr>
+            <tr>
+                <td><i class="fa fa-exclamation-triangle" style="color: #ff3333;"></i> Clases con Diferencias</td>
+                <td class="mismatch">{{ mismatch_count }}</td>
+            </tr>
+            <tr>
+                <td><i class="fa fa-folder-minus" style="color: #ffaa00;"></i> Clases Solo en Local</td>
+                <td class="not-in-local">{{ not_in_local_count }}</td>
+            </tr>
+            <tr>
+                <td><i class="fa fa-cloud-download-alt" style="color: #8888ff;"></i> Clases Solo en Salesforce</td>
+                <td class="not-in-salesforce">{{ not_in_salesforce_count }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- 🔥 Tabla de Comparación -->
+    <h2><i class="fa fa-list"></i> Detalles</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Clase</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results %}
+            <tr>
+                <td>{{ result.ClassName }}</td>
+                <td class="{{ result.Status|lower }}" data-status="{{ result.Status|lower }}" data-translate-status>
+                    {{ result.Status }}
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        {% if result.Status == "Mismatch" %}
+                        <button data-translate="showDifferences"
+                                onclick="toggleDiff('diff{{ loop.index }}')"
+                                id="toggle-btn-{{ loop.index }}">
+                            <i class="fa fa-eye"></i> Mostrar Diferencias
+                        </button>
+                        <button data-translate="nextDifference"
+                                id="next-diff-btn-{{ loop.index }}"
+                                onclick="goToNextDiff('diff{{ loop.index }}')"
+                                style="display: none;">
+                            <i class="fa fa-arrow-down"></i> Siguiente Diferencia
+                        </button>
+                        <button data-translate="close"
+                                id="close-diff-btn-{{ loop.index }}"
+                                onclick="toggleDiff('diff{{ loop.index }}')"
+                                style="display: none;">
+                            <i class="fa fa-times"></i> Cerrar
+                        </button>
+                        {% else %}
+                        <span style="opacity: 0.5;">Sin diferencias</span>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% if result.Status == "Mismatch" %}
+            <tr id="diff{{ loop.index }}" class="diff-container" style="display: none;">
+                <td colspan="3">
+                    <h2>Diferencias en: {{ result.ClassName }}</h2>
+                    <div id="monaco-diff-editor-{{ loop.index }}" class="editor-container" style="height: 500px;"></div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button id="close-diff-btn-{{ loop.index }}"
+                                onclick="toggleDiff('diff{{ loop.index }}')"
+                                style="display: none;">
+                            <i class="fa fa-times"></i> Cerrar
+                        </button>
+                        <button id="next-diff-btn-{{ loop.index }}"
+                                onclick="goToNextDiff('diff{{ loop.index }}')"
+                                style="display: none;">
+                            <i class="fa fa-arrow-down"></i> Siguiente Diferencia
+                        </button>
+                    </div>
+
+                    <!-- JSON con contenido original y modificado -->
+                    <script type="application/json" id="data-original-{{ loop.index }}">
+                        {{ result.LocalVersion | tojson }}
+                    </script>
+                    <script type="application/json" id="data-modified-{{ loop.index }}">
+                        {{ result.SalesforceVersion | tojson }}
+                    </script>
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+    let diffEditors = {};
+
+    function toggleDiff(id) {
+        const diffContainer = document.getElementById(id);
+        const index = id.replace('diff', '');
+        const toggleButton = document.getElementById(`toggle-btn-${index}`);
+        const nextDiffButton = document.getElementById(`next-diff-btn-${index}`);
+        const closeDiffButton = document.getElementById(`close-diff-btn-${index}`);
+
+        if (!diffContainer) {
+            console.error(`Elemento con id "${id}" no encontrado en el DOM.`);
+            return;
+        }
+
+        if (diffContainer.style.display === "none" || diffContainer.style.display === "") {
+            diffContainer.style.display = "table-row";
+
+            if (toggleButton) toggleButton.style.display = "none";
+            if (closeDiffButton) closeDiffButton.style.display = "inline-block";
+            if (nextDiffButton) nextDiffButton.style.display = "inline-block";
+
+            if (!diffContainer.dataset.loaded) {
+                const originalContent = JSON.parse(document.getElementById(`data-original-${index}`).textContent);
+                const modifiedContent = JSON.parse(document.getElementById(`data-modified-${index}`).textContent);
+
+                require(['vs/editor/editor.main'], function () {
+                    const editorContainer = document.getElementById(`monaco-diff-editor-${index}`);
+                    editorContainer.style.height = "500px";
+
+                    const diffEditor = monaco.editor.createDiffEditor(editorContainer, {
+                        theme: "vs-dark",
+                        readOnly: true,
+                        automaticLayout: true
+                    });
+
+                    const originalModel = monaco.editor.createModel(originalContent, "apex");
+                    const modifiedModel = monaco.editor.createModel(modifiedContent, "apex");
+
+                    diffEditor.setModel({
+                        original: originalModel,
+                        modified: modifiedModel
+                    });
+
+                    setTimeout(() => {
+                        const diffComputationResult = diffEditor.getLineChanges();
+                        if (diffComputationResult) {
+                            diffEditors[index] = {
+                                editor: diffEditor,
+                                changes: diffComputationResult.map(change => change.modifiedStartLineNumber),
+                                currentDiffIndex: -1,
+                                decorations: []
+                            };
+                        }
+                    }, 1000);
+                });
+
+                diffContainer.dataset.loaded = "true";
+            }
+        } else {
+            diffContainer.style.display = "none";
+            if (toggleButton) toggleButton.style.display = "inline-block";
+            if (closeDiffButton) closeDiffButton.style.display = "none";
+            if (nextDiffButton) nextDiffButton.style.display = "none";
+        }
+    }
+
+    function goToNextDiff(id) {
+        const index = id.replace('diff', '');
+        if (diffEditors[index]) {
+            const diffEditor = diffEditors[index].editor;
+            const changes = diffEditors[index].changes;
+
+            if (changes.length > 0) {
+                diffEditors[index].currentDiffIndex++;
+                if (diffEditors[index].currentDiffIndex >= changes.length) {
+                    diffEditors[index].currentDiffIndex = 0; // Reinicia al inicio si pasa el último
+                }
+
+                const nextLine = changes[diffEditors[index].currentDiffIndex];
+                diffEditor.revealLineInCenter(nextLine);
+
+                // 🔹 Aplicar resaltado en la diferencia actual
+                highlightCurrentDifference(diffEditor, nextLine, index);
+            } else {
+                alert("No se encontraron diferencias.");
+            }
+        }
+    }
+
+    function highlightCurrentDifference(editor, lineNumber, index) {
+        // Eliminar decoraciones anteriores
+        if (diffEditors[index].decorations?.length > 0) {
+            editor.getModifiedEditor().deltaDecorations(diffEditors[index].decorations, []);
+        }
+
+        // Aplicar nueva decoración en la línea actual
+        diffEditors[index].decorations = editor.getModifiedEditor().deltaDecorations([], [{
+            range: new monaco.Range(lineNumber, 1, lineNumber, 1),
+            options: {
+                isWholeLine: true,
+                className: 'current-diff-highlight', // Aplica el fondo azul y el borde
+                marginClassName: 'current-diff-highlight-margin' // Resalta en el minimapa
+            }
+        }]);
+    }
+</script>
+<script>
+    // Definir traducciones
+    const translations = {
+        en: {
+            title: "Apex Class Comparison Report",
+            summaryChart: "Graphical Summary",
+            summary: "Summary",
+            category: "Category",
+            quantity: "Quantity",
+            identicalClasses: "Identical Classes",
+            differentClasses: "Classes with Differences",
+            onlyLocal: "Classes Only in Local",
+            onlySalesforce: "Classes Only in Salesforce",
+            details: "Details",
+            class: "Class",
+            status: "Status",
+            action: "Action",
+            showDifferences: "Show Differences",
+            nextDifference: "Next Difference",
+            close: "Close",
+            differenceIn: "Differences in",
+            themeButton: "Dark Mode",
+            language: "Language:",
+            match: "Match",
+            mismatch: "Mismatch"
+        },
+        es: {
+            title: "Reporte de Comparación de Clases Apex",
+            summaryChart: "Resumen Gráfico",
+            summary: "Resumen",
+            category: "Categoría",
+            quantity: "Cantidad",
+            identicalClasses: "Clases Idénticas",
+            differentClasses: "Clases con Diferencias",
+            onlyLocal: "Clases Solo en Local",
+            onlySalesforce: "Clases Solo en Salesforce",
+            details: "Detalles",
+            class: "Clase",
+            status: "Estado",
+            action: "Acción",
+            showDifferences: "Mostrar Diferencias",
+            nextDifference: "Siguiente Diferencia",
+            close: "Cerrar",
+            differenceIn: "Diferencias en",
+            themeButton: "Modo Oscuro",
+            language: "Idioma:",
+            match: "Coincide",
+            mismatch: "Diferente"
+        }
+    };
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const languageSelect = document.getElementById("language-select");
+
+        // Cargar idioma guardado o usar inglés por defecto
+        const savedLanguage = localStorage.getItem("language") || "es";
+        languageSelect.value = savedLanguage;
+        loadLanguage(savedLanguage);
+
+        // Evento para cambiar de idioma
+        languageSelect.addEventListener("change", function () {
+            const selectedLanguage = languageSelect.value;
+            localStorage.setItem("language", selectedLanguage);
+            loadLanguage(selectedLanguage);
+        });
+    });
+
+    function loadLanguage(language) {
+        if (!translations[language]) return;
+
+        const elementsToUpdate = {
+            "title": "title",
+            "summaryChart": "summaryChart",
+            "summary": "summary",
+            "category": "category",
+            "quantity": "quantity",
+            "identicalClasses": "identicalClasses",
+            "differentClasses": "differentClasses",
+            "onlyLocal": "onlyLocal",
+            "onlySalesforce": "onlySalesforce",
+            "details": "details",
+            "language-label": "language",
+            "theme-text": "themeButton"
+        };
+
+        for (const [elementId, translationKey] of Object.entries(elementsToUpdate)) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = translations[language][translationKey];
+            }
+        }
+
+        // Elementos repetitivos (botones, encabezados en tablas)
+        document.querySelectorAll("[data-translate]").forEach(el => {
+            const key = el.getAttribute("data-translate");
+            if (translations[language][key]) {
+                el.textContent = translations[language][key];
+            }
+        });
+
+        // Actualizar valores de Match/Mismatch
+        document.querySelectorAll("[data-translate-status]").forEach(el => {
+            const statusKey = el.getAttribute("data-status"); // "match" o "mismatch"
+            if (translations[language][statusKey]) {
+                el.textContent = translations[language][statusKey];
+            }
+        });
+
+        // Actualizar texto del botón de tema
+        document.getElementById("theme-text").textContent = translations[language].themeButton;
+    }
+</script>
+
+
+</body>
+</html>

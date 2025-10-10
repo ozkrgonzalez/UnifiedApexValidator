@@ -6,7 +6,43 @@ Todas las actualizaciones notables de esta extensión se documentarán aquí.
 El formato sigue las convenciones de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/)
 y la numeración semántica [Semantic Versioning](https://semver.org/lang/es/).
 
-## 🚀 Versión 1.7.0 — Octubre 2025
+## 🧩 Unified Apex Validator — v1.7.1
+
+### 🚀 Nuevas Funcionalidades
+
+#### 🆕 Comparación de Clases Apex contra una Org
+Ahora puedes comparar tus clases locales con las versiones almacenadas en una organización Salesforce conectada.
+- Disponible desde el **menú contextual** de `package.xml` o archivos `.cls`.
+- Funciona con orgs conectadas mediante Salesforce CLI (sin credenciales adicionales).
+- Permite seleccionar la org destino con una lista interactiva.
+
+#### 📊 Reporte HTML Interactivo
+Nuevo reporte visual con diseño moderno y soporte claro/oscuro.
+Incluye:
+- Resumen gráfico con coincidencias y diferencias.
+- Tabla detallada por clase.
+- **Editor Monaco** integrado para ver diferencias línea a línea.
+- Navegación entre diferencias, cambio de idioma y tema visual.
+
+---
+
+### 🧰 Dependencias y Diagnóstico
+
+#### 🧩 Nuevo módulo de Dependencias
+El árbol de dependencias fue reescrito y movido a un módulo independiente (`dependenciesProvider.ts`).
+- Muestra el estado de cada dependencia con íconos:
+  - ✅ Actualizado
+  - ⚠️ Desactualizado
+  - ❌ No instalado
+- Permite **actualizar dependencias directamente** con un clic desde la vista.
+
+#### 🪶 Otras mejoras
+- Se reorganizó la estructura interna para mejorar mantenimiento.
+- Compatibilidad confirmada con **Salesforce CLI Unified (sf v2.48+)** y nuevas rutas de salida.
+
+---
+
+## 🚀 Versión 1.7.0
 
 ### 🧠 Salesforce Code Analyzer v5 (integración completa)
 - Se reemplazó la ejecución externa de **PMD/CPD** por el motor **Salesforce Code Analyzer v5**, utilizando el comando:

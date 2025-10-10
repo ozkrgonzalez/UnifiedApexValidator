@@ -37,7 +37,9 @@
   },
   "activationEvents": [
     "onCommand:UnifiedApexValidator.validateApex",
-    "workspaceContains:**/*.xml"
+    "onCommand:UnifiedApexValidator.compareApexClasses",
+    "workspaceContains:**/*.xml",
+    "onLanguage:apex"
   ],
   "contributes": {
     "viewsContainers": {
@@ -89,6 +91,10 @@
         "command": "uav.logsView.openFolder",
         "title": "Open logs folder",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "UnifiedApexValidator.compareApexClasses",
+        "title": "UAV: Compare Apex Classes against Org"
       }
     ],
     "menus": {
@@ -119,13 +125,33 @@
           "command": "UnifiedApexValidator.validateApex",
           "when": "resourceExtname =~ /\\.?xml/i",
           "group": "z_unifiedApex@1"
+        },
+        {
+          "command": "UnifiedApexValidator.compareApexClasses",
+          "when": "resourceExtname =~ /\\.?xml/i",
+          "group": "z_unifiedApex@10"
+        },
+        {
+          "command": "UnifiedApexValidator.compareApexClasses",
+          "when": "resourceExtname =~ /\\.?cls/i",
+          "group": "z_unifiedApex@11"
         }
       ],
       "editor/context": [
         {
           "command": "UnifiedApexValidator.validateApex",
-          "when": "resourceExtname =~ /\\.?xml/i",
+          "when": "resourceExtname =~ /\\.?cls/i",
           "group": "z_unifiedApex@2"
+        },
+        {
+          "command": "UnifiedApexValidator.validateApex",
+          "when": "resourceExtname =~ /\\.?xml/i",
+          "group": "z_unifiedApex@3"
+        },
+        {
+          "command": "UnifiedApexValidator.compareApexClasses",
+          "when": "resourceExtname =~ /\\.?cls/i",
+          "group": "z_unifiedApex@12"
         }
       ]
     },
@@ -234,7 +260,9 @@
     "dependencies": true
   },
   "dependencies": {
+    "@types/diff": "^7.0.2",
     "axios": "^1.12.2",
+    "diff": "^8.0.2",
     "dotenv": "^17.2.3",
     "execa": "^9.6.0",
     "fast-xml-parser": "^5.3.0",

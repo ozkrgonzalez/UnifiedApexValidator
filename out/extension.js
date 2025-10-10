@@ -37,7 +37,9 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
+const dependenciesProvider_1 = require("./providers/dependenciesProvider");
 const uavController_1 = require("./core/uavController");
+const compareController_1 = require("./core/compareController");
 const utils_1 = require("./core/utils");
 /**
  * Punto de entrada de la extensión Unified Apex Validator.
@@ -46,13 +48,15 @@ const utils_1 = require("./core/utils");
 async function activate(context) {
     console.log('[UAV][extension] Unified Apex Validator activado.');
     console.log('[UAV][extension] globalStorageUri:', context.globalStorageUri.fsPath);
-    // 🧠 Dentro de activate()
-    const dependenciesProvider = new uavController_1.DependenciesProvider(context);
+    // 🧠 Dependencias
+    const dependenciesProvider = new dependenciesProvider_1.DependenciesProvider(context);
     vscode.window.registerTreeDataProvider('uav.dependenciesView', dependenciesProvider);
-    // Agrega también el comando de refresco (opcional)
     context.subscriptions.push(vscode.commands.registerCommand('uav.dependenciesView.refresh', () => dependenciesProvider.refresh()));
+    // ⚙️ Habilita el comando “Actualizar dependencia”
+    (0, dependenciesProvider_1.registerDependencyUpdater)(context);
     // 📂 Rutas base
-    const outputDir = vscode.workspace.getConfiguration('UnifiedApexValidator').get('outputDir') || path.join(context.globalStorageUri.fsPath, 'output');
+    const outputDir = vscode.workspace.getConfiguration('UnifiedApexValidator').get('outputDir') ||
+        path.join(context.globalStorageUri.fsPath, 'output');
     const logDir = path.join(context.globalStorageUri.fsPath, '.uav', 'logs');
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(outputDir));
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(logDir));
@@ -73,7 +77,8 @@ async function activate(context) {
     catch (err) {
         console.error('[UAV][extension] Error creando carpeta global:', err);
     }
-    const disposable = vscode.commands.registerCommand('UnifiedApexValidator.validateApex', async (uri) => {
+    // 🧪 Validación Apex
+    const validateApexCmd = vscode.commands.registerCommand('UnifiedApexValidator.validateApex', async (uri) => {
         try {
             console.log('[UAV][extension] Ejecutando runUAV()...');
             await (0, uavController_1.runUAV)(uri);
@@ -83,7 +88,23 @@ async function activate(context) {
             vscode.window.showErrorMessage(`Error ejecutando UAV: ${error.message}`);
         }
     });
-    context.subscriptions.push(disposable);
+    // 🧭 Nueva funcionalidad: comparar clases Apex contra una org
+    const compareApexClassesCmd = vscode.commands.registerCommand('UnifiedApexValidator.compareApexClasses', async (uri) => {
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: 'Comparando clases Apex contra la organización seleccionada...',
+            cancellable: false,
+        }, async () => {
+            try {
+                await (0, compareController_1.runCompareApexClasses)(uri);
+            }
+            catch (err) {
+                console.error('[UAV][extension] Error en comparación:', err);
+                vscode.window.showErrorMessage(`❌ Error al comparar clases: ${err.message}`);
+            }
+        });
+    });
+    context.subscriptions.push(validateApexCmd, compareApexClassesCmd);
     vscode.window.showInformationMessage('Unified Apex Validator activado.');
 }
 /**

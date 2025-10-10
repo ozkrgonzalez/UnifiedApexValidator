@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FolderViewProvider = exports.DependenciesProvider = void 0;
+exports.FolderViewProvider = void 0;
 exports.runUAV = runUAV;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
@@ -47,9 +47,14 @@ const validator_1 = require("./validator");
 const testSuite_1 = require("./testSuite");
 const IAAnalisis_1 = require("./IAAnalisis");
 const reportGenerator_1 = require("./reportGenerator");
-const execa_1 = require("execa");
 const reportViewer_1 = require("./reportViewer");
 async function runUAV(uri) {
+    process.on('unhandledRejection', (reason) => {
+        if (String(reason).includes('CreateEmbeddingSupplier')) {
+            return;
+        }
+        console.error('[UAVController] Unhandled Rejection:', reason);
+    });
     try {
         const channel = (0, utils_1.getGlobalChannel)();
         if (channel)
@@ -225,66 +230,6 @@ async function runUAV(uri) {
             }
         }
     });
-}
-class DependenciesProvider {
-    context;
-    _onDidChangeTreeData = new vscode.EventEmitter();
-    onDidChangeTreeData = this._onDidChangeTreeData.event;
-    constructor(context) {
-        this.context = context;
-    }
-    refresh() {
-        this._onDidChangeTreeData.fire();
-    }
-    getTreeItem(element) {
-        return element;
-    }
-    async getChildren() {
-        const dependencies = [];
-        const checks = [
-            { label: 'Node.js', cmd: 'node --version' },
-            { label: 'Salesforce CLI (sf)', cmd: 'sf --version' },
-            { label: 'Salesforce Code Analyzer v5', cmd: 'sf code-analyzer run --help' },
-            { label: 'Java', cmd: 'java -version' },
-            { label: 'wkhtmltopdf', cmd: 'wkhtmltopdf --version' }
-        ];
-        for (const dep of checks) {
-            const ok = await this.checkCommand(dep.cmd);
-            dependencies.push(new DependencyItem(dep.label, ok));
-        }
-        // IA config (desde settings)
-        const cfg = vscode.workspace.getConfiguration('UnifiedApexValidator');
-        const iaFields = [
-            cfg.get('sfGptEndpoint'),
-            cfg.get('sfGptModel'),
-            cfg.get('iaPromptTemplate')
-        ];
-        const iaConfigured = iaFields.every(v => typeof v === 'string' && v.trim() !== '');
-        dependencies.push(new DependencyItem('IA Configuración', iaConfigured));
-        return dependencies;
-    }
-    async checkCommand(command) {
-        try {
-            await (0, execa_1.execa)(command, { shell: true });
-            return true;
-        }
-        catch {
-            return false;
-        }
-    }
-}
-exports.DependenciesProvider = DependenciesProvider;
-class DependencyItem extends vscode.TreeItem {
-    label;
-    ok;
-    constructor(label, ok) {
-        super(label);
-        this.label = label;
-        this.ok = ok;
-        this.iconPath = new vscode.ThemeIcon(ok ? 'check' : 'error', ok ? new vscode.ThemeColor('testing.iconPassed') : new vscode.ThemeColor('testing.iconFailed'));
-        this.tooltip = ok ? 'Disponible' : 'No encontrado o no accesible';
-        this.description = ok ? 'OK' : 'Falta';
-    }
 }
 class FolderViewProvider {
     folderPath;

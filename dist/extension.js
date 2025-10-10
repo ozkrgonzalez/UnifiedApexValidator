@@ -30,6 +30,503 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// node_modules/isexe/windows.js
+var require_windows = __commonJS({
+  "node_modules/isexe/windows.js"(exports2, module2) {
+    module2.exports = isexe;
+    isexe.sync = sync2;
+    var fs8 = require("fs");
+    function checkPathExt(path15, options) {
+      var pathext = options.pathExt !== void 0 ? options.pathExt : process.env.PATHEXT;
+      if (!pathext) {
+        return true;
+      }
+      pathext = pathext.split(";");
+      if (pathext.indexOf("") !== -1) {
+        return true;
+      }
+      for (var i2 = 0; i2 < pathext.length; i2++) {
+        var p = pathext[i2].toLowerCase();
+        if (p && path15.substr(-p.length).toLowerCase() === p) {
+          return true;
+        }
+      }
+      return false;
+    }
+    function checkStat(stat, path15, options) {
+      if (!stat.isSymbolicLink() && !stat.isFile()) {
+        return false;
+      }
+      return checkPathExt(path15, options);
+    }
+    function isexe(path15, options, cb) {
+      fs8.stat(path15, function(er, stat) {
+        cb(er, er ? false : checkStat(stat, path15, options));
+      });
+    }
+    function sync2(path15, options) {
+      return checkStat(fs8.statSync(path15), path15, options);
+    }
+  }
+});
+
+// node_modules/isexe/mode.js
+var require_mode = __commonJS({
+  "node_modules/isexe/mode.js"(exports2, module2) {
+    module2.exports = isexe;
+    isexe.sync = sync2;
+    var fs8 = require("fs");
+    function isexe(path15, options, cb) {
+      fs8.stat(path15, function(er, stat) {
+        cb(er, er ? false : checkStat(stat, options));
+      });
+    }
+    function sync2(path15, options) {
+      return checkStat(fs8.statSync(path15), options);
+    }
+    function checkStat(stat, options) {
+      return stat.isFile() && checkMode(stat, options);
+    }
+    function checkMode(stat, options) {
+      var mod = stat.mode;
+      var uid = stat.uid;
+      var gid = stat.gid;
+      var myUid = options.uid !== void 0 ? options.uid : process.getuid && process.getuid();
+      var myGid = options.gid !== void 0 ? options.gid : process.getgid && process.getgid();
+      var u2 = parseInt("100", 8);
+      var g = parseInt("010", 8);
+      var o2 = parseInt("001", 8);
+      var ug = u2 | g;
+      var ret = mod & o2 || mod & g && gid === myGid || mod & u2 && uid === myUid || mod & ug && myUid === 0;
+      return ret;
+    }
+  }
+});
+
+// node_modules/isexe/index.js
+var require_isexe = __commonJS({
+  "node_modules/isexe/index.js"(exports2, module2) {
+    var fs8 = require("fs");
+    var core;
+    if (process.platform === "win32" || global.TESTING_WINDOWS) {
+      core = require_windows();
+    } else {
+      core = require_mode();
+    }
+    module2.exports = isexe;
+    isexe.sync = sync2;
+    function isexe(path15, options, cb) {
+      if (typeof options === "function") {
+        cb = options;
+        options = {};
+      }
+      if (!cb) {
+        if (typeof Promise !== "function") {
+          throw new TypeError("callback not provided");
+        }
+        return new Promise(function(resolve4, reject) {
+          isexe(path15, options || {}, function(er, is) {
+            if (er) {
+              reject(er);
+            } else {
+              resolve4(is);
+            }
+          });
+        });
+      }
+      core(path15, options || {}, function(er, is) {
+        if (er) {
+          if (er.code === "EACCES" || options && options.ignoreErrors) {
+            er = null;
+            is = false;
+          }
+        }
+        cb(er, is);
+      });
+    }
+    function sync2(path15, options) {
+      try {
+        return core.sync(path15, options || {});
+      } catch (er) {
+        if (options && options.ignoreErrors || er.code === "EACCES") {
+          return false;
+        } else {
+          throw er;
+        }
+      }
+    }
+  }
+});
+
+// node_modules/which/which.js
+var require_which = __commonJS({
+  "node_modules/which/which.js"(exports2, module2) {
+    var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
+    var path15 = require("path");
+    var COLON = isWindows ? ";" : ":";
+    var isexe = require_isexe();
+    var getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
+    var getPathInfo = (cmd, opt) => {
+      const colon = opt.colon || COLON;
+      const pathEnv = cmd.match(/\//) || isWindows && cmd.match(/\\/) ? [""] : [
+        // windows always checks the cwd first
+        ...isWindows ? [process.cwd()] : [],
+        ...(opt.path || process.env.PATH || /* istanbul ignore next: very unusual */
+        "").split(colon)
+      ];
+      const pathExtExe = isWindows ? opt.pathExt || process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM" : "";
+      const pathExt = isWindows ? pathExtExe.split(colon) : [""];
+      if (isWindows) {
+        if (cmd.indexOf(".") !== -1 && pathExt[0] !== "")
+          pathExt.unshift("");
+      }
+      return {
+        pathEnv,
+        pathExt,
+        pathExtExe
+      };
+    };
+    var which = (cmd, opt, cb) => {
+      if (typeof opt === "function") {
+        cb = opt;
+        opt = {};
+      }
+      if (!opt)
+        opt = {};
+      const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
+      const found = [];
+      const step = (i2) => new Promise((resolve4, reject) => {
+        if (i2 === pathEnv.length)
+          return opt.all && found.length ? resolve4(found) : reject(getNotFoundError(cmd));
+        const ppRaw = pathEnv[i2];
+        const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
+        const pCmd = path15.join(pathPart, cmd);
+        const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
+        resolve4(subStep(p, i2, 0));
+      });
+      const subStep = (p, i2, ii) => new Promise((resolve4, reject) => {
+        if (ii === pathExt.length)
+          return resolve4(step(i2 + 1));
+        const ext2 = pathExt[ii];
+        isexe(p + ext2, { pathExt: pathExtExe }, (er, is) => {
+          if (!er && is) {
+            if (opt.all)
+              found.push(p + ext2);
+            else
+              return resolve4(p + ext2);
+          }
+          return resolve4(subStep(p, i2, ii + 1));
+        });
+      });
+      return cb ? step(0).then((res) => cb(null, res), cb) : step(0);
+    };
+    var whichSync = (cmd, opt) => {
+      opt = opt || {};
+      const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
+      const found = [];
+      for (let i2 = 0; i2 < pathEnv.length; i2++) {
+        const ppRaw = pathEnv[i2];
+        const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
+        const pCmd = path15.join(pathPart, cmd);
+        const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
+        for (let j = 0; j < pathExt.length; j++) {
+          const cur = p + pathExt[j];
+          try {
+            const is = isexe.sync(cur, { pathExt: pathExtExe });
+            if (is) {
+              if (opt.all)
+                found.push(cur);
+              else
+                return cur;
+            }
+          } catch (ex) {
+          }
+        }
+      }
+      if (opt.all && found.length)
+        return found;
+      if (opt.nothrow)
+        return null;
+      throw getNotFoundError(cmd);
+    };
+    module2.exports = which;
+    which.sync = whichSync;
+  }
+});
+
+// node_modules/path-key/index.js
+var require_path_key = __commonJS({
+  "node_modules/path-key/index.js"(exports2, module2) {
+    "use strict";
+    var pathKey2 = (options = {}) => {
+      const environment = options.env || process.env;
+      const platform2 = options.platform || process.platform;
+      if (platform2 !== "win32") {
+        return "PATH";
+      }
+      return Object.keys(environment).reverse().find((key) => key.toUpperCase() === "PATH") || "Path";
+    };
+    module2.exports = pathKey2;
+    module2.exports.default = pathKey2;
+  }
+});
+
+// node_modules/cross-spawn/lib/util/resolveCommand.js
+var require_resolveCommand = __commonJS({
+  "node_modules/cross-spawn/lib/util/resolveCommand.js"(exports2, module2) {
+    "use strict";
+    var path15 = require("path");
+    var which = require_which();
+    var getPathKey = require_path_key();
+    function resolveCommandAttempt(parsed, withoutPathExt) {
+      const env2 = parsed.options.env || process.env;
+      const cwd = process.cwd();
+      const hasCustomCwd = parsed.options.cwd != null;
+      const shouldSwitchCwd = hasCustomCwd && process.chdir !== void 0 && !process.chdir.disabled;
+      if (shouldSwitchCwd) {
+        try {
+          process.chdir(parsed.options.cwd);
+        } catch (err) {
+        }
+      }
+      let resolved;
+      try {
+        resolved = which.sync(parsed.command, {
+          path: env2[getPathKey({ env: env2 })],
+          pathExt: withoutPathExt ? path15.delimiter : void 0
+        });
+      } catch (e) {
+      } finally {
+        if (shouldSwitchCwd) {
+          process.chdir(cwd);
+        }
+      }
+      if (resolved) {
+        resolved = path15.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
+      }
+      return resolved;
+    }
+    function resolveCommand(parsed) {
+      return resolveCommandAttempt(parsed) || resolveCommandAttempt(parsed, true);
+    }
+    module2.exports = resolveCommand;
+  }
+});
+
+// node_modules/cross-spawn/lib/util/escape.js
+var require_escape = __commonJS({
+  "node_modules/cross-spawn/lib/util/escape.js"(exports2, module2) {
+    "use strict";
+    var metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
+    function escapeCommand(arg) {
+      arg = arg.replace(metaCharsRegExp, "^$1");
+      return arg;
+    }
+    function escapeArgument(arg, doubleEscapeMetaChars) {
+      arg = `${arg}`;
+      arg = arg.replace(/(?=(\\+?)?)\1"/g, '$1$1\\"');
+      arg = arg.replace(/(?=(\\+?)?)\1$/, "$1$1");
+      arg = `"${arg}"`;
+      arg = arg.replace(metaCharsRegExp, "^$1");
+      if (doubleEscapeMetaChars) {
+        arg = arg.replace(metaCharsRegExp, "^$1");
+      }
+      return arg;
+    }
+    module2.exports.command = escapeCommand;
+    module2.exports.argument = escapeArgument;
+  }
+});
+
+// node_modules/shebang-regex/index.js
+var require_shebang_regex = __commonJS({
+  "node_modules/shebang-regex/index.js"(exports2, module2) {
+    "use strict";
+    module2.exports = /^#!(.*)/;
+  }
+});
+
+// node_modules/shebang-command/index.js
+var require_shebang_command = __commonJS({
+  "node_modules/shebang-command/index.js"(exports2, module2) {
+    "use strict";
+    var shebangRegex = require_shebang_regex();
+    module2.exports = (string = "") => {
+      const match3 = string.match(shebangRegex);
+      if (!match3) {
+        return null;
+      }
+      const [path15, argument] = match3[0].replace(/#! ?/, "").split(" ");
+      const binary = path15.split("/").pop();
+      if (binary === "env") {
+        return argument;
+      }
+      return argument ? `${binary} ${argument}` : binary;
+    };
+  }
+});
+
+// node_modules/cross-spawn/lib/util/readShebang.js
+var require_readShebang = __commonJS({
+  "node_modules/cross-spawn/lib/util/readShebang.js"(exports2, module2) {
+    "use strict";
+    var fs8 = require("fs");
+    var shebangCommand = require_shebang_command();
+    function readShebang(command) {
+      const size = 150;
+      const buffer = Buffer.alloc(size);
+      let fd;
+      try {
+        fd = fs8.openSync(command, "r");
+        fs8.readSync(fd, buffer, 0, size, 0);
+        fs8.closeSync(fd);
+      } catch (e) {
+      }
+      return shebangCommand(buffer.toString());
+    }
+    module2.exports = readShebang;
+  }
+});
+
+// node_modules/cross-spawn/lib/parse.js
+var require_parse = __commonJS({
+  "node_modules/cross-spawn/lib/parse.js"(exports2, module2) {
+    "use strict";
+    var path15 = require("path");
+    var resolveCommand = require_resolveCommand();
+    var escape4 = require_escape();
+    var readShebang = require_readShebang();
+    var isWin = process.platform === "win32";
+    var isExecutableRegExp = /\.(?:com|exe)$/i;
+    var isCmdShimRegExp = /node_modules[\\/].bin[\\/][^\\/]+\.cmd$/i;
+    function detectShebang(parsed) {
+      parsed.file = resolveCommand(parsed);
+      const shebang = parsed.file && readShebang(parsed.file);
+      if (shebang) {
+        parsed.args.unshift(parsed.file);
+        parsed.command = shebang;
+        return resolveCommand(parsed);
+      }
+      return parsed.file;
+    }
+    function parseNonShell(parsed) {
+      if (!isWin) {
+        return parsed;
+      }
+      const commandFile = detectShebang(parsed);
+      const needsShell = !isExecutableRegExp.test(commandFile);
+      if (parsed.options.forceShell || needsShell) {
+        const needsDoubleEscapeMetaChars = isCmdShimRegExp.test(commandFile);
+        parsed.command = path15.normalize(parsed.command);
+        parsed.command = escape4.command(parsed.command);
+        parsed.args = parsed.args.map((arg) => escape4.argument(arg, needsDoubleEscapeMetaChars));
+        const shellCommand = [parsed.command].concat(parsed.args).join(" ");
+        parsed.args = ["/d", "/s", "/c", `"${shellCommand}"`];
+        parsed.command = process.env.comspec || "cmd.exe";
+        parsed.options.windowsVerbatimArguments = true;
+      }
+      return parsed;
+    }
+    function parse(command, args, options) {
+      if (args && !Array.isArray(args)) {
+        options = args;
+        args = null;
+      }
+      args = args ? args.slice(0) : [];
+      options = Object.assign({}, options);
+      const parsed = {
+        command,
+        args,
+        options,
+        file: void 0,
+        original: {
+          command,
+          args
+        }
+      };
+      return options.shell ? parsed : parseNonShell(parsed);
+    }
+    module2.exports = parse;
+  }
+});
+
+// node_modules/cross-spawn/lib/enoent.js
+var require_enoent = __commonJS({
+  "node_modules/cross-spawn/lib/enoent.js"(exports2, module2) {
+    "use strict";
+    var isWin = process.platform === "win32";
+    function notFoundError(original, syscall) {
+      return Object.assign(new Error(`${syscall} ${original.command} ENOENT`), {
+        code: "ENOENT",
+        errno: "ENOENT",
+        syscall: `${syscall} ${original.command}`,
+        path: original.command,
+        spawnargs: original.args
+      });
+    }
+    function hookChildProcess(cp, parsed) {
+      if (!isWin) {
+        return;
+      }
+      const originalEmit = cp.emit;
+      cp.emit = function(name, arg1) {
+        if (name === "exit") {
+          const err = verifyENOENT(arg1, parsed);
+          if (err) {
+            return originalEmit.call(cp, "error", err);
+          }
+        }
+        return originalEmit.apply(cp, arguments);
+      };
+    }
+    function verifyENOENT(status, parsed) {
+      if (isWin && status === 1 && !parsed.file) {
+        return notFoundError(parsed.original, "spawn");
+      }
+      return null;
+    }
+    function verifyENOENTSync(status, parsed) {
+      if (isWin && status === 1 && !parsed.file) {
+        return notFoundError(parsed.original, "spawnSync");
+      }
+      return null;
+    }
+    module2.exports = {
+      hookChildProcess,
+      verifyENOENT,
+      verifyENOENTSync,
+      notFoundError
+    };
+  }
+});
+
+// node_modules/cross-spawn/index.js
+var require_cross_spawn = __commonJS({
+  "node_modules/cross-spawn/index.js"(exports2, module2) {
+    "use strict";
+    var cp = require("child_process");
+    var parse = require_parse();
+    var enoent = require_enoent();
+    function spawn2(command, args, options) {
+      const parsed = parse(command, args, options);
+      const spawned = cp.spawn(parsed.command, parsed.args, parsed.options);
+      enoent.hookChildProcess(spawned, parsed);
+      return spawned;
+    }
+    function spawnSync2(command, args, options) {
+      const parsed = parse(command, args, options);
+      const result = cp.spawnSync(parsed.command, parsed.args, parsed.options);
+      result.error = result.error || enoent.verifyENOENTSync(result.status, parsed);
+      return result;
+    }
+    module2.exports = spawn2;
+    module2.exports.spawn = spawn2;
+    module2.exports.sync = spawnSync2;
+    module2.exports._parse = parse;
+    module2.exports._enoent = enoent;
+  }
+});
+
 // node_modules/universalify/index.js
 var require_universalify = __commonJS({
   "node_modules/universalify/index.js"(exports2) {
@@ -84,54 +581,54 @@ var require_polyfills = __commonJS({
     }
     var chdir;
     module2.exports = patch;
-    function patch(fs7) {
+    function patch(fs8) {
       if (constants4.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
-        patchLchmod(fs7);
+        patchLchmod(fs8);
       }
-      if (!fs7.lutimes) {
-        patchLutimes(fs7);
+      if (!fs8.lutimes) {
+        patchLutimes(fs8);
       }
-      fs7.chown = chownFix(fs7.chown);
-      fs7.fchown = chownFix(fs7.fchown);
-      fs7.lchown = chownFix(fs7.lchown);
-      fs7.chmod = chmodFix(fs7.chmod);
-      fs7.fchmod = chmodFix(fs7.fchmod);
-      fs7.lchmod = chmodFix(fs7.lchmod);
-      fs7.chownSync = chownFixSync(fs7.chownSync);
-      fs7.fchownSync = chownFixSync(fs7.fchownSync);
-      fs7.lchownSync = chownFixSync(fs7.lchownSync);
-      fs7.chmodSync = chmodFixSync(fs7.chmodSync);
-      fs7.fchmodSync = chmodFixSync(fs7.fchmodSync);
-      fs7.lchmodSync = chmodFixSync(fs7.lchmodSync);
-      fs7.stat = statFix(fs7.stat);
-      fs7.fstat = statFix(fs7.fstat);
-      fs7.lstat = statFix(fs7.lstat);
-      fs7.statSync = statFixSync(fs7.statSync);
-      fs7.fstatSync = statFixSync(fs7.fstatSync);
-      fs7.lstatSync = statFixSync(fs7.lstatSync);
-      if (fs7.chmod && !fs7.lchmod) {
-        fs7.lchmod = function(path14, mode, cb) {
+      fs8.chown = chownFix(fs8.chown);
+      fs8.fchown = chownFix(fs8.fchown);
+      fs8.lchown = chownFix(fs8.lchown);
+      fs8.chmod = chmodFix(fs8.chmod);
+      fs8.fchmod = chmodFix(fs8.fchmod);
+      fs8.lchmod = chmodFix(fs8.lchmod);
+      fs8.chownSync = chownFixSync(fs8.chownSync);
+      fs8.fchownSync = chownFixSync(fs8.fchownSync);
+      fs8.lchownSync = chownFixSync(fs8.lchownSync);
+      fs8.chmodSync = chmodFixSync(fs8.chmodSync);
+      fs8.fchmodSync = chmodFixSync(fs8.fchmodSync);
+      fs8.lchmodSync = chmodFixSync(fs8.lchmodSync);
+      fs8.stat = statFix(fs8.stat);
+      fs8.fstat = statFix(fs8.fstat);
+      fs8.lstat = statFix(fs8.lstat);
+      fs8.statSync = statFixSync(fs8.statSync);
+      fs8.fstatSync = statFixSync(fs8.fstatSync);
+      fs8.lstatSync = statFixSync(fs8.lstatSync);
+      if (fs8.chmod && !fs8.lchmod) {
+        fs8.lchmod = function(path15, mode, cb) {
           if (cb) process.nextTick(cb);
         };
-        fs7.lchmodSync = function() {
+        fs8.lchmodSync = function() {
         };
       }
-      if (fs7.chown && !fs7.lchown) {
-        fs7.lchown = function(path14, uid, gid, cb) {
+      if (fs8.chown && !fs8.lchown) {
+        fs8.lchown = function(path15, uid, gid, cb) {
           if (cb) process.nextTick(cb);
         };
-        fs7.lchownSync = function() {
+        fs8.lchownSync = function() {
         };
       }
       if (platform2 === "win32") {
-        fs7.rename = typeof fs7.rename !== "function" ? fs7.rename : (function(fs$rename) {
+        fs8.rename = typeof fs8.rename !== "function" ? fs8.rename : (function(fs$rename) {
           function rename(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
               if (er && (er.code === "EACCES" || er.code === "EPERM" || er.code === "EBUSY") && Date.now() - start < 6e4) {
                 setTimeout(function() {
-                  fs7.stat(to, function(stater, st) {
+                  fs8.stat(to, function(stater, st) {
                     if (stater && stater.code === "ENOENT")
                       fs$rename(from, to, CB);
                     else
@@ -147,9 +644,9 @@ var require_polyfills = __commonJS({
           }
           if (Object.setPrototypeOf) Object.setPrototypeOf(rename, fs$rename);
           return rename;
-        })(fs7.rename);
+        })(fs8.rename);
       }
-      fs7.read = typeof fs7.read !== "function" ? fs7.read : (function(fs$read) {
+      fs8.read = typeof fs8.read !== "function" ? fs8.read : (function(fs$read) {
         function read(fd, buffer, offset, length, position, callback_) {
           var callback;
           if (callback_ && typeof callback_ === "function") {
@@ -157,22 +654,22 @@ var require_polyfills = __commonJS({
             callback = function(er, _, __) {
               if (er && er.code === "EAGAIN" && eagCounter < 10) {
                 eagCounter++;
-                return fs$read.call(fs7, fd, buffer, offset, length, position, callback);
+                return fs$read.call(fs8, fd, buffer, offset, length, position, callback);
               }
               callback_.apply(this, arguments);
             };
           }
-          return fs$read.call(fs7, fd, buffer, offset, length, position, callback);
+          return fs$read.call(fs8, fd, buffer, offset, length, position, callback);
         }
         if (Object.setPrototypeOf) Object.setPrototypeOf(read, fs$read);
         return read;
-      })(fs7.read);
-      fs7.readSync = typeof fs7.readSync !== "function" ? fs7.readSync : /* @__PURE__ */ (function(fs$readSync) {
+      })(fs8.read);
+      fs8.readSync = typeof fs8.readSync !== "function" ? fs8.readSync : /* @__PURE__ */ (function(fs$readSync) {
         return function(fd, buffer, offset, length, position) {
           var eagCounter = 0;
           while (true) {
             try {
-              return fs$readSync.call(fs7, fd, buffer, offset, length, position);
+              return fs$readSync.call(fs8, fd, buffer, offset, length, position);
             } catch (er) {
               if (er.code === "EAGAIN" && eagCounter < 10) {
                 eagCounter++;
@@ -182,11 +679,11 @@ var require_polyfills = __commonJS({
             }
           }
         };
-      })(fs7.readSync);
-      function patchLchmod(fs8) {
-        fs8.lchmod = function(path14, mode, callback) {
-          fs8.open(
-            path14,
+      })(fs8.readSync);
+      function patchLchmod(fs9) {
+        fs9.lchmod = function(path15, mode, callback) {
+          fs9.open(
+            path15,
             constants4.O_WRONLY | constants4.O_SYMLINK,
             mode,
             function(err, fd) {
@@ -194,80 +691,80 @@ var require_polyfills = __commonJS({
                 if (callback) callback(err);
                 return;
               }
-              fs8.fchmod(fd, mode, function(err2) {
-                fs8.close(fd, function(err22) {
+              fs9.fchmod(fd, mode, function(err2) {
+                fs9.close(fd, function(err22) {
                   if (callback) callback(err2 || err22);
                 });
               });
             }
           );
         };
-        fs8.lchmodSync = function(path14, mode) {
-          var fd = fs8.openSync(path14, constants4.O_WRONLY | constants4.O_SYMLINK, mode);
+        fs9.lchmodSync = function(path15, mode) {
+          var fd = fs9.openSync(path15, constants4.O_WRONLY | constants4.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
-            ret = fs8.fchmodSync(fd, mode);
+            ret = fs9.fchmodSync(fd, mode);
             threw = false;
           } finally {
             if (threw) {
               try {
-                fs8.closeSync(fd);
+                fs9.closeSync(fd);
               } catch (er) {
               }
             } else {
-              fs8.closeSync(fd);
+              fs9.closeSync(fd);
             }
           }
           return ret;
         };
       }
-      function patchLutimes(fs8) {
-        if (constants4.hasOwnProperty("O_SYMLINK") && fs8.futimes) {
-          fs8.lutimes = function(path14, at, mt, cb) {
-            fs8.open(path14, constants4.O_SYMLINK, function(er, fd) {
+      function patchLutimes(fs9) {
+        if (constants4.hasOwnProperty("O_SYMLINK") && fs9.futimes) {
+          fs9.lutimes = function(path15, at, mt, cb) {
+            fs9.open(path15, constants4.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
               }
-              fs8.futimes(fd, at, mt, function(er2) {
-                fs8.close(fd, function(er22) {
+              fs9.futimes(fd, at, mt, function(er2) {
+                fs9.close(fd, function(er22) {
                   if (cb) cb(er2 || er22);
                 });
               });
             });
           };
-          fs8.lutimesSync = function(path14, at, mt) {
-            var fd = fs8.openSync(path14, constants4.O_SYMLINK);
+          fs9.lutimesSync = function(path15, at, mt) {
+            var fd = fs9.openSync(path15, constants4.O_SYMLINK);
             var ret;
             var threw = true;
             try {
-              ret = fs8.futimesSync(fd, at, mt);
+              ret = fs9.futimesSync(fd, at, mt);
               threw = false;
             } finally {
               if (threw) {
                 try {
-                  fs8.closeSync(fd);
+                  fs9.closeSync(fd);
                 } catch (er) {
                 }
               } else {
-                fs8.closeSync(fd);
+                fs9.closeSync(fd);
               }
             }
             return ret;
           };
-        } else if (fs8.futimes) {
-          fs8.lutimes = function(_a2, _b, _c, cb) {
+        } else if (fs9.futimes) {
+          fs9.lutimes = function(_a2, _b, _c, cb) {
             if (cb) process.nextTick(cb);
           };
-          fs8.lutimesSync = function() {
+          fs9.lutimesSync = function() {
           };
         }
       }
       function chmodFix(orig) {
         if (!orig) return orig;
         return function(target, mode, cb) {
-          return orig.call(fs7, target, mode, function(er) {
+          return orig.call(fs8, target, mode, function(er) {
             if (chownErOk(er)) er = null;
             if (cb) cb.apply(this, arguments);
           });
@@ -277,7 +774,7 @@ var require_polyfills = __commonJS({
         if (!orig) return orig;
         return function(target, mode) {
           try {
-            return orig.call(fs7, target, mode);
+            return orig.call(fs8, target, mode);
           } catch (er) {
             if (!chownErOk(er)) throw er;
           }
@@ -286,7 +783,7 @@ var require_polyfills = __commonJS({
       function chownFix(orig) {
         if (!orig) return orig;
         return function(target, uid, gid, cb) {
-          return orig.call(fs7, target, uid, gid, function(er) {
+          return orig.call(fs8, target, uid, gid, function(er) {
             if (chownErOk(er)) er = null;
             if (cb) cb.apply(this, arguments);
           });
@@ -296,7 +793,7 @@ var require_polyfills = __commonJS({
         if (!orig) return orig;
         return function(target, uid, gid) {
           try {
-            return orig.call(fs7, target, uid, gid);
+            return orig.call(fs8, target, uid, gid);
           } catch (er) {
             if (!chownErOk(er)) throw er;
           }
@@ -316,13 +813,13 @@ var require_polyfills = __commonJS({
             }
             if (cb) cb.apply(this, arguments);
           }
-          return options ? orig.call(fs7, target, options, callback) : orig.call(fs7, target, callback);
+          return options ? orig.call(fs8, target, options, callback) : orig.call(fs8, target, callback);
         };
       }
       function statFixSync(orig) {
         if (!orig) return orig;
         return function(target, options) {
-          var stats = options ? orig.call(fs7, target, options) : orig.call(fs7, target);
+          var stats = options ? orig.call(fs8, target, options) : orig.call(fs8, target);
           if (stats) {
             if (stats.uid < 0) stats.uid += 4294967296;
             if (stats.gid < 0) stats.gid += 4294967296;
@@ -351,16 +848,16 @@ var require_legacy_streams = __commonJS({
   "node_modules/graceful-fs/legacy-streams.js"(exports2, module2) {
     var Stream2 = require("stream").Stream;
     module2.exports = legacy;
-    function legacy(fs7) {
+    function legacy(fs8) {
       return {
         ReadStream,
         WriteStream
       };
-      function ReadStream(path14, options) {
-        if (!(this instanceof ReadStream)) return new ReadStream(path14, options);
+      function ReadStream(path15, options) {
+        if (!(this instanceof ReadStream)) return new ReadStream(path15, options);
         Stream2.call(this);
         var self2 = this;
-        this.path = path14;
+        this.path = path15;
         this.fd = null;
         this.readable = true;
         this.paused = false;
@@ -394,7 +891,7 @@ var require_legacy_streams = __commonJS({
           });
           return;
         }
-        fs7.open(this.path, this.flags, this.mode, function(err, fd) {
+        fs8.open(this.path, this.flags, this.mode, function(err, fd) {
           if (err) {
             self2.emit("error", err);
             self2.readable = false;
@@ -405,10 +902,10 @@ var require_legacy_streams = __commonJS({
           self2._read();
         });
       }
-      function WriteStream(path14, options) {
-        if (!(this instanceof WriteStream)) return new WriteStream(path14, options);
+      function WriteStream(path15, options) {
+        if (!(this instanceof WriteStream)) return new WriteStream(path15, options);
         Stream2.call(this);
-        this.path = path14;
+        this.path = path15;
         this.fd = null;
         this.writable = true;
         this.flags = "w";
@@ -433,7 +930,7 @@ var require_legacy_streams = __commonJS({
         this.busy = false;
         this._queue = [];
         if (this.fd === null) {
-          this._open = fs7.open;
+          this._open = fs8.open;
           this._queue.push([this._open, this.path, this.flags, this.mode, void 0]);
           this.flush();
         }
@@ -468,7 +965,7 @@ var require_clone = __commonJS({
 // node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
   "node_modules/graceful-fs/graceful-fs.js"(exports2, module2) {
-    var fs7 = require("fs");
+    var fs8 = require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
     var clone = require_clone();
@@ -500,12 +997,12 @@ var require_graceful_fs = __commonJS({
         m = "GFS4: " + m.split(/\n/).join("\nGFS4: ");
         console.error(m);
       };
-    if (!fs7[gracefulQueue]) {
+    if (!fs8[gracefulQueue]) {
       queue = global[gracefulQueue] || [];
-      publishQueue(fs7, queue);
-      fs7.close = (function(fs$close) {
+      publishQueue(fs8, queue);
+      fs8.close = (function(fs$close) {
         function close(fd, cb) {
-          return fs$close.call(fs7, fd, function(err) {
+          return fs$close.call(fs8, fd, function(err) {
             if (!err) {
               resetQueue();
             }
@@ -517,48 +1014,48 @@ var require_graceful_fs = __commonJS({
           value: fs$close
         });
         return close;
-      })(fs7.close);
-      fs7.closeSync = (function(fs$closeSync) {
+      })(fs8.close);
+      fs8.closeSync = (function(fs$closeSync) {
         function closeSync(fd) {
-          fs$closeSync.apply(fs7, arguments);
+          fs$closeSync.apply(fs8, arguments);
           resetQueue();
         }
         Object.defineProperty(closeSync, previousSymbol, {
           value: fs$closeSync
         });
         return closeSync;
-      })(fs7.closeSync);
+      })(fs8.closeSync);
       if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || "")) {
         process.on("exit", function() {
-          debug(fs7[gracefulQueue]);
-          require("assert").equal(fs7[gracefulQueue].length, 0);
+          debug(fs8[gracefulQueue]);
+          require("assert").equal(fs8[gracefulQueue].length, 0);
         });
       }
     }
     var queue;
     if (!global[gracefulQueue]) {
-      publishQueue(global, fs7[gracefulQueue]);
+      publishQueue(global, fs8[gracefulQueue]);
     }
-    module2.exports = patch(clone(fs7));
-    if (process.env.TEST_GRACEFUL_FS_GLOBAL_PATCH && !fs7.__patched) {
-      module2.exports = patch(fs7);
-      fs7.__patched = true;
+    module2.exports = patch(clone(fs8));
+    if (process.env.TEST_GRACEFUL_FS_GLOBAL_PATCH && !fs8.__patched) {
+      module2.exports = patch(fs8);
+      fs8.__patched = true;
     }
-    function patch(fs8) {
-      polyfills(fs8);
-      fs8.gracefulify = patch;
-      fs8.createReadStream = createReadStream2;
-      fs8.createWriteStream = createWriteStream2;
-      var fs$readFile = fs8.readFile;
-      fs8.readFile = readFile4;
-      function readFile4(path14, options, cb) {
+    function patch(fs9) {
+      polyfills(fs9);
+      fs9.gracefulify = patch;
+      fs9.createReadStream = createReadStream2;
+      fs9.createWriteStream = createWriteStream2;
+      var fs$readFile = fs9.readFile;
+      fs9.readFile = readFile5;
+      function readFile5(path15, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
-        return go$readFile(path14, options, cb);
-        function go$readFile(path15, options2, cb2, startTime) {
-          return fs$readFile(path15, options2, function(err) {
+        return go$readFile(path15, options, cb);
+        function go$readFile(path16, options2, cb2, startTime) {
+          return fs$readFile(path16, options2, function(err) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
-              enqueue([go$readFile, [path15, options2, cb2], err, startTime || Date.now(), Date.now()]);
+              enqueue([go$readFile, [path16, options2, cb2], err, startTime || Date.now(), Date.now()]);
             else {
               if (typeof cb2 === "function")
                 cb2.apply(this, arguments);
@@ -566,16 +1063,16 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      var fs$writeFile = fs8.writeFile;
-      fs8.writeFile = writeFile4;
-      function writeFile4(path14, data, options, cb) {
+      var fs$writeFile = fs9.writeFile;
+      fs9.writeFile = writeFile4;
+      function writeFile4(path15, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
-        return go$writeFile(path14, data, options, cb);
-        function go$writeFile(path15, data2, options2, cb2, startTime) {
-          return fs$writeFile(path15, data2, options2, function(err) {
+        return go$writeFile(path15, data, options, cb);
+        function go$writeFile(path16, data2, options2, cb2, startTime) {
+          return fs$writeFile(path16, data2, options2, function(err) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
-              enqueue([go$writeFile, [path15, data2, options2, cb2], err, startTime || Date.now(), Date.now()]);
+              enqueue([go$writeFile, [path16, data2, options2, cb2], err, startTime || Date.now(), Date.now()]);
             else {
               if (typeof cb2 === "function")
                 cb2.apply(this, arguments);
@@ -583,17 +1080,17 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      var fs$appendFile = fs8.appendFile;
+      var fs$appendFile = fs9.appendFile;
       if (fs$appendFile)
-        fs8.appendFile = appendFile2;
-      function appendFile2(path14, data, options, cb) {
+        fs9.appendFile = appendFile2;
+      function appendFile2(path15, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
-        return go$appendFile(path14, data, options, cb);
-        function go$appendFile(path15, data2, options2, cb2, startTime) {
-          return fs$appendFile(path15, data2, options2, function(err) {
+        return go$appendFile(path15, data, options, cb);
+        function go$appendFile(path16, data2, options2, cb2, startTime) {
+          return fs$appendFile(path16, data2, options2, function(err) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
-              enqueue([go$appendFile, [path15, data2, options2, cb2], err, startTime || Date.now(), Date.now()]);
+              enqueue([go$appendFile, [path16, data2, options2, cb2], err, startTime || Date.now(), Date.now()]);
             else {
               if (typeof cb2 === "function")
                 cb2.apply(this, arguments);
@@ -601,9 +1098,9 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      var fs$copyFile = fs8.copyFile;
+      var fs$copyFile = fs9.copyFile;
       if (fs$copyFile)
-        fs8.copyFile = copyFile;
+        fs9.copyFile = copyFile;
       function copyFile(src, dest, flags, cb) {
         if (typeof flags === "function") {
           cb = flags;
@@ -621,34 +1118,34 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      var fs$readdir = fs8.readdir;
-      fs8.readdir = readdir3;
+      var fs$readdir = fs9.readdir;
+      fs9.readdir = readdir3;
       var noReaddirOptionVersions = /^v[0-5]\./;
-      function readdir3(path14, options, cb) {
+      function readdir3(path15, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
-        var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path15, options2, cb2, startTime) {
-          return fs$readdir(path15, fs$readdirCallback(
-            path15,
+        var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path16, options2, cb2, startTime) {
+          return fs$readdir(path16, fs$readdirCallback(
+            path16,
             options2,
             cb2,
             startTime
           ));
-        } : function go$readdir2(path15, options2, cb2, startTime) {
-          return fs$readdir(path15, options2, fs$readdirCallback(
-            path15,
+        } : function go$readdir2(path16, options2, cb2, startTime) {
+          return fs$readdir(path16, options2, fs$readdirCallback(
+            path16,
             options2,
             cb2,
             startTime
           ));
         };
-        return go$readdir(path14, options, cb);
-        function fs$readdirCallback(path15, options2, cb2, startTime) {
+        return go$readdir(path15, options, cb);
+        function fs$readdirCallback(path16, options2, cb2, startTime) {
           return function(err, files) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
               enqueue([
                 go$readdir,
-                [path15, options2, cb2],
+                [path16, options2, cb2],
                 err,
                 startTime || Date.now(),
                 Date.now()
@@ -663,21 +1160,21 @@ var require_graceful_fs = __commonJS({
         }
       }
       if (process.version.substr(0, 4) === "v0.8") {
-        var legStreams = legacy(fs8);
+        var legStreams = legacy(fs9);
         ReadStream = legStreams.ReadStream;
         WriteStream = legStreams.WriteStream;
       }
-      var fs$ReadStream = fs8.ReadStream;
+      var fs$ReadStream = fs9.ReadStream;
       if (fs$ReadStream) {
         ReadStream.prototype = Object.create(fs$ReadStream.prototype);
         ReadStream.prototype.open = ReadStream$open;
       }
-      var fs$WriteStream = fs8.WriteStream;
+      var fs$WriteStream = fs9.WriteStream;
       if (fs$WriteStream) {
         WriteStream.prototype = Object.create(fs$WriteStream.prototype);
         WriteStream.prototype.open = WriteStream$open;
       }
-      Object.defineProperty(fs8, "ReadStream", {
+      Object.defineProperty(fs9, "ReadStream", {
         get: function() {
           return ReadStream;
         },
@@ -687,7 +1184,7 @@ var require_graceful_fs = __commonJS({
         enumerable: true,
         configurable: true
       });
-      Object.defineProperty(fs8, "WriteStream", {
+      Object.defineProperty(fs9, "WriteStream", {
         get: function() {
           return WriteStream;
         },
@@ -698,7 +1195,7 @@ var require_graceful_fs = __commonJS({
         configurable: true
       });
       var FileReadStream = ReadStream;
-      Object.defineProperty(fs8, "FileReadStream", {
+      Object.defineProperty(fs9, "FileReadStream", {
         get: function() {
           return FileReadStream;
         },
@@ -709,7 +1206,7 @@ var require_graceful_fs = __commonJS({
         configurable: true
       });
       var FileWriteStream = WriteStream;
-      Object.defineProperty(fs8, "FileWriteStream", {
+      Object.defineProperty(fs9, "FileWriteStream", {
         get: function() {
           return FileWriteStream;
         },
@@ -719,7 +1216,7 @@ var require_graceful_fs = __commonJS({
         enumerable: true,
         configurable: true
       });
-      function ReadStream(path14, options) {
+      function ReadStream(path15, options) {
         if (this instanceof ReadStream)
           return fs$ReadStream.apply(this, arguments), this;
         else
@@ -739,7 +1236,7 @@ var require_graceful_fs = __commonJS({
           }
         });
       }
-      function WriteStream(path14, options) {
+      function WriteStream(path15, options) {
         if (this instanceof WriteStream)
           return fs$WriteStream.apply(this, arguments), this;
         else
@@ -757,22 +1254,22 @@ var require_graceful_fs = __commonJS({
           }
         });
       }
-      function createReadStream2(path14, options) {
-        return new fs8.ReadStream(path14, options);
+      function createReadStream2(path15, options) {
+        return new fs9.ReadStream(path15, options);
       }
-      function createWriteStream2(path14, options) {
-        return new fs8.WriteStream(path14, options);
+      function createWriteStream2(path15, options) {
+        return new fs9.WriteStream(path15, options);
       }
-      var fs$open = fs8.open;
-      fs8.open = open;
-      function open(path14, flags, mode, cb) {
+      var fs$open = fs9.open;
+      fs9.open = open;
+      function open(path15, flags, mode, cb) {
         if (typeof mode === "function")
           cb = mode, mode = null;
-        return go$open(path14, flags, mode, cb);
-        function go$open(path15, flags2, mode2, cb2, startTime) {
-          return fs$open(path15, flags2, mode2, function(err, fd) {
+        return go$open(path15, flags, mode, cb);
+        function go$open(path16, flags2, mode2, cb2, startTime) {
+          return fs$open(path16, flags2, mode2, function(err, fd) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
-              enqueue([go$open, [path15, flags2, mode2, cb2], err, startTime || Date.now(), Date.now()]);
+              enqueue([go$open, [path16, flags2, mode2, cb2], err, startTime || Date.now(), Date.now()]);
             else {
               if (typeof cb2 === "function")
                 cb2.apply(this, arguments);
@@ -780,20 +1277,20 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      return fs8;
+      return fs9;
     }
     function enqueue(elem) {
       debug("ENQUEUE", elem[0].name, elem[1]);
-      fs7[gracefulQueue].push(elem);
+      fs8[gracefulQueue].push(elem);
       retry();
     }
     var retryTimer;
     function resetQueue() {
       var now = Date.now();
-      for (var i2 = 0; i2 < fs7[gracefulQueue].length; ++i2) {
-        if (fs7[gracefulQueue][i2].length > 2) {
-          fs7[gracefulQueue][i2][3] = now;
-          fs7[gracefulQueue][i2][4] = now;
+      for (var i2 = 0; i2 < fs8[gracefulQueue].length; ++i2) {
+        if (fs8[gracefulQueue][i2].length > 2) {
+          fs8[gracefulQueue][i2][3] = now;
+          fs8[gracefulQueue][i2][4] = now;
         }
       }
       retry();
@@ -801,9 +1298,9 @@ var require_graceful_fs = __commonJS({
     function retry() {
       clearTimeout(retryTimer);
       retryTimer = void 0;
-      if (fs7[gracefulQueue].length === 0)
+      if (fs8[gracefulQueue].length === 0)
         return;
-      var elem = fs7[gracefulQueue].shift();
+      var elem = fs8[gracefulQueue].shift();
       var fn = elem[0];
       var args = elem[1];
       var err = elem[2];
@@ -825,7 +1322,7 @@ var require_graceful_fs = __commonJS({
           debug("RETRY", fn.name, args);
           fn.apply(null, args.concat([startTime]));
         } else {
-          fs7[gracefulQueue].push(elem);
+          fs8[gracefulQueue].push(elem);
         }
       }
       if (retryTimer === void 0) {
@@ -840,7 +1337,7 @@ var require_fs = __commonJS({
   "node_modules/fs-extra/lib/fs/index.js"(exports2) {
     "use strict";
     var u2 = require_universalify().fromCallback;
-    var fs7 = require_graceful_fs();
+    var fs8 = require_graceful_fs();
     var api = [
       "access",
       "appendFile",
@@ -881,26 +1378,26 @@ var require_fs = __commonJS({
       "utimes",
       "writeFile"
     ].filter((key) => {
-      return typeof fs7[key] === "function";
+      return typeof fs8[key] === "function";
     });
-    Object.assign(exports2, fs7);
+    Object.assign(exports2, fs8);
     api.forEach((method) => {
-      exports2[method] = u2(fs7[method]);
+      exports2[method] = u2(fs8[method]);
     });
     exports2.exists = function(filename, callback) {
       if (typeof callback === "function") {
-        return fs7.exists(filename, callback);
+        return fs8.exists(filename, callback);
       }
       return new Promise((resolve4) => {
-        return fs7.exists(filename, resolve4);
+        return fs8.exists(filename, resolve4);
       });
     };
     exports2.read = function(fd, buffer, offset, length, position, callback) {
       if (typeof callback === "function") {
-        return fs7.read(fd, buffer, offset, length, position, callback);
+        return fs8.read(fd, buffer, offset, length, position, callback);
       }
       return new Promise((resolve4, reject) => {
-        fs7.read(fd, buffer, offset, length, position, (err, bytesRead, buffer2) => {
+        fs8.read(fd, buffer, offset, length, position, (err, bytesRead, buffer2) => {
           if (err) return reject(err);
           resolve4({ bytesRead, buffer: buffer2 });
         });
@@ -908,10 +1405,10 @@ var require_fs = __commonJS({
     };
     exports2.write = function(fd, buffer, ...args) {
       if (typeof args[args.length - 1] === "function") {
-        return fs7.write(fd, buffer, ...args);
+        return fs8.write(fd, buffer, ...args);
       }
       return new Promise((resolve4, reject) => {
-        fs7.write(fd, buffer, ...args, (err, bytesWritten, buffer2) => {
+        fs8.write(fd, buffer, ...args, (err, bytesWritten, buffer2) => {
           if (err) return reject(err);
           resolve4({ bytesWritten, buffer: buffer2 });
         });
@@ -919,10 +1416,10 @@ var require_fs = __commonJS({
     };
     exports2.readv = function(fd, buffers, ...args) {
       if (typeof args[args.length - 1] === "function") {
-        return fs7.readv(fd, buffers, ...args);
+        return fs8.readv(fd, buffers, ...args);
       }
       return new Promise((resolve4, reject) => {
-        fs7.readv(fd, buffers, ...args, (err, bytesRead, buffers2) => {
+        fs8.readv(fd, buffers, ...args, (err, bytesRead, buffers2) => {
           if (err) return reject(err);
           resolve4({ bytesRead, buffers: buffers2 });
         });
@@ -930,17 +1427,17 @@ var require_fs = __commonJS({
     };
     exports2.writev = function(fd, buffers, ...args) {
       if (typeof args[args.length - 1] === "function") {
-        return fs7.writev(fd, buffers, ...args);
+        return fs8.writev(fd, buffers, ...args);
       }
       return new Promise((resolve4, reject) => {
-        fs7.writev(fd, buffers, ...args, (err, bytesWritten, buffers2) => {
+        fs8.writev(fd, buffers, ...args, (err, bytesWritten, buffers2) => {
           if (err) return reject(err);
           resolve4({ bytesWritten, buffers: buffers2 });
         });
       });
     };
-    if (typeof fs7.realpath.native === "function") {
-      exports2.realpath.native = u2(fs7.realpath.native);
+    if (typeof fs8.realpath.native === "function") {
+      exports2.realpath.native = u2(fs8.realpath.native);
     } else {
       process.emitWarning(
         "fs.realpath.native is not a function. Is fs being monkey-patched?",
@@ -955,10 +1452,10 @@ var require_fs = __commonJS({
 var require_utils = __commonJS({
   "node_modules/fs-extra/lib/mkdirs/utils.js"(exports2, module2) {
     "use strict";
-    var path14 = require("path");
+    var path15 = require("path");
     module2.exports.checkPath = function checkPath(pth) {
       if (process.platform === "win32") {
-        const pathHasInvalidWinCharacters = /[<>:"|?*]/.test(pth.replace(path14.parse(pth).root, ""));
+        const pathHasInvalidWinCharacters = /[<>:"|?*]/.test(pth.replace(path15.parse(pth).root, ""));
         if (pathHasInvalidWinCharacters) {
           const error = new Error(`Path contains invalid characters: ${pth}`);
           error.code = "EINVAL";
@@ -973,7 +1470,7 @@ var require_utils = __commonJS({
 var require_make_dir = __commonJS({
   "node_modules/fs-extra/lib/mkdirs/make-dir.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_fs();
+    var fs8 = require_fs();
     var { checkPath } = require_utils();
     var getMode = (options) => {
       const defaults3 = { mode: 511 };
@@ -982,14 +1479,14 @@ var require_make_dir = __commonJS({
     };
     module2.exports.makeDir = async (dir, options) => {
       checkPath(dir);
-      return fs7.mkdir(dir, {
+      return fs8.mkdir(dir, {
         mode: getMode(options),
         recursive: true
       });
     };
     module2.exports.makeDirSync = (dir, options) => {
       checkPath(dir);
-      return fs7.mkdirSync(dir, {
+      return fs8.mkdirSync(dir, {
         mode: getMode(options),
         recursive: true
       });
@@ -1021,13 +1518,13 @@ var require_path_exists = __commonJS({
   "node_modules/fs-extra/lib/path-exists/index.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var fs7 = require_fs();
-    function pathExists4(path14) {
-      return fs7.access(path14).then(() => true).catch(() => false);
+    var fs8 = require_fs();
+    function pathExists5(path15) {
+      return fs8.access(path15).then(() => true).catch(() => false);
     }
     module2.exports = {
-      pathExists: u2(pathExists4),
-      pathExistsSync: fs7.existsSync
+      pathExists: u2(pathExists5),
+      pathExistsSync: fs8.existsSync
     };
   }
 });
@@ -1036,16 +1533,16 @@ var require_path_exists = __commonJS({
 var require_utimes = __commonJS({
   "node_modules/fs-extra/lib/util/utimes.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_fs();
+    var fs8 = require_fs();
     var u2 = require_universalify().fromPromise;
-    async function utimesMillis(path14, atime, mtime) {
-      const fd = await fs7.open(path14, "r+");
+    async function utimesMillis(path15, atime, mtime) {
+      const fd = await fs8.open(path15, "r+");
       let closeErr = null;
       try {
-        await fs7.futimes(fd, atime, mtime);
+        await fs8.futimes(fd, atime, mtime);
       } finally {
         try {
-          await fs7.close(fd);
+          await fs8.close(fd);
         } catch (e) {
           closeErr = e;
         }
@@ -1054,10 +1551,10 @@ var require_utimes = __commonJS({
         throw closeErr;
       }
     }
-    function utimesMillisSync(path14, atime, mtime) {
-      const fd = fs7.openSync(path14, "r+");
-      fs7.futimesSync(fd, atime, mtime);
-      return fs7.closeSync(fd);
+    function utimesMillisSync(path15, atime, mtime) {
+      const fd = fs8.openSync(path15, "r+");
+      fs8.futimesSync(fd, atime, mtime);
+      return fs8.closeSync(fd);
     }
     module2.exports = {
       utimesMillis: u2(utimesMillis),
@@ -1070,11 +1567,11 @@ var require_utimes = __commonJS({
 var require_stat = __commonJS({
   "node_modules/fs-extra/lib/util/stat.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_fs();
-    var path14 = require("path");
+    var fs8 = require_fs();
+    var path15 = require("path");
     var u2 = require_universalify().fromPromise;
     function getStats(src, dest, opts) {
-      const statFunc = opts.dereference ? (file) => fs7.stat(file, { bigint: true }) : (file) => fs7.lstat(file, { bigint: true });
+      const statFunc = opts.dereference ? (file) => fs8.stat(file, { bigint: true }) : (file) => fs8.lstat(file, { bigint: true });
       return Promise.all([
         statFunc(src),
         statFunc(dest).catch((err) => {
@@ -1085,7 +1582,7 @@ var require_stat = __commonJS({
     }
     function getStatsSync(src, dest, opts) {
       let destStat;
-      const statFunc = opts.dereference ? (file) => fs7.statSync(file, { bigint: true }) : (file) => fs7.lstatSync(file, { bigint: true });
+      const statFunc = opts.dereference ? (file) => fs8.statSync(file, { bigint: true }) : (file) => fs8.lstatSync(file, { bigint: true });
       const srcStat = statFunc(src);
       try {
         destStat = statFunc(dest);
@@ -1099,8 +1596,8 @@ var require_stat = __commonJS({
       const { srcStat, destStat } = await getStats(src, dest, opts);
       if (destStat) {
         if (areIdentical(srcStat, destStat)) {
-          const srcBaseName = path14.basename(src);
-          const destBaseName = path14.basename(dest);
+          const srcBaseName = path15.basename(src);
+          const destBaseName = path15.basename(dest);
           if (funcName === "move" && srcBaseName !== destBaseName && srcBaseName.toLowerCase() === destBaseName.toLowerCase()) {
             return { srcStat, destStat, isChangingCase: true };
           }
@@ -1122,8 +1619,8 @@ var require_stat = __commonJS({
       const { srcStat, destStat } = getStatsSync(src, dest, opts);
       if (destStat) {
         if (areIdentical(srcStat, destStat)) {
-          const srcBaseName = path14.basename(src);
-          const destBaseName = path14.basename(dest);
+          const srcBaseName = path15.basename(src);
+          const destBaseName = path15.basename(dest);
           if (funcName === "move" && srcBaseName !== destBaseName && srcBaseName.toLowerCase() === destBaseName.toLowerCase()) {
             return { srcStat, destStat, isChangingCase: true };
           }
@@ -1142,12 +1639,12 @@ var require_stat = __commonJS({
       return { srcStat, destStat };
     }
     async function checkParentPaths(src, srcStat, dest, funcName) {
-      const srcParent = path14.resolve(path14.dirname(src));
-      const destParent = path14.resolve(path14.dirname(dest));
-      if (destParent === srcParent || destParent === path14.parse(destParent).root) return;
+      const srcParent = path15.resolve(path15.dirname(src));
+      const destParent = path15.resolve(path15.dirname(dest));
+      if (destParent === srcParent || destParent === path15.parse(destParent).root) return;
       let destStat;
       try {
-        destStat = await fs7.stat(destParent, { bigint: true });
+        destStat = await fs8.stat(destParent, { bigint: true });
       } catch (err) {
         if (err.code === "ENOENT") return;
         throw err;
@@ -1158,12 +1655,12 @@ var require_stat = __commonJS({
       return checkParentPaths(src, srcStat, destParent, funcName);
     }
     function checkParentPathsSync(src, srcStat, dest, funcName) {
-      const srcParent = path14.resolve(path14.dirname(src));
-      const destParent = path14.resolve(path14.dirname(dest));
-      if (destParent === srcParent || destParent === path14.parse(destParent).root) return;
+      const srcParent = path15.resolve(path15.dirname(src));
+      const destParent = path15.resolve(path15.dirname(dest));
+      if (destParent === srcParent || destParent === path15.parse(destParent).root) return;
       let destStat;
       try {
-        destStat = fs7.statSync(destParent, { bigint: true });
+        destStat = fs8.statSync(destParent, { bigint: true });
       } catch (err) {
         if (err.code === "ENOENT") return;
         throw err;
@@ -1177,8 +1674,8 @@ var require_stat = __commonJS({
       return destStat.ino !== void 0 && destStat.dev !== void 0 && destStat.ino === srcStat.ino && destStat.dev === srcStat.dev;
     }
     function isSrcSubdir(src, dest) {
-      const srcArr = path14.resolve(src).split(path14.sep).filter((i2) => i2);
-      const destArr = path14.resolve(dest).split(path14.sep).filter((i2) => i2);
+      const srcArr = path15.resolve(src).split(path15.sep).filter((i2) => i2);
+      const destArr = path15.resolve(dest).split(path15.sep).filter((i2) => i2);
       return srcArr.every((cur, i2) => destArr[i2] === cur);
     }
     function errMsg(src, dest, funcName) {
@@ -1230,10 +1727,10 @@ var require_async = __commonJS({
 var require_copy = __commonJS({
   "node_modules/fs-extra/lib/copy/copy.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_fs();
-    var path14 = require("path");
+    var fs8 = require_fs();
+    var path15 = require("path");
     var { mkdirs } = require_mkdirs();
-    var { pathExists: pathExists4 } = require_path_exists();
+    var { pathExists: pathExists5 } = require_path_exists();
     var { utimesMillis } = require_utimes();
     var stat = require_stat();
     var { asyncIteratorConcurrentProcess } = require_async();
@@ -1254,8 +1751,8 @@ var require_copy = __commonJS({
       await stat.checkParentPaths(src, srcStat, dest, "copy");
       const include = await runFilter(src, dest, opts);
       if (!include) return;
-      const destParent = path14.dirname(dest);
-      const dirExists = await pathExists4(destParent);
+      const destParent = path15.dirname(dest);
+      const dirExists = await pathExists5(destParent);
       if (!dirExists) {
         await mkdirs(destParent);
       }
@@ -1266,7 +1763,7 @@ var require_copy = __commonJS({
       return opts.filter(src, dest);
     }
     async function getStatsAndPerformCopy(destStat, src, dest, opts) {
-      const statFn = opts.dereference ? fs7.stat : fs7.lstat;
+      const statFn = opts.dereference ? fs8.stat : fs8.lstat;
       const srcStat = await statFn(src);
       if (srcStat.isDirectory()) return onDir(srcStat, destStat, src, dest, opts);
       if (srcStat.isFile() || srcStat.isCharacterDevice() || srcStat.isBlockDevice()) return onFile(srcStat, destStat, src, dest, opts);
@@ -1278,7 +1775,7 @@ var require_copy = __commonJS({
     async function onFile(srcStat, destStat, src, dest, opts) {
       if (!destStat) return copyFile(srcStat, src, dest, opts);
       if (opts.overwrite) {
-        await fs7.unlink(dest);
+        await fs8.unlink(dest);
         return copyFile(srcStat, src, dest, opts);
       }
       if (opts.errorOnExist) {
@@ -1286,29 +1783,29 @@ var require_copy = __commonJS({
       }
     }
     async function copyFile(srcStat, src, dest, opts) {
-      await fs7.copyFile(src, dest);
+      await fs8.copyFile(src, dest);
       if (opts.preserveTimestamps) {
         if (fileIsNotWritable(srcStat.mode)) {
           await makeFileWritable(dest, srcStat.mode);
         }
-        const updatedSrcStat = await fs7.stat(src);
+        const updatedSrcStat = await fs8.stat(src);
         await utimesMillis(dest, updatedSrcStat.atime, updatedSrcStat.mtime);
       }
-      return fs7.chmod(dest, srcStat.mode);
+      return fs8.chmod(dest, srcStat.mode);
     }
     function fileIsNotWritable(srcMode) {
       return (srcMode & 128) === 0;
     }
     function makeFileWritable(dest, srcMode) {
-      return fs7.chmod(dest, srcMode | 128);
+      return fs8.chmod(dest, srcMode | 128);
     }
     async function onDir(srcStat, destStat, src, dest, opts) {
       if (!destStat) {
-        await fs7.mkdir(dest);
+        await fs8.mkdir(dest);
       }
-      await asyncIteratorConcurrentProcess(await fs7.opendir(src), async (item) => {
-        const srcItem = path14.join(src, item.name);
-        const destItem = path14.join(dest, item.name);
+      await asyncIteratorConcurrentProcess(await fs8.opendir(src), async (item) => {
+        const srcItem = path15.join(src, item.name);
+        const destItem = path15.join(dest, item.name);
         const include = await runFilter(srcItem, destItem, opts);
         if (include) {
           const { destStat: destStat2 } = await stat.checkPaths(srcItem, destItem, "copy", opts);
@@ -1316,26 +1813,26 @@ var require_copy = __commonJS({
         }
       });
       if (!destStat) {
-        await fs7.chmod(dest, srcStat.mode);
+        await fs8.chmod(dest, srcStat.mode);
       }
     }
     async function onLink(destStat, src, dest, opts) {
-      let resolvedSrc = await fs7.readlink(src);
+      let resolvedSrc = await fs8.readlink(src);
       if (opts.dereference) {
-        resolvedSrc = path14.resolve(process.cwd(), resolvedSrc);
+        resolvedSrc = path15.resolve(process.cwd(), resolvedSrc);
       }
       if (!destStat) {
-        return fs7.symlink(resolvedSrc, dest);
+        return fs8.symlink(resolvedSrc, dest);
       }
       let resolvedDest = null;
       try {
-        resolvedDest = await fs7.readlink(dest);
+        resolvedDest = await fs8.readlink(dest);
       } catch (e) {
-        if (e.code === "EINVAL" || e.code === "UNKNOWN") return fs7.symlink(resolvedSrc, dest);
+        if (e.code === "EINVAL" || e.code === "UNKNOWN") return fs8.symlink(resolvedSrc, dest);
         throw e;
       }
       if (opts.dereference) {
-        resolvedDest = path14.resolve(process.cwd(), resolvedDest);
+        resolvedDest = path15.resolve(process.cwd(), resolvedDest);
       }
       if (stat.isSrcSubdir(resolvedSrc, resolvedDest)) {
         throw new Error(`Cannot copy '${resolvedSrc}' to a subdirectory of itself, '${resolvedDest}'.`);
@@ -1343,8 +1840,8 @@ var require_copy = __commonJS({
       if (stat.isSrcSubdir(resolvedDest, resolvedSrc)) {
         throw new Error(`Cannot overwrite '${resolvedDest}' with '${resolvedSrc}'.`);
       }
-      await fs7.unlink(dest);
-      return fs7.symlink(resolvedSrc, dest);
+      await fs8.unlink(dest);
+      return fs8.symlink(resolvedSrc, dest);
     }
     module2.exports = copy;
   }
@@ -1354,8 +1851,8 @@ var require_copy = __commonJS({
 var require_copy_sync = __commonJS({
   "node_modules/fs-extra/lib/copy/copy-sync.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_graceful_fs();
-    var path14 = require("path");
+    var fs8 = require_graceful_fs();
+    var path15 = require("path");
     var mkdirsSync = require_mkdirs().mkdirsSync;
     var utimesMillisSync = require_utimes().utimesMillisSync;
     var stat = require_stat();
@@ -1376,12 +1873,12 @@ var require_copy_sync = __commonJS({
       const { srcStat, destStat } = stat.checkPathsSync(src, dest, "copy", opts);
       stat.checkParentPathsSync(src, srcStat, dest, "copy");
       if (opts.filter && !opts.filter(src, dest)) return;
-      const destParent = path14.dirname(dest);
-      if (!fs7.existsSync(destParent)) mkdirsSync(destParent);
+      const destParent = path15.dirname(dest);
+      if (!fs8.existsSync(destParent)) mkdirsSync(destParent);
       return getStats(destStat, src, dest, opts);
     }
     function getStats(destStat, src, dest, opts) {
-      const statSync2 = opts.dereference ? fs7.statSync : fs7.lstatSync;
+      const statSync2 = opts.dereference ? fs8.statSync : fs8.lstatSync;
       const srcStat = statSync2(src);
       if (srcStat.isDirectory()) return onDir(srcStat, destStat, src, dest, opts);
       else if (srcStat.isFile() || srcStat.isCharacterDevice() || srcStat.isBlockDevice()) return onFile(srcStat, destStat, src, dest, opts);
@@ -1396,14 +1893,14 @@ var require_copy_sync = __commonJS({
     }
     function mayCopyFile(srcStat, src, dest, opts) {
       if (opts.overwrite) {
-        fs7.unlinkSync(dest);
+        fs8.unlinkSync(dest);
         return copyFile(srcStat, src, dest, opts);
       } else if (opts.errorOnExist) {
         throw new Error(`'${dest}' already exists`);
       }
     }
     function copyFile(srcStat, src, dest, opts) {
-      fs7.copyFileSync(src, dest);
+      fs8.copyFileSync(src, dest);
       if (opts.preserveTimestamps) handleTimestamps(srcStat.mode, src, dest);
       return setDestMode(dest, srcStat.mode);
     }
@@ -1418,10 +1915,10 @@ var require_copy_sync = __commonJS({
       return setDestMode(dest, srcMode | 128);
     }
     function setDestMode(dest, srcMode) {
-      return fs7.chmodSync(dest, srcMode);
+      return fs8.chmodSync(dest, srcMode);
     }
     function setDestTimestamps(src, dest) {
-      const updatedSrcStat = fs7.statSync(src);
+      const updatedSrcStat = fs8.statSync(src);
       return utimesMillisSync(dest, updatedSrcStat.atime, updatedSrcStat.mtime);
     }
     function onDir(srcStat, destStat, src, dest, opts) {
@@ -1429,12 +1926,12 @@ var require_copy_sync = __commonJS({
       return copyDir(src, dest, opts);
     }
     function mkDirAndCopy(srcMode, src, dest, opts) {
-      fs7.mkdirSync(dest);
+      fs8.mkdirSync(dest);
       copyDir(src, dest, opts);
       return setDestMode(dest, srcMode);
     }
     function copyDir(src, dest, opts) {
-      const dir = fs7.opendirSync(src);
+      const dir = fs8.opendirSync(src);
       try {
         let dirent;
         while ((dirent = dir.readSync()) !== null) {
@@ -1445,29 +1942,29 @@ var require_copy_sync = __commonJS({
       }
     }
     function copyDirItem(item, src, dest, opts) {
-      const srcItem = path14.join(src, item);
-      const destItem = path14.join(dest, item);
+      const srcItem = path15.join(src, item);
+      const destItem = path15.join(dest, item);
       if (opts.filter && !opts.filter(srcItem, destItem)) return;
       const { destStat } = stat.checkPathsSync(srcItem, destItem, "copy", opts);
       return getStats(destStat, srcItem, destItem, opts);
     }
     function onLink(destStat, src, dest, opts) {
-      let resolvedSrc = fs7.readlinkSync(src);
+      let resolvedSrc = fs8.readlinkSync(src);
       if (opts.dereference) {
-        resolvedSrc = path14.resolve(process.cwd(), resolvedSrc);
+        resolvedSrc = path15.resolve(process.cwd(), resolvedSrc);
       }
       if (!destStat) {
-        return fs7.symlinkSync(resolvedSrc, dest);
+        return fs8.symlinkSync(resolvedSrc, dest);
       } else {
         let resolvedDest;
         try {
-          resolvedDest = fs7.readlinkSync(dest);
+          resolvedDest = fs8.readlinkSync(dest);
         } catch (err) {
-          if (err.code === "EINVAL" || err.code === "UNKNOWN") return fs7.symlinkSync(resolvedSrc, dest);
+          if (err.code === "EINVAL" || err.code === "UNKNOWN") return fs8.symlinkSync(resolvedSrc, dest);
           throw err;
         }
         if (opts.dereference) {
-          resolvedDest = path14.resolve(process.cwd(), resolvedDest);
+          resolvedDest = path15.resolve(process.cwd(), resolvedDest);
         }
         if (stat.isSrcSubdir(resolvedSrc, resolvedDest)) {
           throw new Error(`Cannot copy '${resolvedSrc}' to a subdirectory of itself, '${resolvedDest}'.`);
@@ -1479,8 +1976,8 @@ var require_copy_sync = __commonJS({
       }
     }
     function copyLink(resolvedSrc, dest) {
-      fs7.unlinkSync(dest);
-      return fs7.symlinkSync(resolvedSrc, dest);
+      fs8.unlinkSync(dest);
+      return fs8.symlinkSync(resolvedSrc, dest);
     }
     module2.exports = copySync;
   }
@@ -1502,13 +1999,13 @@ var require_copy2 = __commonJS({
 var require_remove = __commonJS({
   "node_modules/fs-extra/lib/remove/index.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_graceful_fs();
+    var fs8 = require_graceful_fs();
     var u2 = require_universalify().fromCallback;
-    function remove(path14, callback) {
-      fs7.rm(path14, { recursive: true, force: true }, callback);
+    function remove(path15, callback) {
+      fs8.rm(path15, { recursive: true, force: true }, callback);
     }
-    function removeSync(path14) {
-      fs7.rmSync(path14, { recursive: true, force: true });
+    function removeSync(path15) {
+      fs8.rmSync(path15, { recursive: true, force: true });
     }
     module2.exports = {
       remove: u2(remove),
@@ -1522,28 +2019,28 @@ var require_empty = __commonJS({
   "node_modules/fs-extra/lib/empty/index.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var fs7 = require_fs();
-    var path14 = require("path");
+    var fs8 = require_fs();
+    var path15 = require("path");
     var mkdir = require_mkdirs();
     var remove = require_remove();
     var emptyDir3 = u2(async function emptyDir4(dir) {
       let items;
       try {
-        items = await fs7.readdir(dir);
+        items = await fs8.readdir(dir);
       } catch {
         return mkdir.mkdirs(dir);
       }
-      return Promise.all(items.map((item) => remove.remove(path14.join(dir, item))));
+      return Promise.all(items.map((item) => remove.remove(path15.join(dir, item))));
     });
     function emptyDirSync(dir) {
       let items;
       try {
-        items = fs7.readdirSync(dir);
+        items = fs8.readdirSync(dir);
       } catch {
         return mkdir.mkdirsSync(dir);
       }
       items.forEach((item) => {
-        item = path14.join(dir, item);
+        item = path15.join(dir, item);
         remove.removeSync(item);
       });
     }
@@ -1561,52 +2058,52 @@ var require_file = __commonJS({
   "node_modules/fs-extra/lib/ensure/file.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var path14 = require("path");
-    var fs7 = require_fs();
+    var path15 = require("path");
+    var fs8 = require_fs();
     var mkdir = require_mkdirs();
     async function createFile(file) {
       let stats;
       try {
-        stats = await fs7.stat(file);
+        stats = await fs8.stat(file);
       } catch {
       }
       if (stats && stats.isFile()) return;
-      const dir = path14.dirname(file);
+      const dir = path15.dirname(file);
       let dirStats = null;
       try {
-        dirStats = await fs7.stat(dir);
+        dirStats = await fs8.stat(dir);
       } catch (err) {
         if (err.code === "ENOENT") {
           await mkdir.mkdirs(dir);
-          await fs7.writeFile(file, "");
+          await fs8.writeFile(file, "");
           return;
         } else {
           throw err;
         }
       }
       if (dirStats.isDirectory()) {
-        await fs7.writeFile(file, "");
+        await fs8.writeFile(file, "");
       } else {
-        await fs7.readdir(dir);
+        await fs8.readdir(dir);
       }
     }
     function createFileSync(file) {
       let stats;
       try {
-        stats = fs7.statSync(file);
+        stats = fs8.statSync(file);
       } catch {
       }
       if (stats && stats.isFile()) return;
-      const dir = path14.dirname(file);
+      const dir = path15.dirname(file);
       try {
-        if (!fs7.statSync(dir).isDirectory()) {
-          fs7.readdirSync(dir);
+        if (!fs8.statSync(dir).isDirectory()) {
+          fs8.readdirSync(dir);
         }
       } catch (err) {
         if (err && err.code === "ENOENT") mkdir.mkdirsSync(dir);
         else throw err;
       }
-      fs7.writeFileSync(file, "");
+      fs8.writeFileSync(file, "");
     }
     module2.exports = {
       createFile: u2(createFile),
@@ -1620,50 +2117,50 @@ var require_link = __commonJS({
   "node_modules/fs-extra/lib/ensure/link.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var path14 = require("path");
-    var fs7 = require_fs();
+    var path15 = require("path");
+    var fs8 = require_fs();
     var mkdir = require_mkdirs();
-    var { pathExists: pathExists4 } = require_path_exists();
+    var { pathExists: pathExists5 } = require_path_exists();
     var { areIdentical } = require_stat();
     async function createLink(srcpath, dstpath) {
       let dstStat;
       try {
-        dstStat = await fs7.lstat(dstpath);
+        dstStat = await fs8.lstat(dstpath);
       } catch {
       }
       let srcStat;
       try {
-        srcStat = await fs7.lstat(srcpath);
+        srcStat = await fs8.lstat(srcpath);
       } catch (err) {
         err.message = err.message.replace("lstat", "ensureLink");
         throw err;
       }
       if (dstStat && areIdentical(srcStat, dstStat)) return;
-      const dir = path14.dirname(dstpath);
-      const dirExists = await pathExists4(dir);
+      const dir = path15.dirname(dstpath);
+      const dirExists = await pathExists5(dir);
       if (!dirExists) {
         await mkdir.mkdirs(dir);
       }
-      await fs7.link(srcpath, dstpath);
+      await fs8.link(srcpath, dstpath);
     }
     function createLinkSync(srcpath, dstpath) {
       let dstStat;
       try {
-        dstStat = fs7.lstatSync(dstpath);
+        dstStat = fs8.lstatSync(dstpath);
       } catch {
       }
       try {
-        const srcStat = fs7.lstatSync(srcpath);
+        const srcStat = fs8.lstatSync(srcpath);
         if (dstStat && areIdentical(srcStat, dstStat)) return;
       } catch (err) {
         err.message = err.message.replace("lstat", "ensureLink");
         throw err;
       }
-      const dir = path14.dirname(dstpath);
-      const dirExists = fs7.existsSync(dir);
-      if (dirExists) return fs7.linkSync(srcpath, dstpath);
+      const dir = path15.dirname(dstpath);
+      const dirExists = fs8.existsSync(dir);
+      if (dirExists) return fs8.linkSync(srcpath, dstpath);
       mkdir.mkdirsSync(dir);
-      return fs7.linkSync(srcpath, dstpath);
+      return fs8.linkSync(srcpath, dstpath);
     }
     module2.exports = {
       createLink: u2(createLink),
@@ -1676,14 +2173,14 @@ var require_link = __commonJS({
 var require_symlink_paths = __commonJS({
   "node_modules/fs-extra/lib/ensure/symlink-paths.js"(exports2, module2) {
     "use strict";
-    var path14 = require("path");
-    var fs7 = require_fs();
-    var { pathExists: pathExists4 } = require_path_exists();
+    var path15 = require("path");
+    var fs8 = require_fs();
+    var { pathExists: pathExists5 } = require_path_exists();
     var u2 = require_universalify().fromPromise;
     async function symlinkPaths(srcpath, dstpath) {
-      if (path14.isAbsolute(srcpath)) {
+      if (path15.isAbsolute(srcpath)) {
         try {
-          await fs7.lstat(srcpath);
+          await fs8.lstat(srcpath);
         } catch (err) {
           err.message = err.message.replace("lstat", "ensureSymlink");
           throw err;
@@ -1693,9 +2190,9 @@ var require_symlink_paths = __commonJS({
           toDst: srcpath
         };
       }
-      const dstdir = path14.dirname(dstpath);
-      const relativeToDst = path14.join(dstdir, srcpath);
-      const exists = await pathExists4(relativeToDst);
+      const dstdir = path15.dirname(dstpath);
+      const relativeToDst = path15.join(dstdir, srcpath);
+      const exists = await pathExists5(relativeToDst);
       if (exists) {
         return {
           toCwd: relativeToDst,
@@ -1703,39 +2200,39 @@ var require_symlink_paths = __commonJS({
         };
       }
       try {
-        await fs7.lstat(srcpath);
+        await fs8.lstat(srcpath);
       } catch (err) {
         err.message = err.message.replace("lstat", "ensureSymlink");
         throw err;
       }
       return {
         toCwd: srcpath,
-        toDst: path14.relative(dstdir, srcpath)
+        toDst: path15.relative(dstdir, srcpath)
       };
     }
     function symlinkPathsSync(srcpath, dstpath) {
-      if (path14.isAbsolute(srcpath)) {
-        const exists2 = fs7.existsSync(srcpath);
+      if (path15.isAbsolute(srcpath)) {
+        const exists2 = fs8.existsSync(srcpath);
         if (!exists2) throw new Error("absolute srcpath does not exist");
         return {
           toCwd: srcpath,
           toDst: srcpath
         };
       }
-      const dstdir = path14.dirname(dstpath);
-      const relativeToDst = path14.join(dstdir, srcpath);
-      const exists = fs7.existsSync(relativeToDst);
+      const dstdir = path15.dirname(dstpath);
+      const relativeToDst = path15.join(dstdir, srcpath);
+      const exists = fs8.existsSync(relativeToDst);
       if (exists) {
         return {
           toCwd: relativeToDst,
           toDst: srcpath
         };
       }
-      const srcExists = fs7.existsSync(srcpath);
+      const srcExists = fs8.existsSync(srcpath);
       if (!srcExists) throw new Error("relative srcpath does not exist");
       return {
         toCwd: srcpath,
-        toDst: path14.relative(dstdir, srcpath)
+        toDst: path15.relative(dstdir, srcpath)
       };
     }
     module2.exports = {
@@ -1749,13 +2246,13 @@ var require_symlink_paths = __commonJS({
 var require_symlink_type = __commonJS({
   "node_modules/fs-extra/lib/ensure/symlink-type.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_fs();
+    var fs8 = require_fs();
     var u2 = require_universalify().fromPromise;
     async function symlinkType(srcpath, type) {
       if (type) return type;
       let stats;
       try {
-        stats = await fs7.lstat(srcpath);
+        stats = await fs8.lstat(srcpath);
       } catch {
         return "file";
       }
@@ -1765,7 +2262,7 @@ var require_symlink_type = __commonJS({
       if (type) return type;
       let stats;
       try {
-        stats = fs7.lstatSync(srcpath);
+        stats = fs8.lstatSync(srcpath);
       } catch {
         return "file";
       }
@@ -1783,54 +2280,54 @@ var require_symlink = __commonJS({
   "node_modules/fs-extra/lib/ensure/symlink.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var path14 = require("path");
-    var fs7 = require_fs();
+    var path15 = require("path");
+    var fs8 = require_fs();
     var { mkdirs, mkdirsSync } = require_mkdirs();
     var { symlinkPaths, symlinkPathsSync } = require_symlink_paths();
     var { symlinkType, symlinkTypeSync } = require_symlink_type();
-    var { pathExists: pathExists4 } = require_path_exists();
+    var { pathExists: pathExists5 } = require_path_exists();
     var { areIdentical } = require_stat();
     async function createSymlink(srcpath, dstpath, type) {
       let stats;
       try {
-        stats = await fs7.lstat(dstpath);
+        stats = await fs8.lstat(dstpath);
       } catch {
       }
       if (stats && stats.isSymbolicLink()) {
         const [srcStat, dstStat] = await Promise.all([
-          fs7.stat(srcpath),
-          fs7.stat(dstpath)
+          fs8.stat(srcpath),
+          fs8.stat(dstpath)
         ]);
         if (areIdentical(srcStat, dstStat)) return;
       }
       const relative = await symlinkPaths(srcpath, dstpath);
       srcpath = relative.toDst;
       const toType = await symlinkType(relative.toCwd, type);
-      const dir = path14.dirname(dstpath);
-      if (!await pathExists4(dir)) {
+      const dir = path15.dirname(dstpath);
+      if (!await pathExists5(dir)) {
         await mkdirs(dir);
       }
-      return fs7.symlink(srcpath, dstpath, toType);
+      return fs8.symlink(srcpath, dstpath, toType);
     }
     function createSymlinkSync(srcpath, dstpath, type) {
       let stats;
       try {
-        stats = fs7.lstatSync(dstpath);
+        stats = fs8.lstatSync(dstpath);
       } catch {
       }
       if (stats && stats.isSymbolicLink()) {
-        const srcStat = fs7.statSync(srcpath);
-        const dstStat = fs7.statSync(dstpath);
+        const srcStat = fs8.statSync(srcpath);
+        const dstStat = fs8.statSync(dstpath);
         if (areIdentical(srcStat, dstStat)) return;
       }
       const relative = symlinkPathsSync(srcpath, dstpath);
       srcpath = relative.toDst;
       type = symlinkTypeSync(relative.toCwd, type);
-      const dir = path14.dirname(dstpath);
-      const exists = fs7.existsSync(dir);
-      if (exists) return fs7.symlinkSync(srcpath, dstpath, type);
+      const dir = path15.dirname(dstpath);
+      const exists = fs8.existsSync(dir);
+      if (exists) return fs8.symlinkSync(srcpath, dstpath, type);
       mkdirsSync(dir);
-      return fs7.symlinkSync(srcpath, dstpath, type);
+      return fs8.symlinkSync(srcpath, dstpath, type);
     }
     module2.exports = {
       createSymlink: u2(createSymlink),
@@ -1897,9 +2394,9 @@ var require_jsonfile = __commonJS({
       if (typeof options === "string") {
         options = { encoding: options };
       }
-      const fs7 = options.fs || _fs;
+      const fs8 = options.fs || _fs;
       const shouldThrow = "throws" in options ? options.throws : true;
-      let data = await universalify.fromCallback(fs7.readFile)(file, options);
+      let data = await universalify.fromCallback(fs8.readFile)(file, options);
       data = stripBom(data);
       let obj;
       try {
@@ -1914,15 +2411,15 @@ var require_jsonfile = __commonJS({
       }
       return obj;
     }
-    var readFile4 = universalify.fromPromise(_readFile);
+    var readFile5 = universalify.fromPromise(_readFile);
     function readFileSync4(file, options = {}) {
       if (typeof options === "string") {
         options = { encoding: options };
       }
-      const fs7 = options.fs || _fs;
+      const fs8 = options.fs || _fs;
       const shouldThrow = "throws" in options ? options.throws : true;
       try {
-        let content = fs7.readFileSync(file, options);
+        let content = fs8.readFileSync(file, options);
         content = stripBom(content);
         return JSON.parse(content, options.reviver);
       } catch (err) {
@@ -1935,18 +2432,18 @@ var require_jsonfile = __commonJS({
       }
     }
     async function _writeFile(file, obj, options = {}) {
-      const fs7 = options.fs || _fs;
+      const fs8 = options.fs || _fs;
       const str = stringify(obj, options);
-      await universalify.fromCallback(fs7.writeFile)(file, str, options);
+      await universalify.fromCallback(fs8.writeFile)(file, str, options);
     }
     var writeFile4 = universalify.fromPromise(_writeFile);
     function writeFileSync3(file, obj, options = {}) {
-      const fs7 = options.fs || _fs;
+      const fs8 = options.fs || _fs;
       const str = stringify(obj, options);
-      return fs7.writeFileSync(file, str, options);
+      return fs8.writeFileSync(file, str, options);
     }
     module2.exports = {
-      readFile: readFile4,
+      readFile: readFile5,
       readFileSync: readFileSync4,
       writeFile: writeFile4,
       writeFileSync: writeFileSync3
@@ -1974,23 +2471,23 @@ var require_output_file = __commonJS({
   "node_modules/fs-extra/lib/output-file/index.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var fs7 = require_fs();
-    var path14 = require("path");
+    var fs8 = require_fs();
+    var path15 = require("path");
     var mkdir = require_mkdirs();
-    var pathExists4 = require_path_exists().pathExists;
+    var pathExists5 = require_path_exists().pathExists;
     async function outputFile(file, data, encoding = "utf-8") {
-      const dir = path14.dirname(file);
-      if (!await pathExists4(dir)) {
+      const dir = path15.dirname(file);
+      if (!await pathExists5(dir)) {
         await mkdir.mkdirs(dir);
       }
-      return fs7.writeFile(file, data, encoding);
+      return fs8.writeFile(file, data, encoding);
     }
     function outputFileSync(file, ...args) {
-      const dir = path14.dirname(file);
-      if (!fs7.existsSync(dir)) {
+      const dir = path15.dirname(file);
+      if (!fs8.existsSync(dir)) {
         mkdir.mkdirsSync(dir);
       }
-      fs7.writeFileSync(file, ...args);
+      fs8.writeFileSync(file, ...args);
     }
     module2.exports = {
       outputFile: u2(outputFile),
@@ -2049,19 +2546,19 @@ var require_json = __commonJS({
 var require_move = __commonJS({
   "node_modules/fs-extra/lib/move/move.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_fs();
-    var path14 = require("path");
+    var fs8 = require_fs();
+    var path15 = require("path");
     var { copy } = require_copy2();
     var { remove } = require_remove();
     var { mkdirp } = require_mkdirs();
-    var { pathExists: pathExists4 } = require_path_exists();
+    var { pathExists: pathExists5 } = require_path_exists();
     var stat = require_stat();
     async function move(src, dest, opts = {}) {
       const overwrite = opts.overwrite || opts.clobber || false;
       const { srcStat, isChangingCase = false } = await stat.checkPaths(src, dest, "move", opts);
       await stat.checkParentPaths(src, srcStat, dest, "move");
-      const destParent = path14.dirname(dest);
-      const parsedParentPath = path14.parse(destParent);
+      const destParent = path15.dirname(dest);
+      const parsedParentPath = path15.parse(destParent);
       if (parsedParentPath.root !== destParent) {
         await mkdirp(destParent);
       }
@@ -2071,12 +2568,12 @@ var require_move = __commonJS({
       if (!isChangingCase) {
         if (overwrite) {
           await remove(dest);
-        } else if (await pathExists4(dest)) {
+        } else if (await pathExists5(dest)) {
           throw new Error("dest already exists.");
         }
       }
       try {
-        await fs7.rename(src, dest);
+        await fs8.rename(src, dest);
       } catch (err) {
         if (err.code !== "EXDEV") {
           throw err;
@@ -2101,8 +2598,8 @@ var require_move = __commonJS({
 var require_move_sync = __commonJS({
   "node_modules/fs-extra/lib/move/move-sync.js"(exports2, module2) {
     "use strict";
-    var fs7 = require_graceful_fs();
-    var path14 = require("path");
+    var fs8 = require_graceful_fs();
+    var path15 = require("path");
     var copySync = require_copy2().copySync;
     var removeSync = require_remove().removeSync;
     var mkdirpSync = require_mkdirs().mkdirpSync;
@@ -2112,12 +2609,12 @@ var require_move_sync = __commonJS({
       const overwrite = opts.overwrite || opts.clobber || false;
       const { srcStat, isChangingCase = false } = stat.checkPathsSync(src, dest, "move", opts);
       stat.checkParentPathsSync(src, srcStat, dest, "move");
-      if (!isParentRoot(dest)) mkdirpSync(path14.dirname(dest));
+      if (!isParentRoot(dest)) mkdirpSync(path15.dirname(dest));
       return doRename(src, dest, overwrite, isChangingCase);
     }
     function isParentRoot(dest) {
-      const parent = path14.dirname(dest);
-      const parsedPath = path14.parse(parent);
+      const parent = path15.dirname(dest);
+      const parsedPath = path15.parse(parent);
       return parsedPath.root === parent;
     }
     function doRename(src, dest, overwrite, isChangingCase) {
@@ -2126,12 +2623,12 @@ var require_move_sync = __commonJS({
         removeSync(dest);
         return rename(src, dest, overwrite);
       }
-      if (fs7.existsSync(dest)) throw new Error("dest already exists.");
+      if (fs8.existsSync(dest)) throw new Error("dest already exists.");
       return rename(src, dest, overwrite);
     }
     function rename(src, dest, overwrite) {
       try {
-        fs7.renameSync(src, dest);
+        fs8.renameSync(src, dest);
       } catch (err) {
         if (err.code !== "EXDEV") throw err;
         return moveAcrossDevice(src, dest, overwrite);
@@ -2419,503 +2916,6 @@ var require_punycode = __commonJS({
       "toUnicode": toUnicode
     };
     module2.exports = punycode2;
-  }
-});
-
-// node_modules/isexe/windows.js
-var require_windows = __commonJS({
-  "node_modules/isexe/windows.js"(exports2, module2) {
-    module2.exports = isexe;
-    isexe.sync = sync2;
-    var fs7 = require("fs");
-    function checkPathExt(path14, options) {
-      var pathext = options.pathExt !== void 0 ? options.pathExt : process.env.PATHEXT;
-      if (!pathext) {
-        return true;
-      }
-      pathext = pathext.split(";");
-      if (pathext.indexOf("") !== -1) {
-        return true;
-      }
-      for (var i2 = 0; i2 < pathext.length; i2++) {
-        var p = pathext[i2].toLowerCase();
-        if (p && path14.substr(-p.length).toLowerCase() === p) {
-          return true;
-        }
-      }
-      return false;
-    }
-    function checkStat(stat, path14, options) {
-      if (!stat.isSymbolicLink() && !stat.isFile()) {
-        return false;
-      }
-      return checkPathExt(path14, options);
-    }
-    function isexe(path14, options, cb) {
-      fs7.stat(path14, function(er, stat) {
-        cb(er, er ? false : checkStat(stat, path14, options));
-      });
-    }
-    function sync2(path14, options) {
-      return checkStat(fs7.statSync(path14), path14, options);
-    }
-  }
-});
-
-// node_modules/isexe/mode.js
-var require_mode = __commonJS({
-  "node_modules/isexe/mode.js"(exports2, module2) {
-    module2.exports = isexe;
-    isexe.sync = sync2;
-    var fs7 = require("fs");
-    function isexe(path14, options, cb) {
-      fs7.stat(path14, function(er, stat) {
-        cb(er, er ? false : checkStat(stat, options));
-      });
-    }
-    function sync2(path14, options) {
-      return checkStat(fs7.statSync(path14), options);
-    }
-    function checkStat(stat, options) {
-      return stat.isFile() && checkMode(stat, options);
-    }
-    function checkMode(stat, options) {
-      var mod = stat.mode;
-      var uid = stat.uid;
-      var gid = stat.gid;
-      var myUid = options.uid !== void 0 ? options.uid : process.getuid && process.getuid();
-      var myGid = options.gid !== void 0 ? options.gid : process.getgid && process.getgid();
-      var u2 = parseInt("100", 8);
-      var g = parseInt("010", 8);
-      var o2 = parseInt("001", 8);
-      var ug = u2 | g;
-      var ret = mod & o2 || mod & g && gid === myGid || mod & u2 && uid === myUid || mod & ug && myUid === 0;
-      return ret;
-    }
-  }
-});
-
-// node_modules/isexe/index.js
-var require_isexe = __commonJS({
-  "node_modules/isexe/index.js"(exports2, module2) {
-    var fs7 = require("fs");
-    var core;
-    if (process.platform === "win32" || global.TESTING_WINDOWS) {
-      core = require_windows();
-    } else {
-      core = require_mode();
-    }
-    module2.exports = isexe;
-    isexe.sync = sync2;
-    function isexe(path14, options, cb) {
-      if (typeof options === "function") {
-        cb = options;
-        options = {};
-      }
-      if (!cb) {
-        if (typeof Promise !== "function") {
-          throw new TypeError("callback not provided");
-        }
-        return new Promise(function(resolve4, reject) {
-          isexe(path14, options || {}, function(er, is) {
-            if (er) {
-              reject(er);
-            } else {
-              resolve4(is);
-            }
-          });
-        });
-      }
-      core(path14, options || {}, function(er, is) {
-        if (er) {
-          if (er.code === "EACCES" || options && options.ignoreErrors) {
-            er = null;
-            is = false;
-          }
-        }
-        cb(er, is);
-      });
-    }
-    function sync2(path14, options) {
-      try {
-        return core.sync(path14, options || {});
-      } catch (er) {
-        if (options && options.ignoreErrors || er.code === "EACCES") {
-          return false;
-        } else {
-          throw er;
-        }
-      }
-    }
-  }
-});
-
-// node_modules/which/which.js
-var require_which = __commonJS({
-  "node_modules/which/which.js"(exports2, module2) {
-    var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-    var path14 = require("path");
-    var COLON = isWindows ? ";" : ":";
-    var isexe = require_isexe();
-    var getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
-    var getPathInfo = (cmd, opt) => {
-      const colon = opt.colon || COLON;
-      const pathEnv = cmd.match(/\//) || isWindows && cmd.match(/\\/) ? [""] : [
-        // windows always checks the cwd first
-        ...isWindows ? [process.cwd()] : [],
-        ...(opt.path || process.env.PATH || /* istanbul ignore next: very unusual */
-        "").split(colon)
-      ];
-      const pathExtExe = isWindows ? opt.pathExt || process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM" : "";
-      const pathExt = isWindows ? pathExtExe.split(colon) : [""];
-      if (isWindows) {
-        if (cmd.indexOf(".") !== -1 && pathExt[0] !== "")
-          pathExt.unshift("");
-      }
-      return {
-        pathEnv,
-        pathExt,
-        pathExtExe
-      };
-    };
-    var which = (cmd, opt, cb) => {
-      if (typeof opt === "function") {
-        cb = opt;
-        opt = {};
-      }
-      if (!opt)
-        opt = {};
-      const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
-      const found = [];
-      const step = (i2) => new Promise((resolve4, reject) => {
-        if (i2 === pathEnv.length)
-          return opt.all && found.length ? resolve4(found) : reject(getNotFoundError(cmd));
-        const ppRaw = pathEnv[i2];
-        const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path14.join(pathPart, cmd);
-        const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
-        resolve4(subStep(p, i2, 0));
-      });
-      const subStep = (p, i2, ii) => new Promise((resolve4, reject) => {
-        if (ii === pathExt.length)
-          return resolve4(step(i2 + 1));
-        const ext2 = pathExt[ii];
-        isexe(p + ext2, { pathExt: pathExtExe }, (er, is) => {
-          if (!er && is) {
-            if (opt.all)
-              found.push(p + ext2);
-            else
-              return resolve4(p + ext2);
-          }
-          return resolve4(subStep(p, i2, ii + 1));
-        });
-      });
-      return cb ? step(0).then((res) => cb(null, res), cb) : step(0);
-    };
-    var whichSync = (cmd, opt) => {
-      opt = opt || {};
-      const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
-      const found = [];
-      for (let i2 = 0; i2 < pathEnv.length; i2++) {
-        const ppRaw = pathEnv[i2];
-        const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path14.join(pathPart, cmd);
-        const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
-        for (let j = 0; j < pathExt.length; j++) {
-          const cur = p + pathExt[j];
-          try {
-            const is = isexe.sync(cur, { pathExt: pathExtExe });
-            if (is) {
-              if (opt.all)
-                found.push(cur);
-              else
-                return cur;
-            }
-          } catch (ex) {
-          }
-        }
-      }
-      if (opt.all && found.length)
-        return found;
-      if (opt.nothrow)
-        return null;
-      throw getNotFoundError(cmd);
-    };
-    module2.exports = which;
-    which.sync = whichSync;
-  }
-});
-
-// node_modules/path-key/index.js
-var require_path_key = __commonJS({
-  "node_modules/path-key/index.js"(exports2, module2) {
-    "use strict";
-    var pathKey2 = (options = {}) => {
-      const environment = options.env || process.env;
-      const platform2 = options.platform || process.platform;
-      if (platform2 !== "win32") {
-        return "PATH";
-      }
-      return Object.keys(environment).reverse().find((key) => key.toUpperCase() === "PATH") || "Path";
-    };
-    module2.exports = pathKey2;
-    module2.exports.default = pathKey2;
-  }
-});
-
-// node_modules/cross-spawn/lib/util/resolveCommand.js
-var require_resolveCommand = __commonJS({
-  "node_modules/cross-spawn/lib/util/resolveCommand.js"(exports2, module2) {
-    "use strict";
-    var path14 = require("path");
-    var which = require_which();
-    var getPathKey = require_path_key();
-    function resolveCommandAttempt(parsed, withoutPathExt) {
-      const env2 = parsed.options.env || process.env;
-      const cwd = process.cwd();
-      const hasCustomCwd = parsed.options.cwd != null;
-      const shouldSwitchCwd = hasCustomCwd && process.chdir !== void 0 && !process.chdir.disabled;
-      if (shouldSwitchCwd) {
-        try {
-          process.chdir(parsed.options.cwd);
-        } catch (err) {
-        }
-      }
-      let resolved;
-      try {
-        resolved = which.sync(parsed.command, {
-          path: env2[getPathKey({ env: env2 })],
-          pathExt: withoutPathExt ? path14.delimiter : void 0
-        });
-      } catch (e) {
-      } finally {
-        if (shouldSwitchCwd) {
-          process.chdir(cwd);
-        }
-      }
-      if (resolved) {
-        resolved = path14.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
-      }
-      return resolved;
-    }
-    function resolveCommand(parsed) {
-      return resolveCommandAttempt(parsed) || resolveCommandAttempt(parsed, true);
-    }
-    module2.exports = resolveCommand;
-  }
-});
-
-// node_modules/cross-spawn/lib/util/escape.js
-var require_escape = __commonJS({
-  "node_modules/cross-spawn/lib/util/escape.js"(exports2, module2) {
-    "use strict";
-    var metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g;
-    function escapeCommand(arg) {
-      arg = arg.replace(metaCharsRegExp, "^$1");
-      return arg;
-    }
-    function escapeArgument(arg, doubleEscapeMetaChars) {
-      arg = `${arg}`;
-      arg = arg.replace(/(?=(\\+?)?)\1"/g, '$1$1\\"');
-      arg = arg.replace(/(?=(\\+?)?)\1$/, "$1$1");
-      arg = `"${arg}"`;
-      arg = arg.replace(metaCharsRegExp, "^$1");
-      if (doubleEscapeMetaChars) {
-        arg = arg.replace(metaCharsRegExp, "^$1");
-      }
-      return arg;
-    }
-    module2.exports.command = escapeCommand;
-    module2.exports.argument = escapeArgument;
-  }
-});
-
-// node_modules/shebang-regex/index.js
-var require_shebang_regex = __commonJS({
-  "node_modules/shebang-regex/index.js"(exports2, module2) {
-    "use strict";
-    module2.exports = /^#!(.*)/;
-  }
-});
-
-// node_modules/shebang-command/index.js
-var require_shebang_command = __commonJS({
-  "node_modules/shebang-command/index.js"(exports2, module2) {
-    "use strict";
-    var shebangRegex = require_shebang_regex();
-    module2.exports = (string = "") => {
-      const match3 = string.match(shebangRegex);
-      if (!match3) {
-        return null;
-      }
-      const [path14, argument] = match3[0].replace(/#! ?/, "").split(" ");
-      const binary = path14.split("/").pop();
-      if (binary === "env") {
-        return argument;
-      }
-      return argument ? `${binary} ${argument}` : binary;
-    };
-  }
-});
-
-// node_modules/cross-spawn/lib/util/readShebang.js
-var require_readShebang = __commonJS({
-  "node_modules/cross-spawn/lib/util/readShebang.js"(exports2, module2) {
-    "use strict";
-    var fs7 = require("fs");
-    var shebangCommand = require_shebang_command();
-    function readShebang(command) {
-      const size = 150;
-      const buffer = Buffer.alloc(size);
-      let fd;
-      try {
-        fd = fs7.openSync(command, "r");
-        fs7.readSync(fd, buffer, 0, size, 0);
-        fs7.closeSync(fd);
-      } catch (e) {
-      }
-      return shebangCommand(buffer.toString());
-    }
-    module2.exports = readShebang;
-  }
-});
-
-// node_modules/cross-spawn/lib/parse.js
-var require_parse = __commonJS({
-  "node_modules/cross-spawn/lib/parse.js"(exports2, module2) {
-    "use strict";
-    var path14 = require("path");
-    var resolveCommand = require_resolveCommand();
-    var escape4 = require_escape();
-    var readShebang = require_readShebang();
-    var isWin = process.platform === "win32";
-    var isExecutableRegExp = /\.(?:com|exe)$/i;
-    var isCmdShimRegExp = /node_modules[\\/].bin[\\/][^\\/]+\.cmd$/i;
-    function detectShebang(parsed) {
-      parsed.file = resolveCommand(parsed);
-      const shebang = parsed.file && readShebang(parsed.file);
-      if (shebang) {
-        parsed.args.unshift(parsed.file);
-        parsed.command = shebang;
-        return resolveCommand(parsed);
-      }
-      return parsed.file;
-    }
-    function parseNonShell(parsed) {
-      if (!isWin) {
-        return parsed;
-      }
-      const commandFile = detectShebang(parsed);
-      const needsShell = !isExecutableRegExp.test(commandFile);
-      if (parsed.options.forceShell || needsShell) {
-        const needsDoubleEscapeMetaChars = isCmdShimRegExp.test(commandFile);
-        parsed.command = path14.normalize(parsed.command);
-        parsed.command = escape4.command(parsed.command);
-        parsed.args = parsed.args.map((arg) => escape4.argument(arg, needsDoubleEscapeMetaChars));
-        const shellCommand = [parsed.command].concat(parsed.args).join(" ");
-        parsed.args = ["/d", "/s", "/c", `"${shellCommand}"`];
-        parsed.command = process.env.comspec || "cmd.exe";
-        parsed.options.windowsVerbatimArguments = true;
-      }
-      return parsed;
-    }
-    function parse(command, args, options) {
-      if (args && !Array.isArray(args)) {
-        options = args;
-        args = null;
-      }
-      args = args ? args.slice(0) : [];
-      options = Object.assign({}, options);
-      const parsed = {
-        command,
-        args,
-        options,
-        file: void 0,
-        original: {
-          command,
-          args
-        }
-      };
-      return options.shell ? parsed : parseNonShell(parsed);
-    }
-    module2.exports = parse;
-  }
-});
-
-// node_modules/cross-spawn/lib/enoent.js
-var require_enoent = __commonJS({
-  "node_modules/cross-spawn/lib/enoent.js"(exports2, module2) {
-    "use strict";
-    var isWin = process.platform === "win32";
-    function notFoundError(original, syscall) {
-      return Object.assign(new Error(`${syscall} ${original.command} ENOENT`), {
-        code: "ENOENT",
-        errno: "ENOENT",
-        syscall: `${syscall} ${original.command}`,
-        path: original.command,
-        spawnargs: original.args
-      });
-    }
-    function hookChildProcess(cp, parsed) {
-      if (!isWin) {
-        return;
-      }
-      const originalEmit = cp.emit;
-      cp.emit = function(name, arg1) {
-        if (name === "exit") {
-          const err = verifyENOENT(arg1, parsed);
-          if (err) {
-            return originalEmit.call(cp, "error", err);
-          }
-        }
-        return originalEmit.apply(cp, arguments);
-      };
-    }
-    function verifyENOENT(status, parsed) {
-      if (isWin && status === 1 && !parsed.file) {
-        return notFoundError(parsed.original, "spawn");
-      }
-      return null;
-    }
-    function verifyENOENTSync(status, parsed) {
-      if (isWin && status === 1 && !parsed.file) {
-        return notFoundError(parsed.original, "spawnSync");
-      }
-      return null;
-    }
-    module2.exports = {
-      hookChildProcess,
-      verifyENOENT,
-      verifyENOENTSync,
-      notFoundError
-    };
-  }
-});
-
-// node_modules/cross-spawn/index.js
-var require_cross_spawn = __commonJS({
-  "node_modules/cross-spawn/index.js"(exports2, module2) {
-    "use strict";
-    var cp = require("child_process");
-    var parse = require_parse();
-    var enoent = require_enoent();
-    function spawn2(command, args, options) {
-      const parsed = parse(command, args, options);
-      const spawned = cp.spawn(parsed.command, parsed.args, parsed.options);
-      enoent.hookChildProcess(spawned, parsed);
-      return spawned;
-    }
-    function spawnSync2(command, args, options) {
-      const parsed = parse(command, args, options);
-      const result = cp.spawnSync(parsed.command, parsed.args, parsed.options);
-      result.error = result.error || enoent.verifyENOENTSync(result.status, parsed);
-      return result;
-    }
-    module2.exports = spawn2;
-    module2.exports.spawn = spawn2;
-    module2.exports.sync = spawnSync2;
-    module2.exports._parse = parse;
-    module2.exports._enoent = enoent;
   }
 });
 
@@ -11766,11 +11766,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path14) {
-      if (!path14 || typeof path14 !== "string") {
+    function lookup(path15) {
+      if (!path15 || typeof path15 !== "string") {
         return false;
       }
-      var extension2 = extname2("x." + path14).toLowerCase().substr(1);
+      var extension2 = extname2("x." + path15).toLowerCase().substr(1);
       if (!extension2) {
         return false;
       }
@@ -12875,11 +12875,11 @@ var require_form_data = __commonJS({
     "use strict";
     var CombinedStream = require_combined_stream();
     var util3 = require("util");
-    var path14 = require("path");
+    var path15 = require("path");
     var http2 = require("http");
     var https2 = require("https");
     var parseUrl = require("url").parse;
-    var fs7 = require("fs");
+    var fs8 = require("fs");
     var Stream2 = require("stream").Stream;
     var crypto2 = require("crypto");
     var mime = require_mime_types();
@@ -12946,7 +12946,7 @@ var require_form_data = __commonJS({
         if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
           callback(null, value.end + 1 - (value.start ? value.start : 0));
         } else {
-          fs7.stat(value.path, function(err, stat) {
+          fs8.stat(value.path, function(err, stat) {
             if (err) {
               callback(err);
               return;
@@ -13003,11 +13003,11 @@ var require_form_data = __commonJS({
     FormData3.prototype._getContentDisposition = function(value, options) {
       var filename;
       if (typeof options.filepath === "string") {
-        filename = path14.normalize(options.filepath).replace(/\\/g, "/");
+        filename = path15.normalize(options.filepath).replace(/\\/g, "/");
       } else if (options.filename || value && (value.name || value.path)) {
-        filename = path14.basename(options.filename || value && (value.name || value.path));
+        filename = path15.basename(options.filename || value && (value.name || value.path));
       } else if (value && value.readable && hasOwn(value, "httpVersion")) {
-        filename = path14.basename(value.client._httpMessage.path || "");
+        filename = path15.basename(value.client._httpMessage.path || "");
       }
       if (filename) {
         return 'filename="' + filename + '"';
@@ -14560,11 +14560,11 @@ var require_lib2 = __commonJS({
     function lookupEscape(ch) {
       return escapeMap[ch];
     }
-    function _prettifyError(path14, withInternals, err) {
+    function _prettifyError(path15, withInternals, err) {
       if (!err.Update) {
         err = new _exports.TemplateError(err);
       }
-      err.Update(path14);
+      err.Update(path15);
       if (!withInternals) {
         var old = err;
         err = new Error(old.message);
@@ -14625,8 +14625,8 @@ var require_lib2 = __commonJS({
       err.lineno = lineno;
       err.colno = colno;
       err.firstUpdate = true;
-      err.Update = function Update(path14) {
-        var msg = "(" + (path14 || "unknown path") + ")";
+      err.Update = function Update(path15) {
+        var msg = "(" + (path15 || "unknown path") + ")";
         if (this.firstUpdate) {
           if (this.lineno && this.colno) {
             msg += " [Line " + this.lineno + ", Column " + this.colno + "]";
@@ -15486,7 +15486,7 @@ var require_object = __commonJS({
       };
       return _setPrototypeOf(o2, p);
     }
-    var EventEmitter5 = require("events");
+    var EventEmitter6 = require("events");
     var lib2 = require_lib2();
     function parentWrap(parent, prop) {
       if (typeof parent !== "function" || typeof prop !== "function") {
@@ -15569,7 +15569,7 @@ var require_object = __commonJS({
         }
       }]);
       return EmitterObj2;
-    })(EventEmitter5);
+    })(EventEmitter6);
     module2.exports = {
       Obj,
       EmitterObj
@@ -18465,7 +18465,7 @@ var require_filters = __commonJS({
       return r.copySafeness(str, res);
     }
     _exports.indent = indent;
-    function join7(arr, del, attr) {
+    function join8(arr, del, attr) {
       del = del || "";
       if (attr) {
         arr = lib2.map(arr, function(v) {
@@ -18474,7 +18474,7 @@ var require_filters = __commonJS({
       }
       return arr.join(del);
     }
-    _exports.join = join7;
+    _exports.join = join8;
     function last(arr) {
       return arr[arr.length - 1];
     }
@@ -18826,7 +18826,7 @@ var require_loader = __commonJS({
       };
       return _setPrototypeOf(o2, p);
     }
-    var path14 = require("path");
+    var path15 = require("path");
     var _require = require_object();
     var EmitterObj = _require.EmitterObj;
     module2.exports = /* @__PURE__ */ (function(_EmitterObj) {
@@ -18836,7 +18836,7 @@ var require_loader = __commonJS({
       }
       var _proto = Loader.prototype;
       _proto.resolve = function resolve4(from, to) {
-        return path14.resolve(path14.dirname(from), to);
+        return path15.resolve(path15.dirname(from), to);
       };
       _proto.isRelative = function isRelative(filename) {
         return filename.indexOf("./") === 0 || filename.indexOf("../") === 0;
@@ -18908,8 +18908,8 @@ var require_node_loaders = __commonJS({
       };
       return _setPrototypeOf(o2, p);
     }
-    var fs7 = require("fs");
-    var path14 = require("path");
+    var fs8 = require("fs");
+    var path15 = require("path");
     var Loader = require_loader();
     var _require = require_precompiled_loader();
     var PrecompiledLoader = _require.PrecompiledLoader;
@@ -18927,7 +18927,7 @@ var require_node_loaders = __commonJS({
         _this.noCache = !!opts.noCache;
         if (searchPaths) {
           searchPaths = Array.isArray(searchPaths) ? searchPaths : [searchPaths];
-          _this.searchPaths = searchPaths.map(path14.normalize);
+          _this.searchPaths = searchPaths.map(path15.normalize);
         } else {
           _this.searchPaths = ["."];
         }
@@ -18937,10 +18937,10 @@ var require_node_loaders = __commonJS({
           } catch (e) {
             throw new Error("watch requires chokidar to be installed");
           }
-          var paths = _this.searchPaths.filter(fs7.existsSync);
+          var paths = _this.searchPaths.filter(fs8.existsSync);
           var watcher = chokidar.watch(paths);
           watcher.on("all", function(event, fullname) {
-            fullname = path14.resolve(fullname);
+            fullname = path15.resolve(fullname);
             if (event === "change" && fullname in _this.pathsToNames) {
               _this.emit("update", _this.pathsToNames[fullname], fullname);
             }
@@ -18956,9 +18956,9 @@ var require_node_loaders = __commonJS({
         var fullpath = null;
         var paths = this.searchPaths;
         for (var i2 = 0; i2 < paths.length; i2++) {
-          var basePath = path14.resolve(paths[i2]);
-          var p = path14.resolve(paths[i2], name);
-          if (p.indexOf(basePath) === 0 && fs7.existsSync(p)) {
+          var basePath = path15.resolve(paths[i2]);
+          var p = path15.resolve(paths[i2], name);
+          if (p.indexOf(basePath) === 0 && fs8.existsSync(p)) {
             fullpath = p;
             break;
           }
@@ -18968,7 +18968,7 @@ var require_node_loaders = __commonJS({
         }
         this.pathsToNames[fullpath] = name;
         var source = {
-          src: fs7.readFileSync(fullpath, "utf-8"),
+          src: fs8.readFileSync(fullpath, "utf-8"),
           path: fullpath,
           noCache: this.noCache
         };
@@ -19020,7 +19020,7 @@ var require_node_loaders = __commonJS({
         }
         this.pathsToNames[fullpath] = name;
         var source = {
-          src: fs7.readFileSync(fullpath, "utf-8"),
+          src: fs8.readFileSync(fullpath, "utf-8"),
           path: fullpath,
           noCache: this.noCache
         };
@@ -19223,13 +19223,13 @@ var require_globals = __commonJS({
 var require_express_app = __commonJS({
   "node_modules/nunjucks/src/express-app.js"(exports2, module2) {
     "use strict";
-    var path14 = require("path");
+    var path15 = require("path");
     module2.exports = function express(env2, app) {
       function NunjucksView(name, opts) {
         this.name = name;
         this.path = name;
         this.defaultEngine = opts.defaultEngine;
-        this.ext = path14.extname(name);
+        this.ext = path15.extname(name);
         if (!this.ext && !this.defaultEngine) {
           throw new Error("No default engine was specified and no extension was provided.");
         }
@@ -19609,7 +19609,7 @@ var require_environment = __commonJS({
         return _Obj2.apply(this, arguments) || this;
       }
       var _proto3 = Template2.prototype;
-      _proto3.init = function init(src, env2, path14, eagerCompile) {
+      _proto3.init = function init(src, env2, path15, eagerCompile) {
         this.env = env2 || new Environment();
         if (lib2.isObject(src)) {
           switch (src.type) {
@@ -19627,7 +19627,7 @@ var require_environment = __commonJS({
         } else {
           throw new Error("src must be a string or an object describing the source");
         }
-        this.path = path14;
+        this.path = path15;
         if (eagerCompile) {
           try {
             this._compile();
@@ -19777,8 +19777,8 @@ var require_precompile_global = __commonJS({
 var require_precompile = __commonJS({
   "node_modules/nunjucks/src/precompile.js"(exports2, module2) {
     "use strict";
-    var fs7 = require("fs");
-    var path14 = require("path");
+    var fs8 = require("fs");
+    var path15 = require("path");
     var _require = require_lib2();
     var _prettifyError = _require._prettifyError;
     var compiler = require_compiler();
@@ -19810,14 +19810,14 @@ var require_precompile = __commonJS({
       if (opts.isString) {
         return precompileString(input, opts);
       }
-      var pathStats = fs7.existsSync(input) && fs7.statSync(input);
+      var pathStats = fs8.existsSync(input) && fs8.statSync(input);
       var precompiled = [];
       var templates = [];
       function addTemplates(dir) {
-        fs7.readdirSync(dir).forEach(function(file) {
-          var filepath = path14.join(dir, file);
-          var subpath = filepath.substr(path14.join(input, "/").length);
-          var stat = fs7.statSync(filepath);
+        fs8.readdirSync(dir).forEach(function(file) {
+          var filepath = path15.join(dir, file);
+          var subpath = filepath.substr(path15.join(input, "/").length);
+          var stat = fs8.statSync(filepath);
           if (stat && stat.isDirectory()) {
             subpath += "/";
             if (!match3(subpath, opts.exclude)) {
@@ -19829,13 +19829,13 @@ var require_precompile = __commonJS({
         });
       }
       if (pathStats.isFile()) {
-        precompiled.push(_precompile(fs7.readFileSync(input, "utf-8"), opts.name || input, env2));
+        precompiled.push(_precompile(fs8.readFileSync(input, "utf-8"), opts.name || input, env2));
       } else if (pathStats.isDirectory()) {
         addTemplates(input);
         for (var i2 = 0; i2 < templates.length; i2++) {
-          var name = templates[i2].replace(path14.join(input, "/"), "");
+          var name = templates[i2].replace(path15.join(input, "/"), "");
           try {
-            precompiled.push(_precompile(fs7.readFileSync(templates[i2], "utf-8"), name, env2));
+            precompiled.push(_precompile(fs8.readFileSync(templates[i2], "utf-8"), name, env2));
           } catch (e) {
             if (opts.force) {
               console.error(e);
@@ -20212,11 +20212,11 @@ var require_nunjucks = __commonJS({
       reset: function reset2() {
         e = void 0;
       },
-      compile: function compile2(src, env2, path14, eagerCompile) {
+      compile: function compile2(src, env2, path15, eagerCompile) {
         if (!e) {
           configure2();
         }
-        return new Template(src, env2, path14, eagerCompile);
+        return new Template(src, env2, path15, eagerCompile);
       },
       render: function render(name, ctx, cb) {
         if (!e) {
@@ -20243,11 +20243,6904 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode8 = __toESM(require("vscode"));
-var path13 = __toESM(require("path"));
+var vscode10 = __toESM(require("vscode"));
+var path14 = __toESM(require("path"));
+
+// src/providers/dependenciesProvider.ts
+var vscode = __toESM(require("vscode"));
+
+// node_modules/is-plain-obj/index.js
+function isPlainObject(value) {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const prototype3 = Object.getPrototypeOf(value);
+  return (prototype3 === null || prototype3 === Object.prototype || Object.getPrototypeOf(prototype3) === null) && !(Symbol.toStringTag in value) && !(Symbol.iterator in value);
+}
+
+// node_modules/execa/lib/arguments/file-url.js
+var import_node_url = require("node:url");
+var safeNormalizeFileUrl = (file, name) => {
+  const fileString = normalizeFileUrl(normalizeDenoExecPath(file));
+  if (typeof fileString !== "string") {
+    throw new TypeError(`${name} must be a string or a file URL: ${fileString}.`);
+  }
+  return fileString;
+};
+var normalizeDenoExecPath = (file) => isDenoExecPath(file) ? file.toString() : file;
+var isDenoExecPath = (file) => typeof file !== "string" && file && Object.getPrototypeOf(file) === String.prototype;
+var normalizeFileUrl = (file) => file instanceof URL ? (0, import_node_url.fileURLToPath)(file) : file;
+
+// node_modules/execa/lib/methods/parameters.js
+var normalizeParameters = (rawFile, rawArguments = [], rawOptions = {}) => {
+  const filePath = safeNormalizeFileUrl(rawFile, "First argument");
+  const [commandArguments, options] = isPlainObject(rawArguments) ? [[], rawArguments] : [rawArguments, rawOptions];
+  if (!Array.isArray(commandArguments)) {
+    throw new TypeError(`Second argument must be either an array of arguments or an options object: ${commandArguments}`);
+  }
+  if (commandArguments.some((commandArgument) => typeof commandArgument === "object" && commandArgument !== null)) {
+    throw new TypeError(`Second argument must be an array of strings: ${commandArguments}`);
+  }
+  const normalizedArguments = commandArguments.map(String);
+  const nullByteArgument = normalizedArguments.find((normalizedArgument) => normalizedArgument.includes("\0"));
+  if (nullByteArgument !== void 0) {
+    throw new TypeError(`Arguments cannot contain null bytes ("\\0"): ${nullByteArgument}`);
+  }
+  if (!isPlainObject(options)) {
+    throw new TypeError(`Last argument must be an options object: ${options}`);
+  }
+  return [filePath, normalizedArguments, options];
+};
+
+// node_modules/execa/lib/methods/template.js
+var import_node_child_process = require("node:child_process");
+
+// node_modules/execa/lib/utils/uint-array.js
+var import_node_string_decoder = require("node:string_decoder");
+var { toString: objectToString } = Object.prototype;
+var isArrayBuffer = (value) => objectToString.call(value) === "[object ArrayBuffer]";
+var isUint8Array = (value) => objectToString.call(value) === "[object Uint8Array]";
+var bufferToUint8Array = (buffer) => new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+var textEncoder = new TextEncoder();
+var stringToUint8Array = (string) => textEncoder.encode(string);
+var textDecoder = new TextDecoder();
+var uint8ArrayToString = (uint8Array) => textDecoder.decode(uint8Array);
+var joinToString = (uint8ArraysOrStrings, encoding) => {
+  const strings = uint8ArraysToStrings(uint8ArraysOrStrings, encoding);
+  return strings.join("");
+};
+var uint8ArraysToStrings = (uint8ArraysOrStrings, encoding) => {
+  if (encoding === "utf8" && uint8ArraysOrStrings.every((uint8ArrayOrString) => typeof uint8ArrayOrString === "string")) {
+    return uint8ArraysOrStrings;
+  }
+  const decoder = new import_node_string_decoder.StringDecoder(encoding);
+  const strings = uint8ArraysOrStrings.map((uint8ArrayOrString) => typeof uint8ArrayOrString === "string" ? stringToUint8Array(uint8ArrayOrString) : uint8ArrayOrString).map((uint8Array) => decoder.write(uint8Array));
+  const finalString = decoder.end();
+  return finalString === "" ? strings : [...strings, finalString];
+};
+var joinToUint8Array = (uint8ArraysOrStrings) => {
+  if (uint8ArraysOrStrings.length === 1 && isUint8Array(uint8ArraysOrStrings[0])) {
+    return uint8ArraysOrStrings[0];
+  }
+  return concatUint8Arrays(stringsToUint8Arrays(uint8ArraysOrStrings));
+};
+var stringsToUint8Arrays = (uint8ArraysOrStrings) => uint8ArraysOrStrings.map((uint8ArrayOrString) => typeof uint8ArrayOrString === "string" ? stringToUint8Array(uint8ArrayOrString) : uint8ArrayOrString);
+var concatUint8Arrays = (uint8Arrays) => {
+  const result = new Uint8Array(getJoinLength(uint8Arrays));
+  let index = 0;
+  for (const uint8Array of uint8Arrays) {
+    result.set(uint8Array, index);
+    index += uint8Array.length;
+  }
+  return result;
+};
+var getJoinLength = (uint8Arrays) => {
+  let joinLength = 0;
+  for (const uint8Array of uint8Arrays) {
+    joinLength += uint8Array.length;
+  }
+  return joinLength;
+};
+
+// node_modules/execa/lib/methods/template.js
+var isTemplateString = (templates) => Array.isArray(templates) && Array.isArray(templates.raw);
+var parseTemplates = (templates, expressions) => {
+  let tokens = [];
+  for (const [index, template] of templates.entries()) {
+    tokens = parseTemplate({
+      templates,
+      expressions,
+      tokens,
+      index,
+      template
+    });
+  }
+  if (tokens.length === 0) {
+    throw new TypeError("Template script must not be empty");
+  }
+  const [file, ...commandArguments] = tokens;
+  return [file, commandArguments, {}];
+};
+var parseTemplate = ({ templates, expressions, tokens, index, template }) => {
+  if (template === void 0) {
+    throw new TypeError(`Invalid backslash sequence: ${templates.raw[index]}`);
+  }
+  const { nextTokens, leadingWhitespaces, trailingWhitespaces } = splitByWhitespaces(template, templates.raw[index]);
+  const newTokens = concatTokens(tokens, nextTokens, leadingWhitespaces);
+  if (index === expressions.length) {
+    return newTokens;
+  }
+  const expression = expressions[index];
+  const expressionTokens = Array.isArray(expression) ? expression.map((expression2) => parseExpression(expression2)) : [parseExpression(expression)];
+  return concatTokens(newTokens, expressionTokens, trailingWhitespaces);
+};
+var splitByWhitespaces = (template, rawTemplate) => {
+  if (rawTemplate.length === 0) {
+    return { nextTokens: [], leadingWhitespaces: false, trailingWhitespaces: false };
+  }
+  const nextTokens = [];
+  let templateStart = 0;
+  const leadingWhitespaces = DELIMITERS.has(rawTemplate[0]);
+  for (let templateIndex = 0, rawIndex = 0; templateIndex < template.length; templateIndex += 1, rawIndex += 1) {
+    const rawCharacter = rawTemplate[rawIndex];
+    if (DELIMITERS.has(rawCharacter)) {
+      if (templateStart !== templateIndex) {
+        nextTokens.push(template.slice(templateStart, templateIndex));
+      }
+      templateStart = templateIndex + 1;
+    } else if (rawCharacter === "\\") {
+      const nextRawCharacter = rawTemplate[rawIndex + 1];
+      if (nextRawCharacter === "\n") {
+        templateIndex -= 1;
+        rawIndex += 1;
+      } else if (nextRawCharacter === "u" && rawTemplate[rawIndex + 2] === "{") {
+        rawIndex = rawTemplate.indexOf("}", rawIndex + 3);
+      } else {
+        rawIndex += ESCAPE_LENGTH[nextRawCharacter] ?? 1;
+      }
+    }
+  }
+  const trailingWhitespaces = templateStart === template.length;
+  if (!trailingWhitespaces) {
+    nextTokens.push(template.slice(templateStart));
+  }
+  return { nextTokens, leadingWhitespaces, trailingWhitespaces };
+};
+var DELIMITERS = /* @__PURE__ */ new Set([" ", "	", "\r", "\n"]);
+var ESCAPE_LENGTH = { x: 3, u: 5 };
+var concatTokens = (tokens, nextTokens, isSeparated) => isSeparated || tokens.length === 0 || nextTokens.length === 0 ? [...tokens, ...nextTokens] : [
+  ...tokens.slice(0, -1),
+  `${tokens.at(-1)}${nextTokens[0]}`,
+  ...nextTokens.slice(1)
+];
+var parseExpression = (expression) => {
+  const typeOfExpression = typeof expression;
+  if (typeOfExpression === "string") {
+    return expression;
+  }
+  if (typeOfExpression === "number") {
+    return String(expression);
+  }
+  if (isPlainObject(expression) && ("stdout" in expression || "isMaxBuffer" in expression)) {
+    return getSubprocessResult(expression);
+  }
+  if (expression instanceof import_node_child_process.ChildProcess || Object.prototype.toString.call(expression) === "[object Promise]") {
+    throw new TypeError("Unexpected subprocess in template expression. Please use ${await subprocess} instead of ${subprocess}.");
+  }
+  throw new TypeError(`Unexpected "${typeOfExpression}" in template expression`);
+};
+var getSubprocessResult = ({ stdout }) => {
+  if (typeof stdout === "string") {
+    return stdout;
+  }
+  if (isUint8Array(stdout)) {
+    return uint8ArrayToString(stdout);
+  }
+  if (stdout === void 0) {
+    throw new TypeError(`Missing result.stdout in template expression. This is probably due to the previous subprocess' "stdout" option.`);
+  }
+  throw new TypeError(`Unexpected "${typeof stdout}" stdout in template expression`);
+};
+
+// node_modules/execa/lib/methods/main-sync.js
+var import_node_child_process3 = require("node:child_process");
+
+// node_modules/execa/lib/arguments/specific.js
+var import_node_util = require("node:util");
+
+// node_modules/execa/lib/utils/standard-stream.js
+var import_node_process = __toESM(require("node:process"), 1);
+var isStandardStream = (stream5) => STANDARD_STREAMS.includes(stream5);
+var STANDARD_STREAMS = [import_node_process.default.stdin, import_node_process.default.stdout, import_node_process.default.stderr];
+var STANDARD_STREAMS_ALIASES = ["stdin", "stdout", "stderr"];
+var getStreamName = (fdNumber) => STANDARD_STREAMS_ALIASES[fdNumber] ?? `stdio[${fdNumber}]`;
+
+// node_modules/execa/lib/arguments/specific.js
+var normalizeFdSpecificOptions = (options) => {
+  const optionsCopy = { ...options };
+  for (const optionName of FD_SPECIFIC_OPTIONS) {
+    optionsCopy[optionName] = normalizeFdSpecificOption(options, optionName);
+  }
+  return optionsCopy;
+};
+var normalizeFdSpecificOption = (options, optionName) => {
+  const optionBaseArray = Array.from({ length: getStdioLength(options) + 1 });
+  const optionArray = normalizeFdSpecificValue(options[optionName], optionBaseArray, optionName);
+  return addDefaultValue(optionArray, optionName);
+};
+var getStdioLength = ({ stdio }) => Array.isArray(stdio) ? Math.max(stdio.length, STANDARD_STREAMS_ALIASES.length) : STANDARD_STREAMS_ALIASES.length;
+var normalizeFdSpecificValue = (optionValue, optionArray, optionName) => isPlainObject(optionValue) ? normalizeOptionObject(optionValue, optionArray, optionName) : optionArray.fill(optionValue);
+var normalizeOptionObject = (optionValue, optionArray, optionName) => {
+  for (const fdName of Object.keys(optionValue).sort(compareFdName)) {
+    for (const fdNumber of parseFdName(fdName, optionName, optionArray)) {
+      optionArray[fdNumber] = optionValue[fdName];
+    }
+  }
+  return optionArray;
+};
+var compareFdName = (fdNameA, fdNameB) => getFdNameOrder(fdNameA) < getFdNameOrder(fdNameB) ? 1 : -1;
+var getFdNameOrder = (fdName) => {
+  if (fdName === "stdout" || fdName === "stderr") {
+    return 0;
+  }
+  return fdName === "all" ? 2 : 1;
+};
+var parseFdName = (fdName, optionName, optionArray) => {
+  if (fdName === "ipc") {
+    return [optionArray.length - 1];
+  }
+  const fdNumber = parseFd(fdName);
+  if (fdNumber === void 0 || fdNumber === 0) {
+    throw new TypeError(`"${optionName}.${fdName}" is invalid.
+It must be "${optionName}.stdout", "${optionName}.stderr", "${optionName}.all", "${optionName}.ipc", or "${optionName}.fd3", "${optionName}.fd4" (and so on).`);
+  }
+  if (fdNumber >= optionArray.length) {
+    throw new TypeError(`"${optionName}.${fdName}" is invalid: that file descriptor does not exist.
+Please set the "stdio" option to ensure that file descriptor exists.`);
+  }
+  return fdNumber === "all" ? [1, 2] : [fdNumber];
+};
+var parseFd = (fdName) => {
+  if (fdName === "all") {
+    return fdName;
+  }
+  if (STANDARD_STREAMS_ALIASES.includes(fdName)) {
+    return STANDARD_STREAMS_ALIASES.indexOf(fdName);
+  }
+  const regexpResult = FD_REGEXP.exec(fdName);
+  if (regexpResult !== null) {
+    return Number(regexpResult[1]);
+  }
+};
+var FD_REGEXP = /^fd(\d+)$/;
+var addDefaultValue = (optionArray, optionName) => optionArray.map((optionValue) => optionValue === void 0 ? DEFAULT_OPTIONS[optionName] : optionValue);
+var verboseDefault = (0, import_node_util.debuglog)("execa").enabled ? "full" : "none";
+var DEFAULT_OPTIONS = {
+  lines: false,
+  buffer: true,
+  maxBuffer: 1e3 * 1e3 * 100,
+  verbose: verboseDefault,
+  stripFinalNewline: true
+};
+var FD_SPECIFIC_OPTIONS = ["lines", "buffer", "maxBuffer", "verbose", "stripFinalNewline"];
+var getFdSpecificValue = (optionArray, fdNumber) => fdNumber === "ipc" ? optionArray.at(-1) : optionArray[fdNumber];
+
+// node_modules/execa/lib/verbose/values.js
+var isVerbose = ({ verbose }, fdNumber) => getFdVerbose(verbose, fdNumber) !== "none";
+var isFullVerbose = ({ verbose }, fdNumber) => !["none", "short"].includes(getFdVerbose(verbose, fdNumber));
+var getVerboseFunction = ({ verbose }, fdNumber) => {
+  const fdVerbose = getFdVerbose(verbose, fdNumber);
+  return isVerboseFunction(fdVerbose) ? fdVerbose : void 0;
+};
+var getFdVerbose = (verbose, fdNumber) => fdNumber === void 0 ? getFdGenericVerbose(verbose) : getFdSpecificValue(verbose, fdNumber);
+var getFdGenericVerbose = (verbose) => verbose.find((fdVerbose) => isVerboseFunction(fdVerbose)) ?? VERBOSE_VALUES.findLast((fdVerbose) => verbose.includes(fdVerbose));
+var isVerboseFunction = (fdVerbose) => typeof fdVerbose === "function";
+var VERBOSE_VALUES = ["none", "short", "full"];
+
+// node_modules/execa/lib/verbose/log.js
+var import_node_util3 = require("node:util");
+
+// node_modules/execa/lib/arguments/escape.js
+var import_node_process2 = require("node:process");
+var import_node_util2 = require("node:util");
+var joinCommand = (filePath, rawArguments) => {
+  const fileAndArguments = [filePath, ...rawArguments];
+  const command = fileAndArguments.join(" ");
+  const escapedCommand = fileAndArguments.map((fileAndArgument) => quoteString(escapeControlCharacters(fileAndArgument))).join(" ");
+  return { command, escapedCommand };
+};
+var escapeLines = (lines) => (0, import_node_util2.stripVTControlCharacters)(lines).split("\n").map((line) => escapeControlCharacters(line)).join("\n");
+var escapeControlCharacters = (line) => line.replaceAll(SPECIAL_CHAR_REGEXP, (character) => escapeControlCharacter(character));
+var escapeControlCharacter = (character) => {
+  const commonEscape = COMMON_ESCAPES[character];
+  if (commonEscape !== void 0) {
+    return commonEscape;
+  }
+  const codepoint = character.codePointAt(0);
+  const codepointHex = codepoint.toString(16);
+  return codepoint <= ASTRAL_START ? `\\u${codepointHex.padStart(4, "0")}` : `\\U${codepointHex}`;
+};
+var getSpecialCharRegExp = () => {
+  try {
+    return new RegExp("\\p{Separator}|\\p{Other}", "gu");
+  } catch {
+    return /[\s\u0000-\u001F\u007F-\u009F\u00AD]/g;
+  }
+};
+var SPECIAL_CHAR_REGEXP = getSpecialCharRegExp();
+var COMMON_ESCAPES = {
+  " ": " ",
+  "\b": "\\b",
+  "\f": "\\f",
+  "\n": "\\n",
+  "\r": "\\r",
+  "	": "\\t"
+};
+var ASTRAL_START = 65535;
+var quoteString = (escapedArgument) => {
+  if (NO_ESCAPE_REGEXP.test(escapedArgument)) {
+    return escapedArgument;
+  }
+  return import_node_process2.platform === "win32" ? `"${escapedArgument.replaceAll('"', '""')}"` : `'${escapedArgument.replaceAll("'", "'\\''")}'`;
+};
+var NO_ESCAPE_REGEXP = /^[\w./-]+$/;
+
+// node_modules/is-unicode-supported/index.js
+var import_node_process3 = __toESM(require("node:process"), 1);
+function isUnicodeSupported() {
+  const { env: env2 } = import_node_process3.default;
+  const { TERM, TERM_PROGRAM } = env2;
+  if (import_node_process3.default.platform !== "win32") {
+    return TERM !== "linux";
+  }
+  return Boolean(env2.WT_SESSION) || Boolean(env2.TERMINUS_SUBLIME) || env2.ConEmuTask === "{cmd::Cmder}" || TERM_PROGRAM === "Terminus-Sublime" || TERM_PROGRAM === "vscode" || TERM === "xterm-256color" || TERM === "alacritty" || TERM === "rxvt-unicode" || TERM === "rxvt-unicode-256color" || env2.TERMINAL_EMULATOR === "JetBrains-JediTerm";
+}
+
+// node_modules/figures/index.js
+var common = {
+  circleQuestionMark: "(?)",
+  questionMarkPrefix: "(?)",
+  square: "\u2588",
+  squareDarkShade: "\u2593",
+  squareMediumShade: "\u2592",
+  squareLightShade: "\u2591",
+  squareTop: "\u2580",
+  squareBottom: "\u2584",
+  squareLeft: "\u258C",
+  squareRight: "\u2590",
+  squareCenter: "\u25A0",
+  bullet: "\u25CF",
+  dot: "\u2024",
+  ellipsis: "\u2026",
+  pointerSmall: "\u203A",
+  triangleUp: "\u25B2",
+  triangleUpSmall: "\u25B4",
+  triangleDown: "\u25BC",
+  triangleDownSmall: "\u25BE",
+  triangleLeftSmall: "\u25C2",
+  triangleRightSmall: "\u25B8",
+  home: "\u2302",
+  heart: "\u2665",
+  musicNote: "\u266A",
+  musicNoteBeamed: "\u266B",
+  arrowUp: "\u2191",
+  arrowDown: "\u2193",
+  arrowLeft: "\u2190",
+  arrowRight: "\u2192",
+  arrowLeftRight: "\u2194",
+  arrowUpDown: "\u2195",
+  almostEqual: "\u2248",
+  notEqual: "\u2260",
+  lessOrEqual: "\u2264",
+  greaterOrEqual: "\u2265",
+  identical: "\u2261",
+  infinity: "\u221E",
+  subscriptZero: "\u2080",
+  subscriptOne: "\u2081",
+  subscriptTwo: "\u2082",
+  subscriptThree: "\u2083",
+  subscriptFour: "\u2084",
+  subscriptFive: "\u2085",
+  subscriptSix: "\u2086",
+  subscriptSeven: "\u2087",
+  subscriptEight: "\u2088",
+  subscriptNine: "\u2089",
+  oneHalf: "\xBD",
+  oneThird: "\u2153",
+  oneQuarter: "\xBC",
+  oneFifth: "\u2155",
+  oneSixth: "\u2159",
+  oneEighth: "\u215B",
+  twoThirds: "\u2154",
+  twoFifths: "\u2156",
+  threeQuarters: "\xBE",
+  threeFifths: "\u2157",
+  threeEighths: "\u215C",
+  fourFifths: "\u2158",
+  fiveSixths: "\u215A",
+  fiveEighths: "\u215D",
+  sevenEighths: "\u215E",
+  line: "\u2500",
+  lineBold: "\u2501",
+  lineDouble: "\u2550",
+  lineDashed0: "\u2504",
+  lineDashed1: "\u2505",
+  lineDashed2: "\u2508",
+  lineDashed3: "\u2509",
+  lineDashed4: "\u254C",
+  lineDashed5: "\u254D",
+  lineDashed6: "\u2574",
+  lineDashed7: "\u2576",
+  lineDashed8: "\u2578",
+  lineDashed9: "\u257A",
+  lineDashed10: "\u257C",
+  lineDashed11: "\u257E",
+  lineDashed12: "\u2212",
+  lineDashed13: "\u2013",
+  lineDashed14: "\u2010",
+  lineDashed15: "\u2043",
+  lineVertical: "\u2502",
+  lineVerticalBold: "\u2503",
+  lineVerticalDouble: "\u2551",
+  lineVerticalDashed0: "\u2506",
+  lineVerticalDashed1: "\u2507",
+  lineVerticalDashed2: "\u250A",
+  lineVerticalDashed3: "\u250B",
+  lineVerticalDashed4: "\u254E",
+  lineVerticalDashed5: "\u254F",
+  lineVerticalDashed6: "\u2575",
+  lineVerticalDashed7: "\u2577",
+  lineVerticalDashed8: "\u2579",
+  lineVerticalDashed9: "\u257B",
+  lineVerticalDashed10: "\u257D",
+  lineVerticalDashed11: "\u257F",
+  lineDownLeft: "\u2510",
+  lineDownLeftArc: "\u256E",
+  lineDownBoldLeftBold: "\u2513",
+  lineDownBoldLeft: "\u2512",
+  lineDownLeftBold: "\u2511",
+  lineDownDoubleLeftDouble: "\u2557",
+  lineDownDoubleLeft: "\u2556",
+  lineDownLeftDouble: "\u2555",
+  lineDownRight: "\u250C",
+  lineDownRightArc: "\u256D",
+  lineDownBoldRightBold: "\u250F",
+  lineDownBoldRight: "\u250E",
+  lineDownRightBold: "\u250D",
+  lineDownDoubleRightDouble: "\u2554",
+  lineDownDoubleRight: "\u2553",
+  lineDownRightDouble: "\u2552",
+  lineUpLeft: "\u2518",
+  lineUpLeftArc: "\u256F",
+  lineUpBoldLeftBold: "\u251B",
+  lineUpBoldLeft: "\u251A",
+  lineUpLeftBold: "\u2519",
+  lineUpDoubleLeftDouble: "\u255D",
+  lineUpDoubleLeft: "\u255C",
+  lineUpLeftDouble: "\u255B",
+  lineUpRight: "\u2514",
+  lineUpRightArc: "\u2570",
+  lineUpBoldRightBold: "\u2517",
+  lineUpBoldRight: "\u2516",
+  lineUpRightBold: "\u2515",
+  lineUpDoubleRightDouble: "\u255A",
+  lineUpDoubleRight: "\u2559",
+  lineUpRightDouble: "\u2558",
+  lineUpDownLeft: "\u2524",
+  lineUpBoldDownBoldLeftBold: "\u252B",
+  lineUpBoldDownBoldLeft: "\u2528",
+  lineUpDownLeftBold: "\u2525",
+  lineUpBoldDownLeftBold: "\u2529",
+  lineUpDownBoldLeftBold: "\u252A",
+  lineUpDownBoldLeft: "\u2527",
+  lineUpBoldDownLeft: "\u2526",
+  lineUpDoubleDownDoubleLeftDouble: "\u2563",
+  lineUpDoubleDownDoubleLeft: "\u2562",
+  lineUpDownLeftDouble: "\u2561",
+  lineUpDownRight: "\u251C",
+  lineUpBoldDownBoldRightBold: "\u2523",
+  lineUpBoldDownBoldRight: "\u2520",
+  lineUpDownRightBold: "\u251D",
+  lineUpBoldDownRightBold: "\u2521",
+  lineUpDownBoldRightBold: "\u2522",
+  lineUpDownBoldRight: "\u251F",
+  lineUpBoldDownRight: "\u251E",
+  lineUpDoubleDownDoubleRightDouble: "\u2560",
+  lineUpDoubleDownDoubleRight: "\u255F",
+  lineUpDownRightDouble: "\u255E",
+  lineDownLeftRight: "\u252C",
+  lineDownBoldLeftBoldRightBold: "\u2533",
+  lineDownLeftBoldRightBold: "\u252F",
+  lineDownBoldLeftRight: "\u2530",
+  lineDownBoldLeftBoldRight: "\u2531",
+  lineDownBoldLeftRightBold: "\u2532",
+  lineDownLeftRightBold: "\u252E",
+  lineDownLeftBoldRight: "\u252D",
+  lineDownDoubleLeftDoubleRightDouble: "\u2566",
+  lineDownDoubleLeftRight: "\u2565",
+  lineDownLeftDoubleRightDouble: "\u2564",
+  lineUpLeftRight: "\u2534",
+  lineUpBoldLeftBoldRightBold: "\u253B",
+  lineUpLeftBoldRightBold: "\u2537",
+  lineUpBoldLeftRight: "\u2538",
+  lineUpBoldLeftBoldRight: "\u2539",
+  lineUpBoldLeftRightBold: "\u253A",
+  lineUpLeftRightBold: "\u2536",
+  lineUpLeftBoldRight: "\u2535",
+  lineUpDoubleLeftDoubleRightDouble: "\u2569",
+  lineUpDoubleLeftRight: "\u2568",
+  lineUpLeftDoubleRightDouble: "\u2567",
+  lineUpDownLeftRight: "\u253C",
+  lineUpBoldDownBoldLeftBoldRightBold: "\u254B",
+  lineUpDownBoldLeftBoldRightBold: "\u2548",
+  lineUpBoldDownLeftBoldRightBold: "\u2547",
+  lineUpBoldDownBoldLeftRightBold: "\u254A",
+  lineUpBoldDownBoldLeftBoldRight: "\u2549",
+  lineUpBoldDownLeftRight: "\u2540",
+  lineUpDownBoldLeftRight: "\u2541",
+  lineUpDownLeftBoldRight: "\u253D",
+  lineUpDownLeftRightBold: "\u253E",
+  lineUpBoldDownBoldLeftRight: "\u2542",
+  lineUpDownLeftBoldRightBold: "\u253F",
+  lineUpBoldDownLeftBoldRight: "\u2543",
+  lineUpBoldDownLeftRightBold: "\u2544",
+  lineUpDownBoldLeftBoldRight: "\u2545",
+  lineUpDownBoldLeftRightBold: "\u2546",
+  lineUpDoubleDownDoubleLeftDoubleRightDouble: "\u256C",
+  lineUpDoubleDownDoubleLeftRight: "\u256B",
+  lineUpDownLeftDoubleRightDouble: "\u256A",
+  lineCross: "\u2573",
+  lineBackslash: "\u2572",
+  lineSlash: "\u2571"
+};
+var specialMainSymbols = {
+  tick: "\u2714",
+  info: "\u2139",
+  warning: "\u26A0",
+  cross: "\u2718",
+  squareSmall: "\u25FB",
+  squareSmallFilled: "\u25FC",
+  circle: "\u25EF",
+  circleFilled: "\u25C9",
+  circleDotted: "\u25CC",
+  circleDouble: "\u25CE",
+  circleCircle: "\u24DE",
+  circleCross: "\u24E7",
+  circlePipe: "\u24BE",
+  radioOn: "\u25C9",
+  radioOff: "\u25EF",
+  checkboxOn: "\u2612",
+  checkboxOff: "\u2610",
+  checkboxCircleOn: "\u24E7",
+  checkboxCircleOff: "\u24BE",
+  pointer: "\u276F",
+  triangleUpOutline: "\u25B3",
+  triangleLeft: "\u25C0",
+  triangleRight: "\u25B6",
+  lozenge: "\u25C6",
+  lozengeOutline: "\u25C7",
+  hamburger: "\u2630",
+  smiley: "\u32E1",
+  mustache: "\u0DF4",
+  star: "\u2605",
+  play: "\u25B6",
+  nodejs: "\u2B22",
+  oneSeventh: "\u2150",
+  oneNinth: "\u2151",
+  oneTenth: "\u2152"
+};
+var specialFallbackSymbols = {
+  tick: "\u221A",
+  info: "i",
+  warning: "\u203C",
+  cross: "\xD7",
+  squareSmall: "\u25A1",
+  squareSmallFilled: "\u25A0",
+  circle: "( )",
+  circleFilled: "(*)",
+  circleDotted: "( )",
+  circleDouble: "( )",
+  circleCircle: "(\u25CB)",
+  circleCross: "(\xD7)",
+  circlePipe: "(\u2502)",
+  radioOn: "(*)",
+  radioOff: "( )",
+  checkboxOn: "[\xD7]",
+  checkboxOff: "[ ]",
+  checkboxCircleOn: "(\xD7)",
+  checkboxCircleOff: "( )",
+  pointer: ">",
+  triangleUpOutline: "\u2206",
+  triangleLeft: "\u25C4",
+  triangleRight: "\u25BA",
+  lozenge: "\u2666",
+  lozengeOutline: "\u25CA",
+  hamburger: "\u2261",
+  smiley: "\u263A",
+  mustache: "\u250C\u2500\u2510",
+  star: "\u2736",
+  play: "\u25BA",
+  nodejs: "\u2666",
+  oneSeventh: "1/7",
+  oneNinth: "1/9",
+  oneTenth: "1/10"
+};
+var mainSymbols = { ...common, ...specialMainSymbols };
+var fallbackSymbols = { ...common, ...specialFallbackSymbols };
+var shouldUseMain = isUnicodeSupported();
+var figures = shouldUseMain ? mainSymbols : fallbackSymbols;
+var figures_default = figures;
+var replacements = Object.entries(specialMainSymbols);
+
+// node_modules/yoctocolors/base.js
+var import_node_tty = __toESM(require("node:tty"), 1);
+var hasColors = import_node_tty.default?.WriteStream?.prototype?.hasColors?.() ?? false;
+var format = (open, close) => {
+  if (!hasColors) {
+    return (input) => input;
+  }
+  const openCode = `\x1B[${open}m`;
+  const closeCode = `\x1B[${close}m`;
+  return (input) => {
+    const string = input + "";
+    let index = string.indexOf(closeCode);
+    if (index === -1) {
+      return openCode + string + closeCode;
+    }
+    let result = openCode;
+    let lastIndex = 0;
+    const reopenOnNestedClose = close === 22;
+    const replaceCode = (reopenOnNestedClose ? closeCode : "") + openCode;
+    while (index !== -1) {
+      result += string.slice(lastIndex, index) + replaceCode;
+      lastIndex = index + closeCode.length;
+      index = string.indexOf(closeCode, lastIndex);
+    }
+    result += string.slice(lastIndex) + closeCode;
+    return result;
+  };
+};
+var reset = format(0, 0);
+var bold = format(1, 22);
+var dim = format(2, 22);
+var italic = format(3, 23);
+var underline = format(4, 24);
+var overline = format(53, 55);
+var inverse = format(7, 27);
+var hidden = format(8, 28);
+var strikethrough = format(9, 29);
+var black = format(30, 39);
+var red = format(31, 39);
+var green = format(32, 39);
+var yellow = format(33, 39);
+var blue = format(34, 39);
+var magenta = format(35, 39);
+var cyan = format(36, 39);
+var white = format(37, 39);
+var gray = format(90, 39);
+var bgBlack = format(40, 49);
+var bgRed = format(41, 49);
+var bgGreen = format(42, 49);
+var bgYellow = format(43, 49);
+var bgBlue = format(44, 49);
+var bgMagenta = format(45, 49);
+var bgCyan = format(46, 49);
+var bgWhite = format(47, 49);
+var bgGray = format(100, 49);
+var redBright = format(91, 39);
+var greenBright = format(92, 39);
+var yellowBright = format(93, 39);
+var blueBright = format(94, 39);
+var magentaBright = format(95, 39);
+var cyanBright = format(96, 39);
+var whiteBright = format(97, 39);
+var bgRedBright = format(101, 49);
+var bgGreenBright = format(102, 49);
+var bgYellowBright = format(103, 49);
+var bgBlueBright = format(104, 49);
+var bgMagentaBright = format(105, 49);
+var bgCyanBright = format(106, 49);
+var bgWhiteBright = format(107, 49);
+
+// node_modules/execa/lib/verbose/default.js
+var defaultVerboseFunction = ({
+  type,
+  message,
+  timestamp,
+  piped,
+  commandId,
+  result: { failed = false } = {},
+  options: { reject = true }
+}) => {
+  const timestampString = serializeTimestamp(timestamp);
+  const icon = ICONS[type]({ failed, reject, piped });
+  const color = COLORS[type]({ reject });
+  return `${gray(`[${timestampString}]`)} ${gray(`[${commandId}]`)} ${color(icon)} ${color(message)}`;
+};
+var serializeTimestamp = (timestamp) => `${padField(timestamp.getHours(), 2)}:${padField(timestamp.getMinutes(), 2)}:${padField(timestamp.getSeconds(), 2)}.${padField(timestamp.getMilliseconds(), 3)}`;
+var padField = (field, padding) => String(field).padStart(padding, "0");
+var getFinalIcon = ({ failed, reject }) => {
+  if (!failed) {
+    return figures_default.tick;
+  }
+  return reject ? figures_default.cross : figures_default.warning;
+};
+var ICONS = {
+  command: ({ piped }) => piped ? "|" : "$",
+  output: () => " ",
+  ipc: () => "*",
+  error: getFinalIcon,
+  duration: getFinalIcon
+};
+var identity = (string) => string;
+var COLORS = {
+  command: () => bold,
+  output: () => identity,
+  ipc: () => identity,
+  error: ({ reject }) => reject ? redBright : yellowBright,
+  duration: () => gray
+};
+
+// node_modules/execa/lib/verbose/custom.js
+var applyVerboseOnLines = (printedLines, verboseInfo, fdNumber) => {
+  const verboseFunction = getVerboseFunction(verboseInfo, fdNumber);
+  return printedLines.map(({ verboseLine, verboseObject }) => applyVerboseFunction(verboseLine, verboseObject, verboseFunction)).filter((printedLine) => printedLine !== void 0).map((printedLine) => appendNewline(printedLine)).join("");
+};
+var applyVerboseFunction = (verboseLine, verboseObject, verboseFunction) => {
+  if (verboseFunction === void 0) {
+    return verboseLine;
+  }
+  const printedLine = verboseFunction(verboseLine, verboseObject);
+  if (typeof printedLine === "string") {
+    return printedLine;
+  }
+};
+var appendNewline = (printedLine) => printedLine.endsWith("\n") ? printedLine : `${printedLine}
+`;
+
+// node_modules/execa/lib/verbose/log.js
+var verboseLog = ({ type, verboseMessage, fdNumber, verboseInfo, result }) => {
+  const verboseObject = getVerboseObject({ type, result, verboseInfo });
+  const printedLines = getPrintedLines(verboseMessage, verboseObject);
+  const finalLines = applyVerboseOnLines(printedLines, verboseInfo, fdNumber);
+  if (finalLines !== "") {
+    console.warn(finalLines.slice(0, -1));
+  }
+};
+var getVerboseObject = ({
+  type,
+  result,
+  verboseInfo: { escapedCommand, commandId, rawOptions: { piped = false, ...options } }
+}) => ({
+  type,
+  escapedCommand,
+  commandId: `${commandId}`,
+  timestamp: /* @__PURE__ */ new Date(),
+  piped,
+  result,
+  options
+});
+var getPrintedLines = (verboseMessage, verboseObject) => verboseMessage.split("\n").map((message) => getPrintedLine({ ...verboseObject, message }));
+var getPrintedLine = (verboseObject) => {
+  const verboseLine = defaultVerboseFunction(verboseObject);
+  return { verboseLine, verboseObject };
+};
+var serializeVerboseMessage = (message) => {
+  const messageString = typeof message === "string" ? message : (0, import_node_util3.inspect)(message);
+  const escapedMessage = escapeLines(messageString);
+  return escapedMessage.replaceAll("	", " ".repeat(TAB_SIZE));
+};
+var TAB_SIZE = 2;
+
+// node_modules/execa/lib/verbose/start.js
+var logCommand = (escapedCommand, verboseInfo) => {
+  if (!isVerbose(verboseInfo)) {
+    return;
+  }
+  verboseLog({
+    type: "command",
+    verboseMessage: escapedCommand,
+    verboseInfo
+  });
+};
+
+// node_modules/execa/lib/verbose/info.js
+var getVerboseInfo = (verbose, escapedCommand, rawOptions) => {
+  validateVerbose(verbose);
+  const commandId = getCommandId(verbose);
+  return {
+    verbose,
+    escapedCommand,
+    commandId,
+    rawOptions
+  };
+};
+var getCommandId = (verbose) => isVerbose({ verbose }) ? COMMAND_ID++ : void 0;
+var COMMAND_ID = 0n;
+var validateVerbose = (verbose) => {
+  for (const fdVerbose of verbose) {
+    if (fdVerbose === false) {
+      throw new TypeError(`The "verbose: false" option was renamed to "verbose: 'none'".`);
+    }
+    if (fdVerbose === true) {
+      throw new TypeError(`The "verbose: true" option was renamed to "verbose: 'short'".`);
+    }
+    if (!VERBOSE_VALUES.includes(fdVerbose) && !isVerboseFunction(fdVerbose)) {
+      const allowedValues = VERBOSE_VALUES.map((allowedValue) => `'${allowedValue}'`).join(", ");
+      throw new TypeError(`The "verbose" option must not be ${fdVerbose}. Allowed values are: ${allowedValues} or a function.`);
+    }
+  }
+};
+
+// node_modules/execa/lib/return/duration.js
+var import_node_process4 = require("node:process");
+var getStartTime = () => import_node_process4.hrtime.bigint();
+var getDurationMs = (startTime) => Number(import_node_process4.hrtime.bigint() - startTime) / 1e6;
+
+// node_modules/execa/lib/arguments/command.js
+var handleCommand = (filePath, rawArguments, rawOptions) => {
+  const startTime = getStartTime();
+  const { command, escapedCommand } = joinCommand(filePath, rawArguments);
+  const verbose = normalizeFdSpecificOption(rawOptions, "verbose");
+  const verboseInfo = getVerboseInfo(verbose, escapedCommand, { ...rawOptions });
+  logCommand(escapedCommand, verboseInfo);
+  return {
+    command,
+    escapedCommand,
+    startTime,
+    verboseInfo
+  };
+};
+
+// node_modules/execa/lib/arguments/options.js
+var import_node_path5 = __toESM(require("node:path"), 1);
+var import_node_process8 = __toESM(require("node:process"), 1);
+var import_cross_spawn = __toESM(require_cross_spawn(), 1);
+
+// node_modules/npm-run-path/index.js
+var import_node_process5 = __toESM(require("node:process"), 1);
+var import_node_path2 = __toESM(require("node:path"), 1);
+
+// node_modules/npm-run-path/node_modules/path-key/index.js
+function pathKey(options = {}) {
+  const {
+    env: env2 = process.env,
+    platform: platform2 = process.platform
+  } = options;
+  if (platform2 !== "win32") {
+    return "PATH";
+  }
+  return Object.keys(env2).reverse().find((key) => key.toUpperCase() === "PATH") || "Path";
+}
+
+// node_modules/unicorn-magic/node.js
+var import_node_util4 = require("node:util");
+var import_node_child_process2 = require("node:child_process");
+var import_node_path = __toESM(require("node:path"), 1);
+var import_node_url2 = require("node:url");
+var execFileOriginal = (0, import_node_util4.promisify)(import_node_child_process2.execFile);
+function toPath(urlOrPath) {
+  return urlOrPath instanceof URL ? (0, import_node_url2.fileURLToPath)(urlOrPath) : urlOrPath;
+}
+function traversePathUp(startPath) {
+  return {
+    *[Symbol.iterator]() {
+      let currentPath = import_node_path.default.resolve(toPath(startPath));
+      let previousPath;
+      while (previousPath !== currentPath) {
+        yield currentPath;
+        previousPath = currentPath;
+        currentPath = import_node_path.default.resolve(currentPath, "..");
+      }
+    }
+  };
+}
+var TEN_MEGABYTES_IN_BYTES = 10 * 1024 * 1024;
+
+// node_modules/npm-run-path/index.js
+var npmRunPath = ({
+  cwd = import_node_process5.default.cwd(),
+  path: pathOption = import_node_process5.default.env[pathKey()],
+  preferLocal = true,
+  execPath: execPath2 = import_node_process5.default.execPath,
+  addExecPath = true
+} = {}) => {
+  const cwdPath = import_node_path2.default.resolve(toPath(cwd));
+  const result = [];
+  const pathParts = pathOption.split(import_node_path2.default.delimiter);
+  if (preferLocal) {
+    applyPreferLocal(result, pathParts, cwdPath);
+  }
+  if (addExecPath) {
+    applyExecPath(result, pathParts, execPath2, cwdPath);
+  }
+  return pathOption === "" || pathOption === import_node_path2.default.delimiter ? `${result.join(import_node_path2.default.delimiter)}${pathOption}` : [...result, pathOption].join(import_node_path2.default.delimiter);
+};
+var applyPreferLocal = (result, pathParts, cwdPath) => {
+  for (const directory of traversePathUp(cwdPath)) {
+    const pathPart = import_node_path2.default.join(directory, "node_modules/.bin");
+    if (!pathParts.includes(pathPart)) {
+      result.push(pathPart);
+    }
+  }
+};
+var applyExecPath = (result, pathParts, execPath2, cwdPath) => {
+  const pathPart = import_node_path2.default.resolve(cwdPath, toPath(execPath2), "..");
+  if (!pathParts.includes(pathPart)) {
+    result.push(pathPart);
+  }
+};
+var npmRunPathEnv = ({ env: env2 = import_node_process5.default.env, ...options } = {}) => {
+  env2 = { ...env2 };
+  const pathName = pathKey({ env: env2 });
+  options.path = env2[pathName];
+  env2[pathName] = npmRunPath(options);
+  return env2;
+};
+
+// node_modules/execa/lib/terminate/kill.js
+var import_promises = require("node:timers/promises");
+
+// node_modules/execa/lib/return/final-error.js
+var getFinalError = (originalError, message, isSync) => {
+  const ErrorClass = isSync ? ExecaSyncError : ExecaError;
+  const options = originalError instanceof DiscardedError ? {} : { cause: originalError };
+  return new ErrorClass(message, options);
+};
+var DiscardedError = class extends Error {
+};
+var setErrorName = (ErrorClass, value) => {
+  Object.defineProperty(ErrorClass.prototype, "name", {
+    value,
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(ErrorClass.prototype, execaErrorSymbol, {
+    value: true,
+    writable: false,
+    enumerable: false,
+    configurable: false
+  });
+};
+var isExecaError = (error) => isErrorInstance(error) && execaErrorSymbol in error;
+var execaErrorSymbol = Symbol("isExecaError");
+var isErrorInstance = (value) => Object.prototype.toString.call(value) === "[object Error]";
+var ExecaError = class extends Error {
+};
+setErrorName(ExecaError, ExecaError.name);
+var ExecaSyncError = class extends Error {
+};
+setErrorName(ExecaSyncError, ExecaSyncError.name);
+
+// node_modules/execa/lib/terminate/signal.js
+var import_node_os3 = require("node:os");
+
+// node_modules/human-signals/build/src/main.js
+var import_node_os2 = require("node:os");
+
+// node_modules/human-signals/build/src/realtime.js
+var getRealtimeSignals = () => {
+  const length = SIGRTMAX - SIGRTMIN + 1;
+  return Array.from({ length }, getRealtimeSignal);
+};
+var getRealtimeSignal = (value, index) => ({
+  name: `SIGRT${index + 1}`,
+  number: SIGRTMIN + index,
+  action: "terminate",
+  description: "Application-specific signal (realtime)",
+  standard: "posix"
+});
+var SIGRTMIN = 34;
+var SIGRTMAX = 64;
+
+// node_modules/human-signals/build/src/signals.js
+var import_node_os = require("node:os");
+
+// node_modules/human-signals/build/src/core.js
+var SIGNALS = [
+  {
+    name: "SIGHUP",
+    number: 1,
+    action: "terminate",
+    description: "Terminal closed",
+    standard: "posix"
+  },
+  {
+    name: "SIGINT",
+    number: 2,
+    action: "terminate",
+    description: "User interruption with CTRL-C",
+    standard: "ansi"
+  },
+  {
+    name: "SIGQUIT",
+    number: 3,
+    action: "core",
+    description: "User interruption with CTRL-\\",
+    standard: "posix"
+  },
+  {
+    name: "SIGILL",
+    number: 4,
+    action: "core",
+    description: "Invalid machine instruction",
+    standard: "ansi"
+  },
+  {
+    name: "SIGTRAP",
+    number: 5,
+    action: "core",
+    description: "Debugger breakpoint",
+    standard: "posix"
+  },
+  {
+    name: "SIGABRT",
+    number: 6,
+    action: "core",
+    description: "Aborted",
+    standard: "ansi"
+  },
+  {
+    name: "SIGIOT",
+    number: 6,
+    action: "core",
+    description: "Aborted",
+    standard: "bsd"
+  },
+  {
+    name: "SIGBUS",
+    number: 7,
+    action: "core",
+    description: "Bus error due to misaligned, non-existing address or paging error",
+    standard: "bsd"
+  },
+  {
+    name: "SIGEMT",
+    number: 7,
+    action: "terminate",
+    description: "Command should be emulated but is not implemented",
+    standard: "other"
+  },
+  {
+    name: "SIGFPE",
+    number: 8,
+    action: "core",
+    description: "Floating point arithmetic error",
+    standard: "ansi"
+  },
+  {
+    name: "SIGKILL",
+    number: 9,
+    action: "terminate",
+    description: "Forced termination",
+    standard: "posix",
+    forced: true
+  },
+  {
+    name: "SIGUSR1",
+    number: 10,
+    action: "terminate",
+    description: "Application-specific signal",
+    standard: "posix"
+  },
+  {
+    name: "SIGSEGV",
+    number: 11,
+    action: "core",
+    description: "Segmentation fault",
+    standard: "ansi"
+  },
+  {
+    name: "SIGUSR2",
+    number: 12,
+    action: "terminate",
+    description: "Application-specific signal",
+    standard: "posix"
+  },
+  {
+    name: "SIGPIPE",
+    number: 13,
+    action: "terminate",
+    description: "Broken pipe or socket",
+    standard: "posix"
+  },
+  {
+    name: "SIGALRM",
+    number: 14,
+    action: "terminate",
+    description: "Timeout or timer",
+    standard: "posix"
+  },
+  {
+    name: "SIGTERM",
+    number: 15,
+    action: "terminate",
+    description: "Termination",
+    standard: "ansi"
+  },
+  {
+    name: "SIGSTKFLT",
+    number: 16,
+    action: "terminate",
+    description: "Stack is empty or overflowed",
+    standard: "other"
+  },
+  {
+    name: "SIGCHLD",
+    number: 17,
+    action: "ignore",
+    description: "Child process terminated, paused or unpaused",
+    standard: "posix"
+  },
+  {
+    name: "SIGCLD",
+    number: 17,
+    action: "ignore",
+    description: "Child process terminated, paused or unpaused",
+    standard: "other"
+  },
+  {
+    name: "SIGCONT",
+    number: 18,
+    action: "unpause",
+    description: "Unpaused",
+    standard: "posix",
+    forced: true
+  },
+  {
+    name: "SIGSTOP",
+    number: 19,
+    action: "pause",
+    description: "Paused",
+    standard: "posix",
+    forced: true
+  },
+  {
+    name: "SIGTSTP",
+    number: 20,
+    action: "pause",
+    description: 'Paused using CTRL-Z or "suspend"',
+    standard: "posix"
+  },
+  {
+    name: "SIGTTIN",
+    number: 21,
+    action: "pause",
+    description: "Background process cannot read terminal input",
+    standard: "posix"
+  },
+  {
+    name: "SIGBREAK",
+    number: 21,
+    action: "terminate",
+    description: "User interruption with CTRL-BREAK",
+    standard: "other"
+  },
+  {
+    name: "SIGTTOU",
+    number: 22,
+    action: "pause",
+    description: "Background process cannot write to terminal output",
+    standard: "posix"
+  },
+  {
+    name: "SIGURG",
+    number: 23,
+    action: "ignore",
+    description: "Socket received out-of-band data",
+    standard: "bsd"
+  },
+  {
+    name: "SIGXCPU",
+    number: 24,
+    action: "core",
+    description: "Process timed out",
+    standard: "bsd"
+  },
+  {
+    name: "SIGXFSZ",
+    number: 25,
+    action: "core",
+    description: "File too big",
+    standard: "bsd"
+  },
+  {
+    name: "SIGVTALRM",
+    number: 26,
+    action: "terminate",
+    description: "Timeout or timer",
+    standard: "bsd"
+  },
+  {
+    name: "SIGPROF",
+    number: 27,
+    action: "terminate",
+    description: "Timeout or timer",
+    standard: "bsd"
+  },
+  {
+    name: "SIGWINCH",
+    number: 28,
+    action: "ignore",
+    description: "Terminal window size changed",
+    standard: "bsd"
+  },
+  {
+    name: "SIGIO",
+    number: 29,
+    action: "terminate",
+    description: "I/O is available",
+    standard: "other"
+  },
+  {
+    name: "SIGPOLL",
+    number: 29,
+    action: "terminate",
+    description: "Watched event",
+    standard: "other"
+  },
+  {
+    name: "SIGINFO",
+    number: 29,
+    action: "ignore",
+    description: "Request for process information",
+    standard: "other"
+  },
+  {
+    name: "SIGPWR",
+    number: 30,
+    action: "terminate",
+    description: "Device running out of power",
+    standard: "systemv"
+  },
+  {
+    name: "SIGSYS",
+    number: 31,
+    action: "core",
+    description: "Invalid system call",
+    standard: "other"
+  },
+  {
+    name: "SIGUNUSED",
+    number: 31,
+    action: "terminate",
+    description: "Invalid system call",
+    standard: "other"
+  }
+];
+
+// node_modules/human-signals/build/src/signals.js
+var getSignals = () => {
+  const realtimeSignals = getRealtimeSignals();
+  const signals2 = [...SIGNALS, ...realtimeSignals].map(normalizeSignal);
+  return signals2;
+};
+var normalizeSignal = ({
+  name,
+  number: defaultNumber,
+  description,
+  action,
+  forced = false,
+  standard
+}) => {
+  const {
+    signals: { [name]: constantSignal }
+  } = import_node_os.constants;
+  const supported = constantSignal !== void 0;
+  const number = supported ? constantSignal : defaultNumber;
+  return { name, number, description, supported, action, forced, standard };
+};
+
+// node_modules/human-signals/build/src/main.js
+var getSignalsByName = () => {
+  const signals2 = getSignals();
+  return Object.fromEntries(signals2.map(getSignalByName));
+};
+var getSignalByName = ({
+  name,
+  number,
+  description,
+  supported,
+  action,
+  forced,
+  standard
+}) => [name, { name, number, description, supported, action, forced, standard }];
+var signalsByName = getSignalsByName();
+var getSignalsByNumber = () => {
+  const signals2 = getSignals();
+  const length = SIGRTMAX + 1;
+  const signalsA = Array.from(
+    { length },
+    (value, number) => getSignalByNumber(number, signals2)
+  );
+  return Object.assign({}, ...signalsA);
+};
+var getSignalByNumber = (number, signals2) => {
+  const signal = findSignalByNumber(number, signals2);
+  if (signal === void 0) {
+    return {};
+  }
+  const { name, description, supported, action, forced, standard } = signal;
+  return {
+    [number]: {
+      name,
+      number,
+      description,
+      supported,
+      action,
+      forced,
+      standard
+    }
+  };
+};
+var findSignalByNumber = (number, signals2) => {
+  const signal = signals2.find(({ name }) => import_node_os2.constants.signals[name] === number);
+  if (signal !== void 0) {
+    return signal;
+  }
+  return signals2.find((signalA) => signalA.number === number);
+};
+var signalsByNumber = getSignalsByNumber();
+
+// node_modules/execa/lib/terminate/signal.js
+var normalizeKillSignal = (killSignal) => {
+  const optionName = "option `killSignal`";
+  if (killSignal === 0) {
+    throw new TypeError(`Invalid ${optionName}: 0 cannot be used.`);
+  }
+  return normalizeSignal2(killSignal, optionName);
+};
+var normalizeSignalArgument = (signal) => signal === 0 ? signal : normalizeSignal2(signal, "`subprocess.kill()`'s argument");
+var normalizeSignal2 = (signalNameOrInteger, optionName) => {
+  if (Number.isInteger(signalNameOrInteger)) {
+    return normalizeSignalInteger(signalNameOrInteger, optionName);
+  }
+  if (typeof signalNameOrInteger === "string") {
+    return normalizeSignalName(signalNameOrInteger, optionName);
+  }
+  throw new TypeError(`Invalid ${optionName} ${String(signalNameOrInteger)}: it must be a string or an integer.
+${getAvailableSignals()}`);
+};
+var normalizeSignalInteger = (signalInteger, optionName) => {
+  if (signalsIntegerToName.has(signalInteger)) {
+    return signalsIntegerToName.get(signalInteger);
+  }
+  throw new TypeError(`Invalid ${optionName} ${signalInteger}: this signal integer does not exist.
+${getAvailableSignals()}`);
+};
+var getSignalsIntegerToName = () => new Map(Object.entries(import_node_os3.constants.signals).reverse().map(([signalName, signalInteger]) => [signalInteger, signalName]));
+var signalsIntegerToName = getSignalsIntegerToName();
+var normalizeSignalName = (signalName, optionName) => {
+  if (signalName in import_node_os3.constants.signals) {
+    return signalName;
+  }
+  if (signalName.toUpperCase() in import_node_os3.constants.signals) {
+    throw new TypeError(`Invalid ${optionName} '${signalName}': please rename it to '${signalName.toUpperCase()}'.`);
+  }
+  throw new TypeError(`Invalid ${optionName} '${signalName}': this signal name does not exist.
+${getAvailableSignals()}`);
+};
+var getAvailableSignals = () => `Available signal names: ${getAvailableSignalNames()}.
+Available signal numbers: ${getAvailableSignalIntegers()}.`;
+var getAvailableSignalNames = () => Object.keys(import_node_os3.constants.signals).sort().map((signalName) => `'${signalName}'`).join(", ");
+var getAvailableSignalIntegers = () => [...new Set(Object.values(import_node_os3.constants.signals).sort((signalInteger, signalIntegerTwo) => signalInteger - signalIntegerTwo))].join(", ");
+var getSignalDescription = (signal) => signalsByName[signal].description;
+
+// node_modules/execa/lib/terminate/kill.js
+var normalizeForceKillAfterDelay = (forceKillAfterDelay) => {
+  if (forceKillAfterDelay === false) {
+    return forceKillAfterDelay;
+  }
+  if (forceKillAfterDelay === true) {
+    return DEFAULT_FORCE_KILL_TIMEOUT;
+  }
+  if (!Number.isFinite(forceKillAfterDelay) || forceKillAfterDelay < 0) {
+    throw new TypeError(`Expected the \`forceKillAfterDelay\` option to be a non-negative integer, got \`${forceKillAfterDelay}\` (${typeof forceKillAfterDelay})`);
+  }
+  return forceKillAfterDelay;
+};
+var DEFAULT_FORCE_KILL_TIMEOUT = 1e3 * 5;
+var subprocessKill = ({ kill, options: { forceKillAfterDelay, killSignal }, onInternalError, context, controller }, signalOrError, errorArgument) => {
+  const { signal, error } = parseKillArguments(signalOrError, errorArgument, killSignal);
+  emitKillError(error, onInternalError);
+  const killResult = kill(signal);
+  setKillTimeout({
+    kill,
+    signal,
+    forceKillAfterDelay,
+    killSignal,
+    killResult,
+    context,
+    controller
+  });
+  return killResult;
+};
+var parseKillArguments = (signalOrError, errorArgument, killSignal) => {
+  const [signal = killSignal, error] = isErrorInstance(signalOrError) ? [void 0, signalOrError] : [signalOrError, errorArgument];
+  if (typeof signal !== "string" && !Number.isInteger(signal)) {
+    throw new TypeError(`The first argument must be an error instance or a signal name string/integer: ${String(signal)}`);
+  }
+  if (error !== void 0 && !isErrorInstance(error)) {
+    throw new TypeError(`The second argument is optional. If specified, it must be an error instance: ${error}`);
+  }
+  return { signal: normalizeSignalArgument(signal), error };
+};
+var emitKillError = (error, onInternalError) => {
+  if (error !== void 0) {
+    onInternalError.reject(error);
+  }
+};
+var setKillTimeout = async ({ kill, signal, forceKillAfterDelay, killSignal, killResult, context, controller }) => {
+  if (signal === killSignal && killResult) {
+    killOnTimeout({
+      kill,
+      forceKillAfterDelay,
+      context,
+      controllerSignal: controller.signal
+    });
+  }
+};
+var killOnTimeout = async ({ kill, forceKillAfterDelay, context, controllerSignal }) => {
+  if (forceKillAfterDelay === false) {
+    return;
+  }
+  try {
+    await (0, import_promises.setTimeout)(forceKillAfterDelay, void 0, { signal: controllerSignal });
+    if (kill("SIGKILL")) {
+      context.isForcefullyTerminated ??= true;
+    }
+  } catch {
+  }
+};
+
+// node_modules/execa/lib/utils/abort-signal.js
+var import_node_events = require("node:events");
+var onAbortedSignal = async (mainSignal, stopSignal) => {
+  if (!mainSignal.aborted) {
+    await (0, import_node_events.once)(mainSignal, "abort", { signal: stopSignal });
+  }
+};
+
+// node_modules/execa/lib/terminate/cancel.js
+var validateCancelSignal = ({ cancelSignal }) => {
+  if (cancelSignal !== void 0 && Object.prototype.toString.call(cancelSignal) !== "[object AbortSignal]") {
+    throw new Error(`The \`cancelSignal\` option must be an AbortSignal: ${String(cancelSignal)}`);
+  }
+};
+var throwOnCancel = ({ subprocess, cancelSignal, gracefulCancel, context, controller }) => cancelSignal === void 0 || gracefulCancel ? [] : [terminateOnCancel(subprocess, cancelSignal, context, controller)];
+var terminateOnCancel = async (subprocess, cancelSignal, context, { signal }) => {
+  await onAbortedSignal(cancelSignal, signal);
+  context.terminationReason ??= "cancel";
+  subprocess.kill();
+  throw cancelSignal.reason;
+};
+
+// node_modules/execa/lib/ipc/graceful.js
+var import_promises3 = require("node:timers/promises");
+
+// node_modules/execa/lib/ipc/send.js
+var import_node_util5 = require("node:util");
+
+// node_modules/execa/lib/ipc/validation.js
+var validateIpcMethod = ({ methodName, isSubprocess, ipc, isConnected: isConnected2 }) => {
+  validateIpcOption(methodName, isSubprocess, ipc);
+  validateConnection(methodName, isSubprocess, isConnected2);
+};
+var validateIpcOption = (methodName, isSubprocess, ipc) => {
+  if (!ipc) {
+    throw new Error(`${getMethodName(methodName, isSubprocess)} can only be used if the \`ipc\` option is \`true\`.`);
+  }
+};
+var validateConnection = (methodName, isSubprocess, isConnected2) => {
+  if (!isConnected2) {
+    throw new Error(`${getMethodName(methodName, isSubprocess)} cannot be used: the ${getOtherProcessName(isSubprocess)} has already exited or disconnected.`);
+  }
+};
+var throwOnEarlyDisconnect = (isSubprocess) => {
+  throw new Error(`${getMethodName("getOneMessage", isSubprocess)} could not complete: the ${getOtherProcessName(isSubprocess)} exited or disconnected.`);
+};
+var throwOnStrictDeadlockError = (isSubprocess) => {
+  throw new Error(`${getMethodName("sendMessage", isSubprocess)} failed: the ${getOtherProcessName(isSubprocess)} is sending a message too, instead of listening to incoming messages.
+This can be fixed by both sending a message and listening to incoming messages at the same time:
+
+const [receivedMessage] = await Promise.all([
+	${getMethodName("getOneMessage", isSubprocess)},
+	${getMethodName("sendMessage", isSubprocess, "message, {strict: true}")},
+]);`);
+};
+var getStrictResponseError = (error, isSubprocess) => new Error(`${getMethodName("sendMessage", isSubprocess)} failed when sending an acknowledgment response to the ${getOtherProcessName(isSubprocess)}.`, { cause: error });
+var throwOnMissingStrict = (isSubprocess) => {
+  throw new Error(`${getMethodName("sendMessage", isSubprocess)} failed: the ${getOtherProcessName(isSubprocess)} is not listening to incoming messages.`);
+};
+var throwOnStrictDisconnect = (isSubprocess) => {
+  throw new Error(`${getMethodName("sendMessage", isSubprocess)} failed: the ${getOtherProcessName(isSubprocess)} exited without listening to incoming messages.`);
+};
+var getAbortDisconnectError = () => new Error(`\`cancelSignal\` aborted: the ${getOtherProcessName(true)} disconnected.`);
+var throwOnMissingParent = () => {
+  throw new Error("`getCancelSignal()` cannot be used without setting the `cancelSignal` subprocess option.");
+};
+var handleEpipeError = ({ error, methodName, isSubprocess }) => {
+  if (error.code === "EPIPE") {
+    throw new Error(`${getMethodName(methodName, isSubprocess)} cannot be used: the ${getOtherProcessName(isSubprocess)} is disconnecting.`, { cause: error });
+  }
+};
+var handleSerializationError = ({ error, methodName, isSubprocess, message }) => {
+  if (isSerializationError(error)) {
+    throw new Error(`${getMethodName(methodName, isSubprocess)}'s argument type is invalid: the message cannot be serialized: ${String(message)}.`, { cause: error });
+  }
+};
+var isSerializationError = ({ code: code2, message }) => SERIALIZATION_ERROR_CODES.has(code2) || SERIALIZATION_ERROR_MESSAGES.some((serializationErrorMessage) => message.includes(serializationErrorMessage));
+var SERIALIZATION_ERROR_CODES = /* @__PURE__ */ new Set([
+  // Message is `undefined`
+  "ERR_MISSING_ARGS",
+  // Message is a function, a bigint, a symbol
+  "ERR_INVALID_ARG_TYPE"
+]);
+var SERIALIZATION_ERROR_MESSAGES = [
+  // Message is a promise or a proxy, with `serialization: 'advanced'`
+  "could not be cloned",
+  // Message has cycles, with `serialization: 'json'`
+  "circular structure",
+  // Message has cycles inside toJSON(), with `serialization: 'json'`
+  "call stack size exceeded"
+];
+var getMethodName = (methodName, isSubprocess, parameters = "") => methodName === "cancelSignal" ? "`cancelSignal`'s `controller.abort()`" : `${getNamespaceName(isSubprocess)}${methodName}(${parameters})`;
+var getNamespaceName = (isSubprocess) => isSubprocess ? "" : "subprocess.";
+var getOtherProcessName = (isSubprocess) => isSubprocess ? "parent process" : "subprocess";
+var disconnect = (anyProcess) => {
+  if (anyProcess.connected) {
+    anyProcess.disconnect();
+  }
+};
+
+// node_modules/execa/lib/utils/deferred.js
+var createDeferred = () => {
+  const methods = {};
+  const promise = new Promise((resolve4, reject) => {
+    Object.assign(methods, { resolve: resolve4, reject });
+  });
+  return Object.assign(promise, methods);
+};
+
+// node_modules/execa/lib/arguments/fd-options.js
+var getToStream = (destination, to = "stdin") => {
+  const isWritable2 = true;
+  const { options, fileDescriptors } = SUBPROCESS_OPTIONS.get(destination);
+  const fdNumber = getFdNumber(fileDescriptors, to, isWritable2);
+  const destinationStream = destination.stdio[fdNumber];
+  if (destinationStream === null) {
+    throw new TypeError(getInvalidStdioOptionMessage(fdNumber, to, options, isWritable2));
+  }
+  return destinationStream;
+};
+var getFromStream = (source, from = "stdout") => {
+  const isWritable2 = false;
+  const { options, fileDescriptors } = SUBPROCESS_OPTIONS.get(source);
+  const fdNumber = getFdNumber(fileDescriptors, from, isWritable2);
+  const sourceStream = fdNumber === "all" ? source.all : source.stdio[fdNumber];
+  if (sourceStream === null || sourceStream === void 0) {
+    throw new TypeError(getInvalidStdioOptionMessage(fdNumber, from, options, isWritable2));
+  }
+  return sourceStream;
+};
+var SUBPROCESS_OPTIONS = /* @__PURE__ */ new WeakMap();
+var getFdNumber = (fileDescriptors, fdName, isWritable2) => {
+  const fdNumber = parseFdNumber(fdName, isWritable2);
+  validateFdNumber(fdNumber, fdName, isWritable2, fileDescriptors);
+  return fdNumber;
+};
+var parseFdNumber = (fdName, isWritable2) => {
+  const fdNumber = parseFd(fdName);
+  if (fdNumber !== void 0) {
+    return fdNumber;
+  }
+  const { validOptions, defaultValue } = isWritable2 ? { validOptions: '"stdin"', defaultValue: "stdin" } : { validOptions: '"stdout", "stderr", "all"', defaultValue: "stdout" };
+  throw new TypeError(`"${getOptionName(isWritable2)}" must not be "${fdName}".
+It must be ${validOptions} or "fd3", "fd4" (and so on).
+It is optional and defaults to "${defaultValue}".`);
+};
+var validateFdNumber = (fdNumber, fdName, isWritable2, fileDescriptors) => {
+  const fileDescriptor = fileDescriptors[getUsedDescriptor(fdNumber)];
+  if (fileDescriptor === void 0) {
+    throw new TypeError(`"${getOptionName(isWritable2)}" must not be ${fdName}. That file descriptor does not exist.
+Please set the "stdio" option to ensure that file descriptor exists.`);
+  }
+  if (fileDescriptor.direction === "input" && !isWritable2) {
+    throw new TypeError(`"${getOptionName(isWritable2)}" must not be ${fdName}. It must be a readable stream, not writable.`);
+  }
+  if (fileDescriptor.direction !== "input" && isWritable2) {
+    throw new TypeError(`"${getOptionName(isWritable2)}" must not be ${fdName}. It must be a writable stream, not readable.`);
+  }
+};
+var getInvalidStdioOptionMessage = (fdNumber, fdName, options, isWritable2) => {
+  if (fdNumber === "all" && !options.all) {
+    return `The "all" option must be true to use "from: 'all'".`;
+  }
+  const { optionName, optionValue } = getInvalidStdioOption(fdNumber, options);
+  return `The "${optionName}: ${serializeOptionValue(optionValue)}" option is incompatible with using "${getOptionName(isWritable2)}: ${serializeOptionValue(fdName)}".
+Please set this option with "pipe" instead.`;
+};
+var getInvalidStdioOption = (fdNumber, { stdin, stdout, stderr, stdio }) => {
+  const usedDescriptor = getUsedDescriptor(fdNumber);
+  if (usedDescriptor === 0 && stdin !== void 0) {
+    return { optionName: "stdin", optionValue: stdin };
+  }
+  if (usedDescriptor === 1 && stdout !== void 0) {
+    return { optionName: "stdout", optionValue: stdout };
+  }
+  if (usedDescriptor === 2 && stderr !== void 0) {
+    return { optionName: "stderr", optionValue: stderr };
+  }
+  return { optionName: `stdio[${usedDescriptor}]`, optionValue: stdio[usedDescriptor] };
+};
+var getUsedDescriptor = (fdNumber) => fdNumber === "all" ? 1 : fdNumber;
+var getOptionName = (isWritable2) => isWritable2 ? "to" : "from";
+var serializeOptionValue = (value) => {
+  if (typeof value === "string") {
+    return `'${value}'`;
+  }
+  return typeof value === "number" ? `${value}` : "Stream";
+};
+
+// node_modules/execa/lib/ipc/strict.js
+var import_node_events5 = require("node:events");
+
+// node_modules/execa/lib/utils/max-listeners.js
+var import_node_events2 = require("node:events");
+var incrementMaxListeners = (eventEmitter, maxListenersIncrement, signal) => {
+  const maxListeners = eventEmitter.getMaxListeners();
+  if (maxListeners === 0 || maxListeners === Number.POSITIVE_INFINITY) {
+    return;
+  }
+  eventEmitter.setMaxListeners(maxListeners + maxListenersIncrement);
+  (0, import_node_events2.addAbortListener)(signal, () => {
+    eventEmitter.setMaxListeners(eventEmitter.getMaxListeners() - maxListenersIncrement);
+  });
+};
+
+// node_modules/execa/lib/ipc/forward.js
+var import_node_events4 = require("node:events");
+
+// node_modules/execa/lib/ipc/incoming.js
+var import_node_events3 = require("node:events");
+var import_promises2 = require("node:timers/promises");
+
+// node_modules/execa/lib/ipc/reference.js
+var addReference = (channel, reference2) => {
+  if (reference2) {
+    addReferenceCount(channel);
+  }
+};
+var addReferenceCount = (channel) => {
+  channel.refCounted();
+};
+var removeReference = (channel, reference2) => {
+  if (reference2) {
+    removeReferenceCount(channel);
+  }
+};
+var removeReferenceCount = (channel) => {
+  channel.unrefCounted();
+};
+var undoAddedReferences = (channel, isSubprocess) => {
+  if (isSubprocess) {
+    removeReferenceCount(channel);
+    removeReferenceCount(channel);
+  }
+};
+var redoAddedReferences = (channel, isSubprocess) => {
+  if (isSubprocess) {
+    addReferenceCount(channel);
+    addReferenceCount(channel);
+  }
+};
+
+// node_modules/execa/lib/ipc/incoming.js
+var onMessage = async ({ anyProcess, channel, isSubprocess, ipcEmitter }, wrappedMessage) => {
+  if (handleStrictResponse(wrappedMessage) || handleAbort(wrappedMessage)) {
+    return;
+  }
+  if (!INCOMING_MESSAGES.has(anyProcess)) {
+    INCOMING_MESSAGES.set(anyProcess, []);
+  }
+  const incomingMessages = INCOMING_MESSAGES.get(anyProcess);
+  incomingMessages.push(wrappedMessage);
+  if (incomingMessages.length > 1) {
+    return;
+  }
+  while (incomingMessages.length > 0) {
+    await waitForOutgoingMessages(anyProcess, ipcEmitter, wrappedMessage);
+    await import_promises2.scheduler.yield();
+    const message = await handleStrictRequest({
+      wrappedMessage: incomingMessages[0],
+      anyProcess,
+      channel,
+      isSubprocess,
+      ipcEmitter
+    });
+    incomingMessages.shift();
+    ipcEmitter.emit("message", message);
+    ipcEmitter.emit("message:done");
+  }
+};
+var onDisconnect = async ({ anyProcess, channel, isSubprocess, ipcEmitter, boundOnMessage }) => {
+  abortOnDisconnect();
+  const incomingMessages = INCOMING_MESSAGES.get(anyProcess);
+  while (incomingMessages?.length > 0) {
+    await (0, import_node_events3.once)(ipcEmitter, "message:done");
+  }
+  anyProcess.removeListener("message", boundOnMessage);
+  redoAddedReferences(channel, isSubprocess);
+  ipcEmitter.connected = false;
+  ipcEmitter.emit("disconnect");
+};
+var INCOMING_MESSAGES = /* @__PURE__ */ new WeakMap();
+
+// node_modules/execa/lib/ipc/forward.js
+var getIpcEmitter = (anyProcess, channel, isSubprocess) => {
+  if (IPC_EMITTERS.has(anyProcess)) {
+    return IPC_EMITTERS.get(anyProcess);
+  }
+  const ipcEmitter = new import_node_events4.EventEmitter();
+  ipcEmitter.connected = true;
+  IPC_EMITTERS.set(anyProcess, ipcEmitter);
+  forwardEvents({
+    ipcEmitter,
+    anyProcess,
+    channel,
+    isSubprocess
+  });
+  return ipcEmitter;
+};
+var IPC_EMITTERS = /* @__PURE__ */ new WeakMap();
+var forwardEvents = ({ ipcEmitter, anyProcess, channel, isSubprocess }) => {
+  const boundOnMessage = onMessage.bind(void 0, {
+    anyProcess,
+    channel,
+    isSubprocess,
+    ipcEmitter
+  });
+  anyProcess.on("message", boundOnMessage);
+  anyProcess.once("disconnect", onDisconnect.bind(void 0, {
+    anyProcess,
+    channel,
+    isSubprocess,
+    ipcEmitter,
+    boundOnMessage
+  }));
+  undoAddedReferences(channel, isSubprocess);
+};
+var isConnected = (anyProcess) => {
+  const ipcEmitter = IPC_EMITTERS.get(anyProcess);
+  return ipcEmitter === void 0 ? anyProcess.channel !== null : ipcEmitter.connected;
+};
+
+// node_modules/execa/lib/ipc/strict.js
+var handleSendStrict = ({ anyProcess, channel, isSubprocess, message, strict }) => {
+  if (!strict) {
+    return message;
+  }
+  const ipcEmitter = getIpcEmitter(anyProcess, channel, isSubprocess);
+  const hasListeners = hasMessageListeners(anyProcess, ipcEmitter);
+  return {
+    id: count++,
+    type: REQUEST_TYPE,
+    message,
+    hasListeners
+  };
+};
+var count = 0n;
+var validateStrictDeadlock = (outgoingMessages, wrappedMessage) => {
+  if (wrappedMessage?.type !== REQUEST_TYPE || wrappedMessage.hasListeners) {
+    return;
+  }
+  for (const { id } of outgoingMessages) {
+    if (id !== void 0) {
+      STRICT_RESPONSES[id].resolve({ isDeadlock: true, hasListeners: false });
+    }
+  }
+};
+var handleStrictRequest = async ({ wrappedMessage, anyProcess, channel, isSubprocess, ipcEmitter }) => {
+  if (wrappedMessage?.type !== REQUEST_TYPE || !anyProcess.connected) {
+    return wrappedMessage;
+  }
+  const { id, message } = wrappedMessage;
+  const response = { id, type: RESPONSE_TYPE, message: hasMessageListeners(anyProcess, ipcEmitter) };
+  try {
+    await sendMessage({
+      anyProcess,
+      channel,
+      isSubprocess,
+      ipc: true
+    }, response);
+  } catch (error) {
+    ipcEmitter.emit("strict:error", error);
+  }
+  return message;
+};
+var handleStrictResponse = (wrappedMessage) => {
+  if (wrappedMessage?.type !== RESPONSE_TYPE) {
+    return false;
+  }
+  const { id, message: hasListeners } = wrappedMessage;
+  STRICT_RESPONSES[id]?.resolve({ isDeadlock: false, hasListeners });
+  return true;
+};
+var waitForStrictResponse = async (wrappedMessage, anyProcess, isSubprocess) => {
+  if (wrappedMessage?.type !== REQUEST_TYPE) {
+    return;
+  }
+  const deferred = createDeferred();
+  STRICT_RESPONSES[wrappedMessage.id] = deferred;
+  const controller = new AbortController();
+  try {
+    const { isDeadlock, hasListeners } = await Promise.race([
+      deferred,
+      throwOnDisconnect(anyProcess, isSubprocess, controller)
+    ]);
+    if (isDeadlock) {
+      throwOnStrictDeadlockError(isSubprocess);
+    }
+    if (!hasListeners) {
+      throwOnMissingStrict(isSubprocess);
+    }
+  } finally {
+    controller.abort();
+    delete STRICT_RESPONSES[wrappedMessage.id];
+  }
+};
+var STRICT_RESPONSES = {};
+var throwOnDisconnect = async (anyProcess, isSubprocess, { signal }) => {
+  incrementMaxListeners(anyProcess, 1, signal);
+  await (0, import_node_events5.once)(anyProcess, "disconnect", { signal });
+  throwOnStrictDisconnect(isSubprocess);
+};
+var REQUEST_TYPE = "execa:ipc:request";
+var RESPONSE_TYPE = "execa:ipc:response";
+
+// node_modules/execa/lib/ipc/outgoing.js
+var startSendMessage = (anyProcess, wrappedMessage, strict) => {
+  if (!OUTGOING_MESSAGES.has(anyProcess)) {
+    OUTGOING_MESSAGES.set(anyProcess, /* @__PURE__ */ new Set());
+  }
+  const outgoingMessages = OUTGOING_MESSAGES.get(anyProcess);
+  const onMessageSent = createDeferred();
+  const id = strict ? wrappedMessage.id : void 0;
+  const outgoingMessage = { onMessageSent, id };
+  outgoingMessages.add(outgoingMessage);
+  return { outgoingMessages, outgoingMessage };
+};
+var endSendMessage = ({ outgoingMessages, outgoingMessage }) => {
+  outgoingMessages.delete(outgoingMessage);
+  outgoingMessage.onMessageSent.resolve();
+};
+var waitForOutgoingMessages = async (anyProcess, ipcEmitter, wrappedMessage) => {
+  while (!hasMessageListeners(anyProcess, ipcEmitter) && OUTGOING_MESSAGES.get(anyProcess)?.size > 0) {
+    const outgoingMessages = [...OUTGOING_MESSAGES.get(anyProcess)];
+    validateStrictDeadlock(outgoingMessages, wrappedMessage);
+    await Promise.all(outgoingMessages.map(({ onMessageSent }) => onMessageSent));
+  }
+};
+var OUTGOING_MESSAGES = /* @__PURE__ */ new WeakMap();
+var hasMessageListeners = (anyProcess, ipcEmitter) => ipcEmitter.listenerCount("message") > getMinListenerCount(anyProcess);
+var getMinListenerCount = (anyProcess) => SUBPROCESS_OPTIONS.has(anyProcess) && !getFdSpecificValue(SUBPROCESS_OPTIONS.get(anyProcess).options.buffer, "ipc") ? 1 : 0;
+
+// node_modules/execa/lib/ipc/send.js
+var sendMessage = ({ anyProcess, channel, isSubprocess, ipc }, message, { strict = false } = {}) => {
+  const methodName = "sendMessage";
+  validateIpcMethod({
+    methodName,
+    isSubprocess,
+    ipc,
+    isConnected: anyProcess.connected
+  });
+  return sendMessageAsync({
+    anyProcess,
+    channel,
+    methodName,
+    isSubprocess,
+    message,
+    strict
+  });
+};
+var sendMessageAsync = async ({ anyProcess, channel, methodName, isSubprocess, message, strict }) => {
+  const wrappedMessage = handleSendStrict({
+    anyProcess,
+    channel,
+    isSubprocess,
+    message,
+    strict
+  });
+  const outgoingMessagesState = startSendMessage(anyProcess, wrappedMessage, strict);
+  try {
+    await sendOneMessage({
+      anyProcess,
+      methodName,
+      isSubprocess,
+      wrappedMessage,
+      message
+    });
+  } catch (error) {
+    disconnect(anyProcess);
+    throw error;
+  } finally {
+    endSendMessage(outgoingMessagesState);
+  }
+};
+var sendOneMessage = async ({ anyProcess, methodName, isSubprocess, wrappedMessage, message }) => {
+  const sendMethod = getSendMethod(anyProcess);
+  try {
+    await Promise.all([
+      waitForStrictResponse(wrappedMessage, anyProcess, isSubprocess),
+      sendMethod(wrappedMessage)
+    ]);
+  } catch (error) {
+    handleEpipeError({ error, methodName, isSubprocess });
+    handleSerializationError({
+      error,
+      methodName,
+      isSubprocess,
+      message
+    });
+    throw error;
+  }
+};
+var getSendMethod = (anyProcess) => {
+  if (PROCESS_SEND_METHODS.has(anyProcess)) {
+    return PROCESS_SEND_METHODS.get(anyProcess);
+  }
+  const sendMethod = (0, import_node_util5.promisify)(anyProcess.send.bind(anyProcess));
+  PROCESS_SEND_METHODS.set(anyProcess, sendMethod);
+  return sendMethod;
+};
+var PROCESS_SEND_METHODS = /* @__PURE__ */ new WeakMap();
+
+// node_modules/execa/lib/ipc/graceful.js
+var sendAbort = (subprocess, message) => {
+  const methodName = "cancelSignal";
+  validateConnection(methodName, false, subprocess.connected);
+  return sendOneMessage({
+    anyProcess: subprocess,
+    methodName,
+    isSubprocess: false,
+    wrappedMessage: { type: GRACEFUL_CANCEL_TYPE, message },
+    message
+  });
+};
+var getCancelSignal = async ({ anyProcess, channel, isSubprocess, ipc }) => {
+  await startIpc({
+    anyProcess,
+    channel,
+    isSubprocess,
+    ipc
+  });
+  return cancelController.signal;
+};
+var startIpc = async ({ anyProcess, channel, isSubprocess, ipc }) => {
+  if (cancelListening) {
+    return;
+  }
+  cancelListening = true;
+  if (!ipc) {
+    throwOnMissingParent();
+    return;
+  }
+  if (channel === null) {
+    abortOnDisconnect();
+    return;
+  }
+  getIpcEmitter(anyProcess, channel, isSubprocess);
+  await import_promises3.scheduler.yield();
+};
+var cancelListening = false;
+var handleAbort = (wrappedMessage) => {
+  if (wrappedMessage?.type !== GRACEFUL_CANCEL_TYPE) {
+    return false;
+  }
+  cancelController.abort(wrappedMessage.message);
+  return true;
+};
+var GRACEFUL_CANCEL_TYPE = "execa:ipc:cancel";
+var abortOnDisconnect = () => {
+  cancelController.abort(getAbortDisconnectError());
+};
+var cancelController = new AbortController();
+
+// node_modules/execa/lib/terminate/graceful.js
+var validateGracefulCancel = ({ gracefulCancel, cancelSignal, ipc, serialization }) => {
+  if (!gracefulCancel) {
+    return;
+  }
+  if (cancelSignal === void 0) {
+    throw new Error("The `cancelSignal` option must be defined when setting the `gracefulCancel` option.");
+  }
+  if (!ipc) {
+    throw new Error("The `ipc` option cannot be false when setting the `gracefulCancel` option.");
+  }
+  if (serialization === "json") {
+    throw new Error("The `serialization` option cannot be 'json' when setting the `gracefulCancel` option.");
+  }
+};
+var throwOnGracefulCancel = ({
+  subprocess,
+  cancelSignal,
+  gracefulCancel,
+  forceKillAfterDelay,
+  context,
+  controller
+}) => gracefulCancel ? [sendOnAbort({
+  subprocess,
+  cancelSignal,
+  forceKillAfterDelay,
+  context,
+  controller
+})] : [];
+var sendOnAbort = async ({ subprocess, cancelSignal, forceKillAfterDelay, context, controller: { signal } }) => {
+  await onAbortedSignal(cancelSignal, signal);
+  const reason = getReason(cancelSignal);
+  await sendAbort(subprocess, reason);
+  killOnTimeout({
+    kill: subprocess.kill,
+    forceKillAfterDelay,
+    context,
+    controllerSignal: signal
+  });
+  context.terminationReason ??= "gracefulCancel";
+  throw cancelSignal.reason;
+};
+var getReason = ({ reason }) => {
+  if (!(reason instanceof DOMException)) {
+    return reason;
+  }
+  const error = new Error(reason.message);
+  Object.defineProperty(error, "stack", {
+    value: reason.stack,
+    enumerable: false,
+    configurable: true,
+    writable: true
+  });
+  return error;
+};
+
+// node_modules/execa/lib/terminate/timeout.js
+var import_promises4 = require("node:timers/promises");
+var validateTimeout = ({ timeout }) => {
+  if (timeout !== void 0 && (!Number.isFinite(timeout) || timeout < 0)) {
+    throw new TypeError(`Expected the \`timeout\` option to be a non-negative integer, got \`${timeout}\` (${typeof timeout})`);
+  }
+};
+var throwOnTimeout = (subprocess, timeout, context, controller) => timeout === 0 || timeout === void 0 ? [] : [killAfterTimeout(subprocess, timeout, context, controller)];
+var killAfterTimeout = async (subprocess, timeout, context, { signal }) => {
+  await (0, import_promises4.setTimeout)(timeout, void 0, { signal });
+  context.terminationReason ??= "timeout";
+  subprocess.kill();
+  throw new DiscardedError();
+};
+
+// node_modules/execa/lib/methods/node.js
+var import_node_process6 = require("node:process");
+var import_node_path3 = __toESM(require("node:path"), 1);
+var mapNode = ({ options }) => {
+  if (options.node === false) {
+    throw new TypeError('The "node" option cannot be false with `execaNode()`.');
+  }
+  return { options: { ...options, node: true } };
+};
+var handleNodeOption = (file, commandArguments, {
+  node: shouldHandleNode = false,
+  nodePath = import_node_process6.execPath,
+  nodeOptions = import_node_process6.execArgv.filter((nodeOption) => !nodeOption.startsWith("--inspect")),
+  cwd,
+  execPath: formerNodePath,
+  ...options
+}) => {
+  if (formerNodePath !== void 0) {
+    throw new TypeError('The "execPath" option has been removed. Please use the "nodePath" option instead.');
+  }
+  const normalizedNodePath = safeNormalizeFileUrl(nodePath, 'The "nodePath" option');
+  const resolvedNodePath = import_node_path3.default.resolve(cwd, normalizedNodePath);
+  const newOptions = {
+    ...options,
+    nodePath: resolvedNodePath,
+    node: shouldHandleNode,
+    cwd
+  };
+  if (!shouldHandleNode) {
+    return [file, commandArguments, newOptions];
+  }
+  if (import_node_path3.default.basename(file, ".exe") === "node") {
+    throw new TypeError('When the "node" option is true, the first argument does not need to be "node".');
+  }
+  return [
+    resolvedNodePath,
+    [...nodeOptions, file, ...commandArguments],
+    { ipc: true, ...newOptions, shell: false }
+  ];
+};
+
+// node_modules/execa/lib/ipc/ipc-input.js
+var import_node_v8 = require("node:v8");
+var validateIpcInputOption = ({ ipcInput, ipc, serialization }) => {
+  if (ipcInput === void 0) {
+    return;
+  }
+  if (!ipc) {
+    throw new Error("The `ipcInput` option cannot be set unless the `ipc` option is `true`.");
+  }
+  validateIpcInput[serialization](ipcInput);
+};
+var validateAdvancedInput = (ipcInput) => {
+  try {
+    (0, import_node_v8.serialize)(ipcInput);
+  } catch (error) {
+    throw new Error("The `ipcInput` option is not serializable with a structured clone.", { cause: error });
+  }
+};
+var validateJsonInput = (ipcInput) => {
+  try {
+    JSON.stringify(ipcInput);
+  } catch (error) {
+    throw new Error("The `ipcInput` option is not serializable with JSON.", { cause: error });
+  }
+};
+var validateIpcInput = {
+  advanced: validateAdvancedInput,
+  json: validateJsonInput
+};
+var sendIpcInput = async (subprocess, ipcInput) => {
+  if (ipcInput === void 0) {
+    return;
+  }
+  await subprocess.sendMessage(ipcInput);
+};
+
+// node_modules/execa/lib/arguments/encoding-option.js
+var validateEncoding = ({ encoding }) => {
+  if (ENCODINGS.has(encoding)) {
+    return;
+  }
+  const correctEncoding = getCorrectEncoding(encoding);
+  if (correctEncoding !== void 0) {
+    throw new TypeError(`Invalid option \`encoding: ${serializeEncoding(encoding)}\`.
+Please rename it to ${serializeEncoding(correctEncoding)}.`);
+  }
+  const correctEncodings = [...ENCODINGS].map((correctEncoding2) => serializeEncoding(correctEncoding2)).join(", ");
+  throw new TypeError(`Invalid option \`encoding: ${serializeEncoding(encoding)}\`.
+Please rename it to one of: ${correctEncodings}.`);
+};
+var TEXT_ENCODINGS = /* @__PURE__ */ new Set(["utf8", "utf16le"]);
+var BINARY_ENCODINGS = /* @__PURE__ */ new Set(["buffer", "hex", "base64", "base64url", "latin1", "ascii"]);
+var ENCODINGS = /* @__PURE__ */ new Set([...TEXT_ENCODINGS, ...BINARY_ENCODINGS]);
+var getCorrectEncoding = (encoding) => {
+  if (encoding === null) {
+    return "buffer";
+  }
+  if (typeof encoding !== "string") {
+    return;
+  }
+  const lowerEncoding = encoding.toLowerCase();
+  if (lowerEncoding in ENCODING_ALIASES) {
+    return ENCODING_ALIASES[lowerEncoding];
+  }
+  if (ENCODINGS.has(lowerEncoding)) {
+    return lowerEncoding;
+  }
+};
+var ENCODING_ALIASES = {
+  // eslint-disable-next-line unicorn/text-encoding-identifier-case
+  "utf-8": "utf8",
+  "utf-16le": "utf16le",
+  "ucs-2": "utf16le",
+  ucs2: "utf16le",
+  binary: "latin1"
+};
+var serializeEncoding = (encoding) => typeof encoding === "string" ? `"${encoding}"` : String(encoding);
+
+// node_modules/execa/lib/arguments/cwd.js
+var import_node_fs = require("node:fs");
+var import_node_path4 = __toESM(require("node:path"), 1);
+var import_node_process7 = __toESM(require("node:process"), 1);
+var normalizeCwd = (cwd = getDefaultCwd()) => {
+  const cwdString = safeNormalizeFileUrl(cwd, 'The "cwd" option');
+  return import_node_path4.default.resolve(cwdString);
+};
+var getDefaultCwd = () => {
+  try {
+    return import_node_process7.default.cwd();
+  } catch (error) {
+    error.message = `The current directory does not exist.
+${error.message}`;
+    throw error;
+  }
+};
+var fixCwdError = (originalMessage, cwd) => {
+  if (cwd === getDefaultCwd()) {
+    return originalMessage;
+  }
+  let cwdStat;
+  try {
+    cwdStat = (0, import_node_fs.statSync)(cwd);
+  } catch (error) {
+    return `The "cwd" option is invalid: ${cwd}.
+${error.message}
+${originalMessage}`;
+  }
+  if (!cwdStat.isDirectory()) {
+    return `The "cwd" option is not a directory: ${cwd}.
+${originalMessage}`;
+  }
+  return originalMessage;
+};
+
+// node_modules/execa/lib/arguments/options.js
+var normalizeOptions = (filePath, rawArguments, rawOptions) => {
+  rawOptions.cwd = normalizeCwd(rawOptions.cwd);
+  const [processedFile, processedArguments, processedOptions] = handleNodeOption(filePath, rawArguments, rawOptions);
+  const { command: file, args: commandArguments, options: initialOptions } = import_cross_spawn.default._parse(processedFile, processedArguments, processedOptions);
+  const fdOptions = normalizeFdSpecificOptions(initialOptions);
+  const options = addDefaultOptions(fdOptions);
+  validateTimeout(options);
+  validateEncoding(options);
+  validateIpcInputOption(options);
+  validateCancelSignal(options);
+  validateGracefulCancel(options);
+  options.shell = normalizeFileUrl(options.shell);
+  options.env = getEnv(options);
+  options.killSignal = normalizeKillSignal(options.killSignal);
+  options.forceKillAfterDelay = normalizeForceKillAfterDelay(options.forceKillAfterDelay);
+  options.lines = options.lines.map((lines, fdNumber) => lines && !BINARY_ENCODINGS.has(options.encoding) && options.buffer[fdNumber]);
+  if (import_node_process8.default.platform === "win32" && import_node_path5.default.basename(file, ".exe") === "cmd") {
+    commandArguments.unshift("/q");
+  }
+  return { file, commandArguments, options };
+};
+var addDefaultOptions = ({
+  extendEnv = true,
+  preferLocal = false,
+  cwd,
+  localDir: localDirectory = cwd,
+  encoding = "utf8",
+  reject = true,
+  cleanup = true,
+  all: all3 = false,
+  windowsHide = true,
+  killSignal = "SIGTERM",
+  forceKillAfterDelay = true,
+  gracefulCancel = false,
+  ipcInput,
+  ipc = ipcInput !== void 0 || gracefulCancel,
+  serialization = "advanced",
+  ...options
+}) => ({
+  ...options,
+  extendEnv,
+  preferLocal,
+  cwd,
+  localDirectory,
+  encoding,
+  reject,
+  cleanup,
+  all: all3,
+  windowsHide,
+  killSignal,
+  forceKillAfterDelay,
+  gracefulCancel,
+  ipcInput,
+  ipc,
+  serialization
+});
+var getEnv = ({ env: envOption, extendEnv, preferLocal, node, localDirectory, nodePath }) => {
+  const env2 = extendEnv ? { ...import_node_process8.default.env, ...envOption } : envOption;
+  if (preferLocal || node) {
+    return npmRunPathEnv({
+      env: env2,
+      cwd: localDirectory,
+      execPath: nodePath,
+      preferLocal,
+      addExecPath: node
+    });
+  }
+  return env2;
+};
+
+// node_modules/execa/lib/arguments/shell.js
+var concatenateShell = (file, commandArguments, options) => options.shell && commandArguments.length > 0 ? [[file, ...commandArguments].join(" "), [], options] : [file, commandArguments, options];
+
+// node_modules/execa/lib/return/message.js
+var import_node_util6 = require("node:util");
+
+// node_modules/strip-final-newline/index.js
+function stripFinalNewline(input) {
+  if (typeof input === "string") {
+    return stripFinalNewlineString(input);
+  }
+  if (!(ArrayBuffer.isView(input) && input.BYTES_PER_ELEMENT === 1)) {
+    throw new Error("Input must be a string or a Uint8Array");
+  }
+  return stripFinalNewlineBinary(input);
+}
+var stripFinalNewlineString = (input) => input.at(-1) === LF ? input.slice(0, input.at(-2) === CR ? -2 : -1) : input;
+var stripFinalNewlineBinary = (input) => input.at(-1) === LF_BINARY ? input.subarray(0, input.at(-2) === CR_BINARY ? -2 : -1) : input;
+var LF = "\n";
+var LF_BINARY = LF.codePointAt(0);
+var CR = "\r";
+var CR_BINARY = CR.codePointAt(0);
+
+// node_modules/get-stream/source/index.js
+var import_node_events6 = require("node:events");
+var import_promises5 = require("node:stream/promises");
+
+// node_modules/is-stream/index.js
+function isStream(stream5, { checkOpen = true } = {}) {
+  return stream5 !== null && typeof stream5 === "object" && (stream5.writable || stream5.readable || !checkOpen || stream5.writable === void 0 && stream5.readable === void 0) && typeof stream5.pipe === "function";
+}
+function isWritableStream(stream5, { checkOpen = true } = {}) {
+  return isStream(stream5, { checkOpen }) && (stream5.writable || !checkOpen) && typeof stream5.write === "function" && typeof stream5.end === "function" && typeof stream5.writable === "boolean" && typeof stream5.writableObjectMode === "boolean" && typeof stream5.destroy === "function" && typeof stream5.destroyed === "boolean";
+}
+function isReadableStream(stream5, { checkOpen = true } = {}) {
+  return isStream(stream5, { checkOpen }) && (stream5.readable || !checkOpen) && typeof stream5.read === "function" && typeof stream5.readable === "boolean" && typeof stream5.readableObjectMode === "boolean" && typeof stream5.destroy === "function" && typeof stream5.destroyed === "boolean";
+}
+function isDuplexStream(stream5, options) {
+  return isWritableStream(stream5, options) && isReadableStream(stream5, options);
+}
+
+// node_modules/@sec-ant/readable-stream/dist/ponyfill/asyncIterator.js
+var a = Object.getPrototypeOf(
+  Object.getPrototypeOf(
+    /* istanbul ignore next */
+    async function* () {
+    }
+  ).prototype
+);
+var c = class {
+  #t;
+  #n;
+  #r = false;
+  #e = void 0;
+  constructor(e, t) {
+    this.#t = e, this.#n = t;
+  }
+  next() {
+    const e = () => this.#s();
+    return this.#e = this.#e ? this.#e.then(e, e) : e(), this.#e;
+  }
+  return(e) {
+    const t = () => this.#i(e);
+    return this.#e ? this.#e.then(t, t) : t();
+  }
+  async #s() {
+    if (this.#r)
+      return {
+        done: true,
+        value: void 0
+      };
+    let e;
+    try {
+      e = await this.#t.read();
+    } catch (t) {
+      throw this.#e = void 0, this.#r = true, this.#t.releaseLock(), t;
+    }
+    return e.done && (this.#e = void 0, this.#r = true, this.#t.releaseLock()), e;
+  }
+  async #i(e) {
+    if (this.#r)
+      return {
+        done: true,
+        value: e
+      };
+    if (this.#r = true, !this.#n) {
+      const t = this.#t.cancel(e);
+      return this.#t.releaseLock(), await t, {
+        done: true,
+        value: e
+      };
+    }
+    return this.#t.releaseLock(), {
+      done: true,
+      value: e
+    };
+  }
+};
+var n = Symbol();
+function i() {
+  return this[n].next();
+}
+Object.defineProperty(i, "name", { value: "next" });
+function o(r) {
+  return this[n].return(r);
+}
+Object.defineProperty(o, "name", { value: "return" });
+var u = Object.create(a, {
+  next: {
+    enumerable: true,
+    configurable: true,
+    writable: true,
+    value: i
+  },
+  return: {
+    enumerable: true,
+    configurable: true,
+    writable: true,
+    value: o
+  }
+});
+function h({ preventCancel: r = false } = {}) {
+  const e = this.getReader(), t = new c(
+    e,
+    r
+  ), s = Object.create(u);
+  return s[n] = t, s;
+}
+
+// node_modules/get-stream/source/stream.js
+var getAsyncIterable = (stream5) => {
+  if (isReadableStream(stream5, { checkOpen: false }) && nodeImports.on !== void 0) {
+    return getStreamIterable(stream5);
+  }
+  if (typeof stream5?.[Symbol.asyncIterator] === "function") {
+    return stream5;
+  }
+  if (toString.call(stream5) === "[object ReadableStream]") {
+    return h.call(stream5);
+  }
+  throw new TypeError("The first argument must be a Readable, a ReadableStream, or an async iterable.");
+};
+var { toString } = Object.prototype;
+var getStreamIterable = async function* (stream5) {
+  const controller = new AbortController();
+  const state = {};
+  handleStreamEnd(stream5, controller, state);
+  try {
+    for await (const [chunk] of nodeImports.on(stream5, "data", { signal: controller.signal })) {
+      yield chunk;
+    }
+  } catch (error) {
+    if (state.error !== void 0) {
+      throw state.error;
+    } else if (!controller.signal.aborted) {
+      throw error;
+    }
+  } finally {
+    stream5.destroy();
+  }
+};
+var handleStreamEnd = async (stream5, controller, state) => {
+  try {
+    await nodeImports.finished(stream5, {
+      cleanup: true,
+      readable: true,
+      writable: false,
+      error: false
+    });
+  } catch (error) {
+    state.error = error;
+  } finally {
+    controller.abort();
+  }
+};
+var nodeImports = {};
+
+// node_modules/get-stream/source/contents.js
+var getStreamContents = async (stream5, { init, convertChunk, getSize, truncateChunk, addChunk, getFinalChunk, finalize }, { maxBuffer = Number.POSITIVE_INFINITY } = {}) => {
+  const asyncIterable = getAsyncIterable(stream5);
+  const state = init();
+  state.length = 0;
+  try {
+    for await (const chunk of asyncIterable) {
+      const chunkType = getChunkType(chunk);
+      const convertedChunk = convertChunk[chunkType](chunk, state);
+      appendChunk({
+        convertedChunk,
+        state,
+        getSize,
+        truncateChunk,
+        addChunk,
+        maxBuffer
+      });
+    }
+    appendFinalChunk({
+      state,
+      convertChunk,
+      getSize,
+      truncateChunk,
+      addChunk,
+      getFinalChunk,
+      maxBuffer
+    });
+    return finalize(state);
+  } catch (error) {
+    const normalizedError = typeof error === "object" && error !== null ? error : new Error(error);
+    normalizedError.bufferedData = finalize(state);
+    throw normalizedError;
+  }
+};
+var appendFinalChunk = ({ state, getSize, truncateChunk, addChunk, getFinalChunk, maxBuffer }) => {
+  const convertedChunk = getFinalChunk(state);
+  if (convertedChunk !== void 0) {
+    appendChunk({
+      convertedChunk,
+      state,
+      getSize,
+      truncateChunk,
+      addChunk,
+      maxBuffer
+    });
+  }
+};
+var appendChunk = ({ convertedChunk, state, getSize, truncateChunk, addChunk, maxBuffer }) => {
+  const chunkSize = getSize(convertedChunk);
+  const newLength = state.length + chunkSize;
+  if (newLength <= maxBuffer) {
+    addNewChunk(convertedChunk, state, addChunk, newLength);
+    return;
+  }
+  const truncatedChunk = truncateChunk(convertedChunk, maxBuffer - state.length);
+  if (truncatedChunk !== void 0) {
+    addNewChunk(truncatedChunk, state, addChunk, maxBuffer);
+  }
+  throw new MaxBufferError();
+};
+var addNewChunk = (convertedChunk, state, addChunk, newLength) => {
+  state.contents = addChunk(convertedChunk, state, newLength);
+  state.length = newLength;
+};
+var getChunkType = (chunk) => {
+  const typeOfChunk = typeof chunk;
+  if (typeOfChunk === "string") {
+    return "string";
+  }
+  if (typeOfChunk !== "object" || chunk === null) {
+    return "others";
+  }
+  if (globalThis.Buffer?.isBuffer(chunk)) {
+    return "buffer";
+  }
+  const prototypeName = objectToString2.call(chunk);
+  if (prototypeName === "[object ArrayBuffer]") {
+    return "arrayBuffer";
+  }
+  if (prototypeName === "[object DataView]") {
+    return "dataView";
+  }
+  if (Number.isInteger(chunk.byteLength) && Number.isInteger(chunk.byteOffset) && objectToString2.call(chunk.buffer) === "[object ArrayBuffer]") {
+    return "typedArray";
+  }
+  return "others";
+};
+var { toString: objectToString2 } = Object.prototype;
+var MaxBufferError = class extends Error {
+  name = "MaxBufferError";
+  constructor() {
+    super("maxBuffer exceeded");
+  }
+};
+
+// node_modules/get-stream/source/utils.js
+var identity2 = (value) => value;
+var noop = () => void 0;
+var getContentsProperty = ({ contents }) => contents;
+var throwObjectStream = (chunk) => {
+  throw new Error(`Streams in object mode are not supported: ${String(chunk)}`);
+};
+var getLengthProperty = (convertedChunk) => convertedChunk.length;
+
+// node_modules/get-stream/source/array.js
+async function getStreamAsArray(stream5, options) {
+  return getStreamContents(stream5, arrayMethods, options);
+}
+var initArray = () => ({ contents: [] });
+var increment = () => 1;
+var addArrayChunk = (convertedChunk, { contents }) => {
+  contents.push(convertedChunk);
+  return contents;
+};
+var arrayMethods = {
+  init: initArray,
+  convertChunk: {
+    string: identity2,
+    buffer: identity2,
+    arrayBuffer: identity2,
+    dataView: identity2,
+    typedArray: identity2,
+    others: identity2
+  },
+  getSize: increment,
+  truncateChunk: noop,
+  addChunk: addArrayChunk,
+  getFinalChunk: noop,
+  finalize: getContentsProperty
+};
+
+// node_modules/get-stream/source/array-buffer.js
+async function getStreamAsArrayBuffer(stream5, options) {
+  return getStreamContents(stream5, arrayBufferMethods, options);
+}
+var initArrayBuffer = () => ({ contents: new ArrayBuffer(0) });
+var useTextEncoder = (chunk) => textEncoder2.encode(chunk);
+var textEncoder2 = new TextEncoder();
+var useUint8Array = (chunk) => new Uint8Array(chunk);
+var useUint8ArrayWithOffset = (chunk) => new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+var truncateArrayBufferChunk = (convertedChunk, chunkSize) => convertedChunk.slice(0, chunkSize);
+var addArrayBufferChunk = (convertedChunk, { contents, length: previousLength }, length) => {
+  const newContents = hasArrayBufferResize() ? resizeArrayBuffer(contents, length) : resizeArrayBufferSlow(contents, length);
+  new Uint8Array(newContents).set(convertedChunk, previousLength);
+  return newContents;
+};
+var resizeArrayBufferSlow = (contents, length) => {
+  if (length <= contents.byteLength) {
+    return contents;
+  }
+  const arrayBuffer = new ArrayBuffer(getNewContentsLength(length));
+  new Uint8Array(arrayBuffer).set(new Uint8Array(contents), 0);
+  return arrayBuffer;
+};
+var resizeArrayBuffer = (contents, length) => {
+  if (length <= contents.maxByteLength) {
+    contents.resize(length);
+    return contents;
+  }
+  const arrayBuffer = new ArrayBuffer(length, { maxByteLength: getNewContentsLength(length) });
+  new Uint8Array(arrayBuffer).set(new Uint8Array(contents), 0);
+  return arrayBuffer;
+};
+var getNewContentsLength = (length) => SCALE_FACTOR ** Math.ceil(Math.log(length) / Math.log(SCALE_FACTOR));
+var SCALE_FACTOR = 2;
+var finalizeArrayBuffer = ({ contents, length }) => hasArrayBufferResize() ? contents : contents.slice(0, length);
+var hasArrayBufferResize = () => "resize" in ArrayBuffer.prototype;
+var arrayBufferMethods = {
+  init: initArrayBuffer,
+  convertChunk: {
+    string: useTextEncoder,
+    buffer: useUint8Array,
+    arrayBuffer: useUint8Array,
+    dataView: useUint8ArrayWithOffset,
+    typedArray: useUint8ArrayWithOffset,
+    others: throwObjectStream
+  },
+  getSize: getLengthProperty,
+  truncateChunk: truncateArrayBufferChunk,
+  addChunk: addArrayBufferChunk,
+  getFinalChunk: noop,
+  finalize: finalizeArrayBuffer
+};
+
+// node_modules/get-stream/source/string.js
+async function getStreamAsString(stream5, options) {
+  return getStreamContents(stream5, stringMethods, options);
+}
+var initString = () => ({ contents: "", textDecoder: new TextDecoder() });
+var useTextDecoder = (chunk, { textDecoder: textDecoder2 }) => textDecoder2.decode(chunk, { stream: true });
+var addStringChunk = (convertedChunk, { contents }) => contents + convertedChunk;
+var truncateStringChunk = (convertedChunk, chunkSize) => convertedChunk.slice(0, chunkSize);
+var getFinalStringChunk = ({ textDecoder: textDecoder2 }) => {
+  const finalChunk = textDecoder2.decode();
+  return finalChunk === "" ? void 0 : finalChunk;
+};
+var stringMethods = {
+  init: initString,
+  convertChunk: {
+    string: identity2,
+    buffer: useTextDecoder,
+    arrayBuffer: useTextDecoder,
+    dataView: useTextDecoder,
+    typedArray: useTextDecoder,
+    others: throwObjectStream
+  },
+  getSize: getLengthProperty,
+  truncateChunk: truncateStringChunk,
+  addChunk: addStringChunk,
+  getFinalChunk: getFinalStringChunk,
+  finalize: getContentsProperty
+};
+
+// node_modules/get-stream/source/index.js
+Object.assign(nodeImports, { on: import_node_events6.on, finished: import_promises5.finished });
+
+// node_modules/execa/lib/io/max-buffer.js
+var handleMaxBuffer = ({ error, stream: stream5, readableObjectMode, lines, encoding, fdNumber }) => {
+  if (!(error instanceof MaxBufferError)) {
+    throw error;
+  }
+  if (fdNumber === "all") {
+    return error;
+  }
+  const unit = getMaxBufferUnit(readableObjectMode, lines, encoding);
+  error.maxBufferInfo = { fdNumber, unit };
+  stream5.destroy();
+  throw error;
+};
+var getMaxBufferUnit = (readableObjectMode, lines, encoding) => {
+  if (readableObjectMode) {
+    return "objects";
+  }
+  if (lines) {
+    return "lines";
+  }
+  if (encoding === "buffer") {
+    return "bytes";
+  }
+  return "characters";
+};
+var checkIpcMaxBuffer = (subprocess, ipcOutput, maxBuffer) => {
+  if (ipcOutput.length !== maxBuffer) {
+    return;
+  }
+  const error = new MaxBufferError();
+  error.maxBufferInfo = { fdNumber: "ipc" };
+  throw error;
+};
+var getMaxBufferMessage = (error, maxBuffer) => {
+  const { streamName, threshold, unit } = getMaxBufferInfo(error, maxBuffer);
+  return `Command's ${streamName} was larger than ${threshold} ${unit}`;
+};
+var getMaxBufferInfo = (error, maxBuffer) => {
+  if (error?.maxBufferInfo === void 0) {
+    return { streamName: "output", threshold: maxBuffer[1], unit: "bytes" };
+  }
+  const { maxBufferInfo: { fdNumber, unit } } = error;
+  delete error.maxBufferInfo;
+  const threshold = getFdSpecificValue(maxBuffer, fdNumber);
+  if (fdNumber === "ipc") {
+    return { streamName: "IPC output", threshold, unit: "messages" };
+  }
+  return { streamName: getStreamName(fdNumber), threshold, unit };
+};
+var isMaxBufferSync = (resultError, output, maxBuffer) => resultError?.code === "ENOBUFS" && output !== null && output.some((result) => result !== null && result.length > getMaxBufferSync(maxBuffer));
+var truncateMaxBufferSync = (result, isMaxBuffer, maxBuffer) => {
+  if (!isMaxBuffer) {
+    return result;
+  }
+  const maxBufferValue = getMaxBufferSync(maxBuffer);
+  return result.length > maxBufferValue ? result.slice(0, maxBufferValue) : result;
+};
+var getMaxBufferSync = ([, stdoutMaxBuffer]) => stdoutMaxBuffer;
+
+// node_modules/execa/lib/return/message.js
+var createMessages = ({
+  stdio,
+  all: all3,
+  ipcOutput,
+  originalError,
+  signal,
+  signalDescription,
+  exitCode,
+  escapedCommand,
+  timedOut,
+  isCanceled,
+  isGracefullyCanceled,
+  isMaxBuffer,
+  isForcefullyTerminated,
+  forceKillAfterDelay,
+  killSignal,
+  maxBuffer,
+  timeout,
+  cwd
+}) => {
+  const errorCode = originalError?.code;
+  const prefix = getErrorPrefix({
+    originalError,
+    timedOut,
+    timeout,
+    isMaxBuffer,
+    maxBuffer,
+    errorCode,
+    signal,
+    signalDescription,
+    exitCode,
+    isCanceled,
+    isGracefullyCanceled,
+    isForcefullyTerminated,
+    forceKillAfterDelay,
+    killSignal
+  });
+  const originalMessage = getOriginalMessage(originalError, cwd);
+  const suffix = originalMessage === void 0 ? "" : `
+${originalMessage}`;
+  const shortMessage = `${prefix}: ${escapedCommand}${suffix}`;
+  const messageStdio = all3 === void 0 ? [stdio[2], stdio[1]] : [all3];
+  const message = [
+    shortMessage,
+    ...messageStdio,
+    ...stdio.slice(3),
+    ipcOutput.map((ipcMessage) => serializeIpcMessage(ipcMessage)).join("\n")
+  ].map((messagePart) => escapeLines(stripFinalNewline(serializeMessagePart(messagePart)))).filter(Boolean).join("\n\n");
+  return { originalMessage, shortMessage, message };
+};
+var getErrorPrefix = ({
+  originalError,
+  timedOut,
+  timeout,
+  isMaxBuffer,
+  maxBuffer,
+  errorCode,
+  signal,
+  signalDescription,
+  exitCode,
+  isCanceled,
+  isGracefullyCanceled,
+  isForcefullyTerminated,
+  forceKillAfterDelay,
+  killSignal
+}) => {
+  const forcefulSuffix = getForcefulSuffix(isForcefullyTerminated, forceKillAfterDelay);
+  if (timedOut) {
+    return `Command timed out after ${timeout} milliseconds${forcefulSuffix}`;
+  }
+  if (isGracefullyCanceled) {
+    if (signal === void 0) {
+      return `Command was gracefully canceled with exit code ${exitCode}`;
+    }
+    return isForcefullyTerminated ? `Command was gracefully canceled${forcefulSuffix}` : `Command was gracefully canceled with ${signal} (${signalDescription})`;
+  }
+  if (isCanceled) {
+    return `Command was canceled${forcefulSuffix}`;
+  }
+  if (isMaxBuffer) {
+    return `${getMaxBufferMessage(originalError, maxBuffer)}${forcefulSuffix}`;
+  }
+  if (errorCode !== void 0) {
+    return `Command failed with ${errorCode}${forcefulSuffix}`;
+  }
+  if (isForcefullyTerminated) {
+    return `Command was killed with ${killSignal} (${getSignalDescription(killSignal)})${forcefulSuffix}`;
+  }
+  if (signal !== void 0) {
+    return `Command was killed with ${signal} (${signalDescription})`;
+  }
+  if (exitCode !== void 0) {
+    return `Command failed with exit code ${exitCode}`;
+  }
+  return "Command failed";
+};
+var getForcefulSuffix = (isForcefullyTerminated, forceKillAfterDelay) => isForcefullyTerminated ? ` and was forcefully terminated after ${forceKillAfterDelay} milliseconds` : "";
+var getOriginalMessage = (originalError, cwd) => {
+  if (originalError instanceof DiscardedError) {
+    return;
+  }
+  const originalMessage = isExecaError(originalError) ? originalError.originalMessage : String(originalError?.message ?? originalError);
+  const escapedOriginalMessage = escapeLines(fixCwdError(originalMessage, cwd));
+  return escapedOriginalMessage === "" ? void 0 : escapedOriginalMessage;
+};
+var serializeIpcMessage = (ipcMessage) => typeof ipcMessage === "string" ? ipcMessage : (0, import_node_util6.inspect)(ipcMessage);
+var serializeMessagePart = (messagePart) => Array.isArray(messagePart) ? messagePart.map((messageItem) => stripFinalNewline(serializeMessageItem(messageItem))).filter(Boolean).join("\n") : serializeMessageItem(messagePart);
+var serializeMessageItem = (messageItem) => {
+  if (typeof messageItem === "string") {
+    return messageItem;
+  }
+  if (isUint8Array(messageItem)) {
+    return uint8ArrayToString(messageItem);
+  }
+  return "";
+};
+
+// node_modules/execa/lib/return/result.js
+var makeSuccessResult = ({
+  command,
+  escapedCommand,
+  stdio,
+  all: all3,
+  ipcOutput,
+  options: { cwd },
+  startTime
+}) => omitUndefinedProperties({
+  command,
+  escapedCommand,
+  cwd,
+  durationMs: getDurationMs(startTime),
+  failed: false,
+  timedOut: false,
+  isCanceled: false,
+  isGracefullyCanceled: false,
+  isTerminated: false,
+  isMaxBuffer: false,
+  isForcefullyTerminated: false,
+  exitCode: 0,
+  stdout: stdio[1],
+  stderr: stdio[2],
+  all: all3,
+  stdio,
+  ipcOutput,
+  pipedFrom: []
+});
+var makeEarlyError = ({
+  error,
+  command,
+  escapedCommand,
+  fileDescriptors,
+  options,
+  startTime,
+  isSync
+}) => makeError({
+  error,
+  command,
+  escapedCommand,
+  startTime,
+  timedOut: false,
+  isCanceled: false,
+  isGracefullyCanceled: false,
+  isMaxBuffer: false,
+  isForcefullyTerminated: false,
+  stdio: Array.from({ length: fileDescriptors.length }),
+  ipcOutput: [],
+  options,
+  isSync
+});
+var makeError = ({
+  error: originalError,
+  command,
+  escapedCommand,
+  startTime,
+  timedOut,
+  isCanceled,
+  isGracefullyCanceled,
+  isMaxBuffer,
+  isForcefullyTerminated,
+  exitCode: rawExitCode,
+  signal: rawSignal,
+  stdio,
+  all: all3,
+  ipcOutput,
+  options: {
+    timeoutDuration,
+    timeout = timeoutDuration,
+    forceKillAfterDelay,
+    killSignal,
+    cwd,
+    maxBuffer
+  },
+  isSync
+}) => {
+  const { exitCode, signal, signalDescription } = normalizeExitPayload(rawExitCode, rawSignal);
+  const { originalMessage, shortMessage, message } = createMessages({
+    stdio,
+    all: all3,
+    ipcOutput,
+    originalError,
+    signal,
+    signalDescription,
+    exitCode,
+    escapedCommand,
+    timedOut,
+    isCanceled,
+    isGracefullyCanceled,
+    isMaxBuffer,
+    isForcefullyTerminated,
+    forceKillAfterDelay,
+    killSignal,
+    maxBuffer,
+    timeout,
+    cwd
+  });
+  const error = getFinalError(originalError, message, isSync);
+  Object.assign(error, getErrorProperties({
+    error,
+    command,
+    escapedCommand,
+    startTime,
+    timedOut,
+    isCanceled,
+    isGracefullyCanceled,
+    isMaxBuffer,
+    isForcefullyTerminated,
+    exitCode,
+    signal,
+    signalDescription,
+    stdio,
+    all: all3,
+    ipcOutput,
+    cwd,
+    originalMessage,
+    shortMessage
+  }));
+  return error;
+};
+var getErrorProperties = ({
+  error,
+  command,
+  escapedCommand,
+  startTime,
+  timedOut,
+  isCanceled,
+  isGracefullyCanceled,
+  isMaxBuffer,
+  isForcefullyTerminated,
+  exitCode,
+  signal,
+  signalDescription,
+  stdio,
+  all: all3,
+  ipcOutput,
+  cwd,
+  originalMessage,
+  shortMessage
+}) => omitUndefinedProperties({
+  shortMessage,
+  originalMessage,
+  command,
+  escapedCommand,
+  cwd,
+  durationMs: getDurationMs(startTime),
+  failed: true,
+  timedOut,
+  isCanceled,
+  isGracefullyCanceled,
+  isTerminated: signal !== void 0,
+  isMaxBuffer,
+  isForcefullyTerminated,
+  exitCode,
+  signal,
+  signalDescription,
+  code: error.cause?.code,
+  stdout: stdio[1],
+  stderr: stdio[2],
+  all: all3,
+  stdio,
+  ipcOutput,
+  pipedFrom: []
+});
+var omitUndefinedProperties = (result) => Object.fromEntries(Object.entries(result).filter(([, value]) => value !== void 0));
+var normalizeExitPayload = (rawExitCode, rawSignal) => {
+  const exitCode = rawExitCode === null ? void 0 : rawExitCode;
+  const signal = rawSignal === null ? void 0 : rawSignal;
+  const signalDescription = signal === void 0 ? void 0 : getSignalDescription(rawSignal);
+  return { exitCode, signal, signalDescription };
+};
+
+// node_modules/parse-ms/index.js
+var toZeroIfInfinity = (value) => Number.isFinite(value) ? value : 0;
+function parseNumber(milliseconds) {
+  return {
+    days: Math.trunc(milliseconds / 864e5),
+    hours: Math.trunc(milliseconds / 36e5 % 24),
+    minutes: Math.trunc(milliseconds / 6e4 % 60),
+    seconds: Math.trunc(milliseconds / 1e3 % 60),
+    milliseconds: Math.trunc(milliseconds % 1e3),
+    microseconds: Math.trunc(toZeroIfInfinity(milliseconds * 1e3) % 1e3),
+    nanoseconds: Math.trunc(toZeroIfInfinity(milliseconds * 1e6) % 1e3)
+  };
+}
+function parseBigint(milliseconds) {
+  return {
+    days: milliseconds / 86400000n,
+    hours: milliseconds / 3600000n % 24n,
+    minutes: milliseconds / 60000n % 60n,
+    seconds: milliseconds / 1000n % 60n,
+    milliseconds: milliseconds % 1000n,
+    microseconds: 0n,
+    nanoseconds: 0n
+  };
+}
+function parseMilliseconds(milliseconds) {
+  switch (typeof milliseconds) {
+    case "number": {
+      if (Number.isFinite(milliseconds)) {
+        return parseNumber(milliseconds);
+      }
+      break;
+    }
+    case "bigint": {
+      return parseBigint(milliseconds);
+    }
+  }
+  throw new TypeError("Expected a finite number or bigint");
+}
+
+// node_modules/pretty-ms/index.js
+var isZero = (value) => value === 0 || value === 0n;
+var pluralize = (word, count2) => count2 === 1 || count2 === 1n ? word : `${word}s`;
+var SECOND_ROUNDING_EPSILON = 1e-7;
+var ONE_DAY_IN_MILLISECONDS = 24n * 60n * 60n * 1000n;
+function prettyMilliseconds(milliseconds, options) {
+  const isBigInt = typeof milliseconds === "bigint";
+  if (!isBigInt && !Number.isFinite(milliseconds)) {
+    throw new TypeError("Expected a finite number or bigint");
+  }
+  options = { ...options };
+  const sign = milliseconds < 0 ? "-" : "";
+  milliseconds = milliseconds < 0 ? -milliseconds : milliseconds;
+  if (options.colonNotation) {
+    options.compact = false;
+    options.formatSubMilliseconds = false;
+    options.separateMilliseconds = false;
+    options.verbose = false;
+  }
+  if (options.compact) {
+    options.unitCount = 1;
+    options.secondsDecimalDigits = 0;
+    options.millisecondsDecimalDigits = 0;
+  }
+  let result = [];
+  const floorDecimals = (value, decimalDigits) => {
+    const flooredInterimValue = Math.floor(value * 10 ** decimalDigits + SECOND_ROUNDING_EPSILON);
+    const flooredValue = Math.round(flooredInterimValue) / 10 ** decimalDigits;
+    return flooredValue.toFixed(decimalDigits);
+  };
+  const add2 = (value, long, short, valueString) => {
+    if ((result.length === 0 || !options.colonNotation) && isZero(value) && !(options.colonNotation && short === "m")) {
+      return;
+    }
+    valueString ??= String(value);
+    if (options.colonNotation) {
+      const wholeDigits = valueString.includes(".") ? valueString.split(".")[0].length : valueString.length;
+      const minLength = result.length > 0 ? 2 : 1;
+      valueString = "0".repeat(Math.max(0, minLength - wholeDigits)) + valueString;
+    } else {
+      valueString += options.verbose ? " " + pluralize(long, value) : short;
+    }
+    result.push(valueString);
+  };
+  const parsed = parseMilliseconds(milliseconds);
+  const days = BigInt(parsed.days);
+  if (options.hideYearAndDays) {
+    add2(BigInt(days) * 24n + BigInt(parsed.hours), "hour", "h");
+  } else {
+    if (options.hideYear) {
+      add2(days, "day", "d");
+    } else {
+      add2(days / 365n, "year", "y");
+      add2(days % 365n, "day", "d");
+    }
+    add2(Number(parsed.hours), "hour", "h");
+  }
+  add2(Number(parsed.minutes), "minute", "m");
+  if (!options.hideSeconds) {
+    if (options.separateMilliseconds || options.formatSubMilliseconds || !options.colonNotation && milliseconds < 1e3 && !options.subSecondsAsDecimals) {
+      const seconds = Number(parsed.seconds);
+      const milliseconds2 = Number(parsed.milliseconds);
+      const microseconds = Number(parsed.microseconds);
+      const nanoseconds = Number(parsed.nanoseconds);
+      add2(seconds, "second", "s");
+      if (options.formatSubMilliseconds) {
+        add2(milliseconds2, "millisecond", "ms");
+        add2(microseconds, "microsecond", "\xB5s");
+        add2(nanoseconds, "nanosecond", "ns");
+      } else {
+        const millisecondsAndBelow = milliseconds2 + microseconds / 1e3 + nanoseconds / 1e6;
+        const millisecondsDecimalDigits = typeof options.millisecondsDecimalDigits === "number" ? options.millisecondsDecimalDigits : 0;
+        const roundedMilliseconds = millisecondsAndBelow >= 1 ? Math.round(millisecondsAndBelow) : Math.ceil(millisecondsAndBelow);
+        const millisecondsString = millisecondsDecimalDigits ? millisecondsAndBelow.toFixed(millisecondsDecimalDigits) : roundedMilliseconds;
+        add2(
+          Number.parseFloat(millisecondsString),
+          "millisecond",
+          "ms",
+          millisecondsString
+        );
+      }
+    } else {
+      const seconds = (isBigInt ? Number(milliseconds % ONE_DAY_IN_MILLISECONDS) : milliseconds) / 1e3 % 60;
+      const secondsDecimalDigits = typeof options.secondsDecimalDigits === "number" ? options.secondsDecimalDigits : 1;
+      const secondsFixed = floorDecimals(seconds, secondsDecimalDigits);
+      const secondsString = options.keepDecimalsOnWholeSeconds ? secondsFixed : secondsFixed.replace(/\.0+$/, "");
+      add2(Number.parseFloat(secondsString), "second", "s", secondsString);
+    }
+  }
+  if (result.length === 0) {
+    return sign + "0" + (options.verbose ? " milliseconds" : "ms");
+  }
+  const separator = options.colonNotation ? ":" : " ";
+  if (typeof options.unitCount === "number") {
+    result = result.slice(0, Math.max(options.unitCount, 1));
+  }
+  return sign + result.join(separator);
+}
+
+// node_modules/execa/lib/verbose/error.js
+var logError = (result, verboseInfo) => {
+  if (result.failed) {
+    verboseLog({
+      type: "error",
+      verboseMessage: result.shortMessage,
+      verboseInfo,
+      result
+    });
+  }
+};
+
+// node_modules/execa/lib/verbose/complete.js
+var logResult = (result, verboseInfo) => {
+  if (!isVerbose(verboseInfo)) {
+    return;
+  }
+  logError(result, verboseInfo);
+  logDuration(result, verboseInfo);
+};
+var logDuration = (result, verboseInfo) => {
+  const verboseMessage = `(done in ${prettyMilliseconds(result.durationMs)})`;
+  verboseLog({
+    type: "duration",
+    verboseMessage,
+    verboseInfo,
+    result
+  });
+};
+
+// node_modules/execa/lib/return/reject.js
+var handleResult = (result, verboseInfo, { reject }) => {
+  logResult(result, verboseInfo);
+  if (result.failed && reject) {
+    throw result;
+  }
+  return result;
+};
+
+// node_modules/execa/lib/stdio/handle-sync.js
+var import_node_fs3 = require("node:fs");
+
+// node_modules/execa/lib/stdio/type.js
+var getStdioItemType = (value, optionName) => {
+  if (isAsyncGenerator(value)) {
+    return "asyncGenerator";
+  }
+  if (isSyncGenerator(value)) {
+    return "generator";
+  }
+  if (isUrl(value)) {
+    return "fileUrl";
+  }
+  if (isFilePathObject(value)) {
+    return "filePath";
+  }
+  if (isWebStream(value)) {
+    return "webStream";
+  }
+  if (isStream(value, { checkOpen: false })) {
+    return "native";
+  }
+  if (isUint8Array(value)) {
+    return "uint8Array";
+  }
+  if (isAsyncIterableObject(value)) {
+    return "asyncIterable";
+  }
+  if (isIterableObject(value)) {
+    return "iterable";
+  }
+  if (isTransformStream(value)) {
+    return getTransformStreamType({ transform: value }, optionName);
+  }
+  if (isTransformOptions(value)) {
+    return getTransformObjectType(value, optionName);
+  }
+  return "native";
+};
+var getTransformObjectType = (value, optionName) => {
+  if (isDuplexStream(value.transform, { checkOpen: false })) {
+    return getDuplexType(value, optionName);
+  }
+  if (isTransformStream(value.transform)) {
+    return getTransformStreamType(value, optionName);
+  }
+  return getGeneratorObjectType(value, optionName);
+};
+var getDuplexType = (value, optionName) => {
+  validateNonGeneratorType(value, optionName, "Duplex stream");
+  return "duplex";
+};
+var getTransformStreamType = (value, optionName) => {
+  validateNonGeneratorType(value, optionName, "web TransformStream");
+  return "webTransform";
+};
+var validateNonGeneratorType = ({ final, binary, objectMode }, optionName, typeName) => {
+  checkUndefinedOption(final, `${optionName}.final`, typeName);
+  checkUndefinedOption(binary, `${optionName}.binary`, typeName);
+  checkBooleanOption(objectMode, `${optionName}.objectMode`);
+};
+var checkUndefinedOption = (value, optionName, typeName) => {
+  if (value !== void 0) {
+    throw new TypeError(`The \`${optionName}\` option can only be defined when using a generator, not a ${typeName}.`);
+  }
+};
+var getGeneratorObjectType = ({ transform, final, binary, objectMode }, optionName) => {
+  if (transform !== void 0 && !isGenerator(transform)) {
+    throw new TypeError(`The \`${optionName}.transform\` option must be a generator, a Duplex stream or a web TransformStream.`);
+  }
+  if (isDuplexStream(final, { checkOpen: false })) {
+    throw new TypeError(`The \`${optionName}.final\` option must not be a Duplex stream.`);
+  }
+  if (isTransformStream(final)) {
+    throw new TypeError(`The \`${optionName}.final\` option must not be a web TransformStream.`);
+  }
+  if (final !== void 0 && !isGenerator(final)) {
+    throw new TypeError(`The \`${optionName}.final\` option must be a generator.`);
+  }
+  checkBooleanOption(binary, `${optionName}.binary`);
+  checkBooleanOption(objectMode, `${optionName}.objectMode`);
+  return isAsyncGenerator(transform) || isAsyncGenerator(final) ? "asyncGenerator" : "generator";
+};
+var checkBooleanOption = (value, optionName) => {
+  if (value !== void 0 && typeof value !== "boolean") {
+    throw new TypeError(`The \`${optionName}\` option must use a boolean.`);
+  }
+};
+var isGenerator = (value) => isAsyncGenerator(value) || isSyncGenerator(value);
+var isAsyncGenerator = (value) => Object.prototype.toString.call(value) === "[object AsyncGeneratorFunction]";
+var isSyncGenerator = (value) => Object.prototype.toString.call(value) === "[object GeneratorFunction]";
+var isTransformOptions = (value) => isPlainObject(value) && (value.transform !== void 0 || value.final !== void 0);
+var isUrl = (value) => Object.prototype.toString.call(value) === "[object URL]";
+var isRegularUrl = (value) => isUrl(value) && value.protocol !== "file:";
+var isFilePathObject = (value) => isPlainObject(value) && Object.keys(value).length > 0 && Object.keys(value).every((key) => FILE_PATH_KEYS.has(key)) && isFilePathString(value.file);
+var FILE_PATH_KEYS = /* @__PURE__ */ new Set(["file", "append"]);
+var isFilePathString = (file) => typeof file === "string";
+var isUnknownStdioString = (type, value) => type === "native" && typeof value === "string" && !KNOWN_STDIO_STRINGS.has(value);
+var KNOWN_STDIO_STRINGS = /* @__PURE__ */ new Set(["ipc", "ignore", "inherit", "overlapped", "pipe"]);
+var isReadableStream2 = (value) => Object.prototype.toString.call(value) === "[object ReadableStream]";
+var isWritableStream2 = (value) => Object.prototype.toString.call(value) === "[object WritableStream]";
+var isWebStream = (value) => isReadableStream2(value) || isWritableStream2(value);
+var isTransformStream = (value) => isReadableStream2(value?.readable) && isWritableStream2(value?.writable);
+var isAsyncIterableObject = (value) => isObject(value) && typeof value[Symbol.asyncIterator] === "function";
+var isIterableObject = (value) => isObject(value) && typeof value[Symbol.iterator] === "function";
+var isObject = (value) => typeof value === "object" && value !== null;
+var TRANSFORM_TYPES = /* @__PURE__ */ new Set(["generator", "asyncGenerator", "duplex", "webTransform"]);
+var FILE_TYPES = /* @__PURE__ */ new Set(["fileUrl", "filePath", "fileNumber"]);
+var SPECIAL_DUPLICATE_TYPES_SYNC = /* @__PURE__ */ new Set(["fileUrl", "filePath"]);
+var SPECIAL_DUPLICATE_TYPES = /* @__PURE__ */ new Set([...SPECIAL_DUPLICATE_TYPES_SYNC, "webStream", "nodeStream"]);
+var FORBID_DUPLICATE_TYPES = /* @__PURE__ */ new Set(["webTransform", "duplex"]);
+var TYPE_TO_MESSAGE = {
+  generator: "a generator",
+  asyncGenerator: "an async generator",
+  fileUrl: "a file URL",
+  filePath: "a file path string",
+  fileNumber: "a file descriptor number",
+  webStream: "a web stream",
+  nodeStream: "a Node.js stream",
+  webTransform: "a web TransformStream",
+  duplex: "a Duplex stream",
+  native: "any value",
+  iterable: "an iterable",
+  asyncIterable: "an async iterable",
+  string: "a string",
+  uint8Array: "a Uint8Array"
+};
+
+// node_modules/execa/lib/transform/object-mode.js
+var getTransformObjectModes = (objectMode, index, newTransforms, direction) => direction === "output" ? getOutputObjectModes(objectMode, index, newTransforms) : getInputObjectModes(objectMode, index, newTransforms);
+var getOutputObjectModes = (objectMode, index, newTransforms) => {
+  const writableObjectMode = index !== 0 && newTransforms[index - 1].value.readableObjectMode;
+  const readableObjectMode = objectMode ?? writableObjectMode;
+  return { writableObjectMode, readableObjectMode };
+};
+var getInputObjectModes = (objectMode, index, newTransforms) => {
+  const writableObjectMode = index === 0 ? objectMode === true : newTransforms[index - 1].value.readableObjectMode;
+  const readableObjectMode = index !== newTransforms.length - 1 && (objectMode ?? writableObjectMode);
+  return { writableObjectMode, readableObjectMode };
+};
+var getFdObjectMode = (stdioItems, direction) => {
+  const lastTransform = stdioItems.findLast(({ type }) => TRANSFORM_TYPES.has(type));
+  if (lastTransform === void 0) {
+    return false;
+  }
+  return direction === "input" ? lastTransform.value.writableObjectMode : lastTransform.value.readableObjectMode;
+};
+
+// node_modules/execa/lib/transform/normalize.js
+var normalizeTransforms = (stdioItems, optionName, direction, options) => [
+  ...stdioItems.filter(({ type }) => !TRANSFORM_TYPES.has(type)),
+  ...getTransforms(stdioItems, optionName, direction, options)
+];
+var getTransforms = (stdioItems, optionName, direction, { encoding }) => {
+  const transforms = stdioItems.filter(({ type }) => TRANSFORM_TYPES.has(type));
+  const newTransforms = Array.from({ length: transforms.length });
+  for (const [index, stdioItem] of Object.entries(transforms)) {
+    newTransforms[index] = normalizeTransform({
+      stdioItem,
+      index: Number(index),
+      newTransforms,
+      optionName,
+      direction,
+      encoding
+    });
+  }
+  return sortTransforms(newTransforms, direction);
+};
+var normalizeTransform = ({ stdioItem, stdioItem: { type }, index, newTransforms, optionName, direction, encoding }) => {
+  if (type === "duplex") {
+    return normalizeDuplex({ stdioItem, optionName });
+  }
+  if (type === "webTransform") {
+    return normalizeTransformStream({
+      stdioItem,
+      index,
+      newTransforms,
+      direction
+    });
+  }
+  return normalizeGenerator({
+    stdioItem,
+    index,
+    newTransforms,
+    direction,
+    encoding
+  });
+};
+var normalizeDuplex = ({
+  stdioItem,
+  stdioItem: {
+    value: {
+      transform,
+      transform: { writableObjectMode, readableObjectMode },
+      objectMode = readableObjectMode
+    }
+  },
+  optionName
+}) => {
+  if (objectMode && !readableObjectMode) {
+    throw new TypeError(`The \`${optionName}.objectMode\` option can only be \`true\` if \`new Duplex({objectMode: true})\` is used.`);
+  }
+  if (!objectMode && readableObjectMode) {
+    throw new TypeError(`The \`${optionName}.objectMode\` option cannot be \`false\` if \`new Duplex({objectMode: true})\` is used.`);
+  }
+  return {
+    ...stdioItem,
+    value: { transform, writableObjectMode, readableObjectMode }
+  };
+};
+var normalizeTransformStream = ({ stdioItem, stdioItem: { value }, index, newTransforms, direction }) => {
+  const { transform, objectMode } = isPlainObject(value) ? value : { transform: value };
+  const { writableObjectMode, readableObjectMode } = getTransformObjectModes(objectMode, index, newTransforms, direction);
+  return {
+    ...stdioItem,
+    value: { transform, writableObjectMode, readableObjectMode }
+  };
+};
+var normalizeGenerator = ({ stdioItem, stdioItem: { value }, index, newTransforms, direction, encoding }) => {
+  const {
+    transform,
+    final,
+    binary: binaryOption = false,
+    preserveNewlines = false,
+    objectMode
+  } = isPlainObject(value) ? value : { transform: value };
+  const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
+  const { writableObjectMode, readableObjectMode } = getTransformObjectModes(objectMode, index, newTransforms, direction);
+  return {
+    ...stdioItem,
+    value: {
+      transform,
+      final,
+      binary,
+      preserveNewlines,
+      writableObjectMode,
+      readableObjectMode
+    }
+  };
+};
+var sortTransforms = (newTransforms, direction) => direction === "input" ? newTransforms.reverse() : newTransforms;
+
+// node_modules/execa/lib/stdio/direction.js
+var import_node_process9 = __toESM(require("node:process"), 1);
+var getStreamDirection = (stdioItems, fdNumber, optionName) => {
+  const directions = stdioItems.map((stdioItem) => getStdioItemDirection(stdioItem, fdNumber));
+  if (directions.includes("input") && directions.includes("output")) {
+    throw new TypeError(`The \`${optionName}\` option must not be an array of both readable and writable values.`);
+  }
+  return directions.find(Boolean) ?? DEFAULT_DIRECTION;
+};
+var getStdioItemDirection = ({ type, value }, fdNumber) => KNOWN_DIRECTIONS[fdNumber] ?? guessStreamDirection[type](value);
+var KNOWN_DIRECTIONS = ["input", "output", "output"];
+var anyDirection = () => void 0;
+var alwaysInput = () => "input";
+var guessStreamDirection = {
+  generator: anyDirection,
+  asyncGenerator: anyDirection,
+  fileUrl: anyDirection,
+  filePath: anyDirection,
+  iterable: alwaysInput,
+  asyncIterable: alwaysInput,
+  uint8Array: alwaysInput,
+  webStream: (value) => isWritableStream2(value) ? "output" : "input",
+  nodeStream(value) {
+    if (!isReadableStream(value, { checkOpen: false })) {
+      return "output";
+    }
+    return isWritableStream(value, { checkOpen: false }) ? void 0 : "input";
+  },
+  webTransform: anyDirection,
+  duplex: anyDirection,
+  native(value) {
+    const standardStreamDirection = getStandardStreamDirection(value);
+    if (standardStreamDirection !== void 0) {
+      return standardStreamDirection;
+    }
+    if (isStream(value, { checkOpen: false })) {
+      return guessStreamDirection.nodeStream(value);
+    }
+  }
+};
+var getStandardStreamDirection = (value) => {
+  if ([0, import_node_process9.default.stdin].includes(value)) {
+    return "input";
+  }
+  if ([1, 2, import_node_process9.default.stdout, import_node_process9.default.stderr].includes(value)) {
+    return "output";
+  }
+};
+var DEFAULT_DIRECTION = "output";
+
+// node_modules/execa/lib/ipc/array.js
+var normalizeIpcStdioArray = (stdioArray, ipc) => ipc && !stdioArray.includes("ipc") ? [...stdioArray, "ipc"] : stdioArray;
+
+// node_modules/execa/lib/stdio/stdio-option.js
+var normalizeStdioOption = ({ stdio, ipc, buffer, ...options }, verboseInfo, isSync) => {
+  const stdioArray = getStdioArray(stdio, options).map((stdioOption, fdNumber) => addDefaultValue2(stdioOption, fdNumber));
+  return isSync ? normalizeStdioSync(stdioArray, buffer, verboseInfo) : normalizeIpcStdioArray(stdioArray, ipc);
+};
+var getStdioArray = (stdio, options) => {
+  if (stdio === void 0) {
+    return STANDARD_STREAMS_ALIASES.map((alias) => options[alias]);
+  }
+  if (hasAlias(options)) {
+    throw new Error(`It's not possible to provide \`stdio\` in combination with one of ${STANDARD_STREAMS_ALIASES.map((alias) => `\`${alias}\``).join(", ")}`);
+  }
+  if (typeof stdio === "string") {
+    return [stdio, stdio, stdio];
+  }
+  if (!Array.isArray(stdio)) {
+    throw new TypeError(`Expected \`stdio\` to be of type \`string\` or \`Array\`, got \`${typeof stdio}\``);
+  }
+  const length = Math.max(stdio.length, STANDARD_STREAMS_ALIASES.length);
+  return Array.from({ length }, (_, fdNumber) => stdio[fdNumber]);
+};
+var hasAlias = (options) => STANDARD_STREAMS_ALIASES.some((alias) => options[alias] !== void 0);
+var addDefaultValue2 = (stdioOption, fdNumber) => {
+  if (Array.isArray(stdioOption)) {
+    return stdioOption.map((item) => addDefaultValue2(item, fdNumber));
+  }
+  if (stdioOption === null || stdioOption === void 0) {
+    return fdNumber >= STANDARD_STREAMS_ALIASES.length ? "ignore" : "pipe";
+  }
+  return stdioOption;
+};
+var normalizeStdioSync = (stdioArray, buffer, verboseInfo) => stdioArray.map((stdioOption, fdNumber) => !buffer[fdNumber] && fdNumber !== 0 && !isFullVerbose(verboseInfo, fdNumber) && isOutputPipeOnly(stdioOption) ? "ignore" : stdioOption);
+var isOutputPipeOnly = (stdioOption) => stdioOption === "pipe" || Array.isArray(stdioOption) && stdioOption.every((item) => item === "pipe");
+
+// node_modules/execa/lib/stdio/native.js
+var import_node_fs2 = require("node:fs");
+var import_node_tty2 = __toESM(require("node:tty"), 1);
+var handleNativeStream = ({ stdioItem, stdioItem: { type }, isStdioArray, fdNumber, direction, isSync }) => {
+  if (!isStdioArray || type !== "native") {
+    return stdioItem;
+  }
+  return isSync ? handleNativeStreamSync({ stdioItem, fdNumber, direction }) : handleNativeStreamAsync({ stdioItem, fdNumber });
+};
+var handleNativeStreamSync = ({ stdioItem, stdioItem: { value, optionName }, fdNumber, direction }) => {
+  const targetFd = getTargetFd({
+    value,
+    optionName,
+    fdNumber,
+    direction
+  });
+  if (targetFd !== void 0) {
+    return targetFd;
+  }
+  if (isStream(value, { checkOpen: false })) {
+    throw new TypeError(`The \`${optionName}: Stream\` option cannot both be an array and include a stream with synchronous methods.`);
+  }
+  return stdioItem;
+};
+var getTargetFd = ({ value, optionName, fdNumber, direction }) => {
+  const targetFdNumber = getTargetFdNumber(value, fdNumber);
+  if (targetFdNumber === void 0) {
+    return;
+  }
+  if (direction === "output") {
+    return { type: "fileNumber", value: targetFdNumber, optionName };
+  }
+  if (import_node_tty2.default.isatty(targetFdNumber)) {
+    throw new TypeError(`The \`${optionName}: ${serializeOptionValue(value)}\` option is invalid: it cannot be a TTY with synchronous methods.`);
+  }
+  return { type: "uint8Array", value: bufferToUint8Array((0, import_node_fs2.readFileSync)(targetFdNumber)), optionName };
+};
+var getTargetFdNumber = (value, fdNumber) => {
+  if (value === "inherit") {
+    return fdNumber;
+  }
+  if (typeof value === "number") {
+    return value;
+  }
+  const standardStreamIndex = STANDARD_STREAMS.indexOf(value);
+  if (standardStreamIndex !== -1) {
+    return standardStreamIndex;
+  }
+};
+var handleNativeStreamAsync = ({ stdioItem, stdioItem: { value, optionName }, fdNumber }) => {
+  if (value === "inherit") {
+    return { type: "nodeStream", value: getStandardStream(fdNumber, value, optionName), optionName };
+  }
+  if (typeof value === "number") {
+    return { type: "nodeStream", value: getStandardStream(value, value, optionName), optionName };
+  }
+  if (isStream(value, { checkOpen: false })) {
+    return { type: "nodeStream", value, optionName };
+  }
+  return stdioItem;
+};
+var getStandardStream = (fdNumber, value, optionName) => {
+  const standardStream = STANDARD_STREAMS[fdNumber];
+  if (standardStream === void 0) {
+    throw new TypeError(`The \`${optionName}: ${value}\` option is invalid: no such standard stream.`);
+  }
+  return standardStream;
+};
+
+// node_modules/execa/lib/stdio/input-option.js
+var handleInputOptions = ({ input, inputFile }, fdNumber) => fdNumber === 0 ? [
+  ...handleInputOption(input),
+  ...handleInputFileOption(inputFile)
+] : [];
+var handleInputOption = (input) => input === void 0 ? [] : [{
+  type: getInputType(input),
+  value: input,
+  optionName: "input"
+}];
+var getInputType = (input) => {
+  if (isReadableStream(input, { checkOpen: false })) {
+    return "nodeStream";
+  }
+  if (typeof input === "string") {
+    return "string";
+  }
+  if (isUint8Array(input)) {
+    return "uint8Array";
+  }
+  throw new Error("The `input` option must be a string, a Uint8Array or a Node.js Readable stream.");
+};
+var handleInputFileOption = (inputFile) => inputFile === void 0 ? [] : [{
+  ...getInputFileType(inputFile),
+  optionName: "inputFile"
+}];
+var getInputFileType = (inputFile) => {
+  if (isUrl(inputFile)) {
+    return { type: "fileUrl", value: inputFile };
+  }
+  if (isFilePathString(inputFile)) {
+    return { type: "filePath", value: { file: inputFile } };
+  }
+  throw new Error("The `inputFile` option must be a file path string or a file URL.");
+};
+
+// node_modules/execa/lib/stdio/duplicate.js
+var filterDuplicates = (stdioItems) => stdioItems.filter((stdioItemOne, indexOne) => stdioItems.every((stdioItemTwo, indexTwo) => stdioItemOne.value !== stdioItemTwo.value || indexOne >= indexTwo || stdioItemOne.type === "generator" || stdioItemOne.type === "asyncGenerator"));
+var getDuplicateStream = ({ stdioItem: { type, value, optionName }, direction, fileDescriptors, isSync }) => {
+  const otherStdioItems = getOtherStdioItems(fileDescriptors, type);
+  if (otherStdioItems.length === 0) {
+    return;
+  }
+  if (isSync) {
+    validateDuplicateStreamSync({
+      otherStdioItems,
+      type,
+      value,
+      optionName,
+      direction
+    });
+    return;
+  }
+  if (SPECIAL_DUPLICATE_TYPES.has(type)) {
+    return getDuplicateStreamInstance({
+      otherStdioItems,
+      type,
+      value,
+      optionName,
+      direction
+    });
+  }
+  if (FORBID_DUPLICATE_TYPES.has(type)) {
+    validateDuplicateTransform({
+      otherStdioItems,
+      type,
+      value,
+      optionName
+    });
+  }
+};
+var getOtherStdioItems = (fileDescriptors, type) => fileDescriptors.flatMap(({ direction, stdioItems }) => stdioItems.filter((stdioItem) => stdioItem.type === type).map(((stdioItem) => ({ ...stdioItem, direction }))));
+var validateDuplicateStreamSync = ({ otherStdioItems, type, value, optionName, direction }) => {
+  if (SPECIAL_DUPLICATE_TYPES_SYNC.has(type)) {
+    getDuplicateStreamInstance({
+      otherStdioItems,
+      type,
+      value,
+      optionName,
+      direction
+    });
+  }
+};
+var getDuplicateStreamInstance = ({ otherStdioItems, type, value, optionName, direction }) => {
+  const duplicateStdioItems = otherStdioItems.filter((stdioItem) => hasSameValue(stdioItem, value));
+  if (duplicateStdioItems.length === 0) {
+    return;
+  }
+  const differentStdioItem = duplicateStdioItems.find((stdioItem) => stdioItem.direction !== direction);
+  throwOnDuplicateStream(differentStdioItem, optionName, type);
+  return direction === "output" ? duplicateStdioItems[0].stream : void 0;
+};
+var hasSameValue = ({ type, value }, secondValue) => {
+  if (type === "filePath") {
+    return value.file === secondValue.file;
+  }
+  if (type === "fileUrl") {
+    return value.href === secondValue.href;
+  }
+  return value === secondValue;
+};
+var validateDuplicateTransform = ({ otherStdioItems, type, value, optionName }) => {
+  const duplicateStdioItem = otherStdioItems.find(({ value: { transform } }) => transform === value.transform);
+  throwOnDuplicateStream(duplicateStdioItem, optionName, type);
+};
+var throwOnDuplicateStream = (stdioItem, optionName, type) => {
+  if (stdioItem !== void 0) {
+    throw new TypeError(`The \`${stdioItem.optionName}\` and \`${optionName}\` options must not target ${TYPE_TO_MESSAGE[type]} that is the same.`);
+  }
+};
+
+// node_modules/execa/lib/stdio/handle.js
+var handleStdio = (addProperties3, options, verboseInfo, isSync) => {
+  const stdio = normalizeStdioOption(options, verboseInfo, isSync);
+  const initialFileDescriptors = stdio.map((stdioOption, fdNumber) => getFileDescriptor({
+    stdioOption,
+    fdNumber,
+    options,
+    isSync
+  }));
+  const fileDescriptors = getFinalFileDescriptors({
+    initialFileDescriptors,
+    addProperties: addProperties3,
+    options,
+    isSync
+  });
+  options.stdio = fileDescriptors.map(({ stdioItems }) => forwardStdio(stdioItems));
+  return fileDescriptors;
+};
+var getFileDescriptor = ({ stdioOption, fdNumber, options, isSync }) => {
+  const optionName = getStreamName(fdNumber);
+  const { stdioItems: initialStdioItems, isStdioArray } = initializeStdioItems({
+    stdioOption,
+    fdNumber,
+    options,
+    optionName
+  });
+  const direction = getStreamDirection(initialStdioItems, fdNumber, optionName);
+  const stdioItems = initialStdioItems.map((stdioItem) => handleNativeStream({
+    stdioItem,
+    isStdioArray,
+    fdNumber,
+    direction,
+    isSync
+  }));
+  const normalizedStdioItems = normalizeTransforms(stdioItems, optionName, direction, options);
+  const objectMode = getFdObjectMode(normalizedStdioItems, direction);
+  validateFileObjectMode(normalizedStdioItems, objectMode);
+  return { direction, objectMode, stdioItems: normalizedStdioItems };
+};
+var initializeStdioItems = ({ stdioOption, fdNumber, options, optionName }) => {
+  const values = Array.isArray(stdioOption) ? stdioOption : [stdioOption];
+  const initialStdioItems = [
+    ...values.map((value) => initializeStdioItem(value, optionName)),
+    ...handleInputOptions(options, fdNumber)
+  ];
+  const stdioItems = filterDuplicates(initialStdioItems);
+  const isStdioArray = stdioItems.length > 1;
+  validateStdioArray(stdioItems, isStdioArray, optionName);
+  validateStreams(stdioItems);
+  return { stdioItems, isStdioArray };
+};
+var initializeStdioItem = (value, optionName) => ({
+  type: getStdioItemType(value, optionName),
+  value,
+  optionName
+});
+var validateStdioArray = (stdioItems, isStdioArray, optionName) => {
+  if (stdioItems.length === 0) {
+    throw new TypeError(`The \`${optionName}\` option must not be an empty array.`);
+  }
+  if (!isStdioArray) {
+    return;
+  }
+  for (const { value, optionName: optionName2 } of stdioItems) {
+    if (INVALID_STDIO_ARRAY_OPTIONS.has(value)) {
+      throw new Error(`The \`${optionName2}\` option must not include \`${value}\`.`);
+    }
+  }
+};
+var INVALID_STDIO_ARRAY_OPTIONS = /* @__PURE__ */ new Set(["ignore", "ipc"]);
+var validateStreams = (stdioItems) => {
+  for (const stdioItem of stdioItems) {
+    validateFileStdio(stdioItem);
+  }
+};
+var validateFileStdio = ({ type, value, optionName }) => {
+  if (isRegularUrl(value)) {
+    throw new TypeError(`The \`${optionName}: URL\` option must use the \`file:\` scheme.
+For example, you can use the \`pathToFileURL()\` method of the \`url\` core module.`);
+  }
+  if (isUnknownStdioString(type, value)) {
+    throw new TypeError(`The \`${optionName}: { file: '...' }\` option must be used instead of \`${optionName}: '...'\`.`);
+  }
+};
+var validateFileObjectMode = (stdioItems, objectMode) => {
+  if (!objectMode) {
+    return;
+  }
+  const fileStdioItem = stdioItems.find(({ type }) => FILE_TYPES.has(type));
+  if (fileStdioItem !== void 0) {
+    throw new TypeError(`The \`${fileStdioItem.optionName}\` option cannot use both files and transforms in objectMode.`);
+  }
+};
+var getFinalFileDescriptors = ({ initialFileDescriptors, addProperties: addProperties3, options, isSync }) => {
+  const fileDescriptors = [];
+  try {
+    for (const fileDescriptor of initialFileDescriptors) {
+      fileDescriptors.push(getFinalFileDescriptor({
+        fileDescriptor,
+        fileDescriptors,
+        addProperties: addProperties3,
+        options,
+        isSync
+      }));
+    }
+    return fileDescriptors;
+  } catch (error) {
+    cleanupCustomStreams(fileDescriptors);
+    throw error;
+  }
+};
+var getFinalFileDescriptor = ({
+  fileDescriptor: { direction, objectMode, stdioItems },
+  fileDescriptors,
+  addProperties: addProperties3,
+  options,
+  isSync
+}) => {
+  const finalStdioItems = stdioItems.map((stdioItem) => addStreamProperties({
+    stdioItem,
+    addProperties: addProperties3,
+    direction,
+    options,
+    fileDescriptors,
+    isSync
+  }));
+  return { direction, objectMode, stdioItems: finalStdioItems };
+};
+var addStreamProperties = ({ stdioItem, addProperties: addProperties3, direction, options, fileDescriptors, isSync }) => {
+  const duplicateStream = getDuplicateStream({
+    stdioItem,
+    direction,
+    fileDescriptors,
+    isSync
+  });
+  if (duplicateStream !== void 0) {
+    return { ...stdioItem, stream: duplicateStream };
+  }
+  return {
+    ...stdioItem,
+    ...addProperties3[direction][stdioItem.type](stdioItem, options)
+  };
+};
+var cleanupCustomStreams = (fileDescriptors) => {
+  for (const { stdioItems } of fileDescriptors) {
+    for (const { stream: stream5 } of stdioItems) {
+      if (stream5 !== void 0 && !isStandardStream(stream5)) {
+        stream5.destroy();
+      }
+    }
+  }
+};
+var forwardStdio = (stdioItems) => {
+  if (stdioItems.length > 1) {
+    return stdioItems.some(({ value: value2 }) => value2 === "overlapped") ? "overlapped" : "pipe";
+  }
+  const [{ type, value }] = stdioItems;
+  return type === "native" ? value : "pipe";
+};
+
+// node_modules/execa/lib/stdio/handle-sync.js
+var handleStdioSync = (options, verboseInfo) => handleStdio(addPropertiesSync, options, verboseInfo, true);
+var forbiddenIfSync = ({ type, optionName }) => {
+  throwInvalidSyncValue(optionName, TYPE_TO_MESSAGE[type]);
+};
+var forbiddenNativeIfSync = ({ optionName, value }) => {
+  if (value === "ipc" || value === "overlapped") {
+    throwInvalidSyncValue(optionName, `"${value}"`);
+  }
+  return {};
+};
+var throwInvalidSyncValue = (optionName, value) => {
+  throw new TypeError(`The \`${optionName}\` option cannot be ${value} with synchronous methods.`);
+};
+var addProperties = {
+  generator() {
+  },
+  asyncGenerator: forbiddenIfSync,
+  webStream: forbiddenIfSync,
+  nodeStream: forbiddenIfSync,
+  webTransform: forbiddenIfSync,
+  duplex: forbiddenIfSync,
+  asyncIterable: forbiddenIfSync,
+  native: forbiddenNativeIfSync
+};
+var addPropertiesSync = {
+  input: {
+    ...addProperties,
+    fileUrl: ({ value }) => ({ contents: [bufferToUint8Array((0, import_node_fs3.readFileSync)(value))] }),
+    filePath: ({ value: { file } }) => ({ contents: [bufferToUint8Array((0, import_node_fs3.readFileSync)(file))] }),
+    fileNumber: forbiddenIfSync,
+    iterable: ({ value }) => ({ contents: [...value] }),
+    string: ({ value }) => ({ contents: [value] }),
+    uint8Array: ({ value }) => ({ contents: [value] })
+  },
+  output: {
+    ...addProperties,
+    fileUrl: ({ value }) => ({ path: value }),
+    filePath: ({ value: { file, append: append2 } }) => ({ path: file, append: append2 }),
+    fileNumber: ({ value }) => ({ path: value }),
+    iterable: forbiddenIfSync,
+    string: forbiddenIfSync,
+    uint8Array: forbiddenIfSync
+  }
+};
+
+// node_modules/execa/lib/io/strip-newline.js
+var stripNewline = (value, { stripFinalNewline: stripFinalNewline2 }, fdNumber) => getStripFinalNewline(stripFinalNewline2, fdNumber) && value !== void 0 && !Array.isArray(value) ? stripFinalNewline(value) : value;
+var getStripFinalNewline = (stripFinalNewline2, fdNumber) => fdNumber === "all" ? stripFinalNewline2[1] || stripFinalNewline2[2] : stripFinalNewline2[fdNumber];
+
+// node_modules/execa/lib/transform/generator.js
+var import_node_stream = require("node:stream");
+
+// node_modules/execa/lib/transform/split.js
+var getSplitLinesGenerator = (binary, preserveNewlines, skipped, state) => binary || skipped ? void 0 : initializeSplitLines(preserveNewlines, state);
+var splitLinesSync = (chunk, preserveNewlines, objectMode) => objectMode ? chunk.flatMap((item) => splitLinesItemSync(item, preserveNewlines)) : splitLinesItemSync(chunk, preserveNewlines);
+var splitLinesItemSync = (chunk, preserveNewlines) => {
+  const { transform, final } = initializeSplitLines(preserveNewlines, {});
+  return [...transform(chunk), ...final()];
+};
+var initializeSplitLines = (preserveNewlines, state) => {
+  state.previousChunks = "";
+  return {
+    transform: splitGenerator.bind(void 0, state, preserveNewlines),
+    final: linesFinal.bind(void 0, state)
+  };
+};
+var splitGenerator = function* (state, preserveNewlines, chunk) {
+  if (typeof chunk !== "string") {
+    yield chunk;
+    return;
+  }
+  let { previousChunks } = state;
+  let start = -1;
+  for (let end = 0; end < chunk.length; end += 1) {
+    if (chunk[end] === "\n") {
+      const newlineLength = getNewlineLength(chunk, end, preserveNewlines, state);
+      let line = chunk.slice(start + 1, end + 1 - newlineLength);
+      if (previousChunks.length > 0) {
+        line = concatString(previousChunks, line);
+        previousChunks = "";
+      }
+      yield line;
+      start = end;
+    }
+  }
+  if (start !== chunk.length - 1) {
+    previousChunks = concatString(previousChunks, chunk.slice(start + 1));
+  }
+  state.previousChunks = previousChunks;
+};
+var getNewlineLength = (chunk, end, preserveNewlines, state) => {
+  if (preserveNewlines) {
+    return 0;
+  }
+  state.isWindowsNewline = end !== 0 && chunk[end - 1] === "\r";
+  return state.isWindowsNewline ? 2 : 1;
+};
+var linesFinal = function* ({ previousChunks }) {
+  if (previousChunks.length > 0) {
+    yield previousChunks;
+  }
+};
+var getAppendNewlineGenerator = ({ binary, preserveNewlines, readableObjectMode, state }) => binary || preserveNewlines || readableObjectMode ? void 0 : { transform: appendNewlineGenerator.bind(void 0, state) };
+var appendNewlineGenerator = function* ({ isWindowsNewline = false }, chunk) {
+  const { unixNewline, windowsNewline, LF: LF2, concatBytes } = typeof chunk === "string" ? linesStringInfo : linesUint8ArrayInfo;
+  if (chunk.at(-1) === LF2) {
+    yield chunk;
+    return;
+  }
+  const newline2 = isWindowsNewline ? windowsNewline : unixNewline;
+  yield concatBytes(chunk, newline2);
+};
+var concatString = (firstChunk, secondChunk) => `${firstChunk}${secondChunk}`;
+var linesStringInfo = {
+  windowsNewline: "\r\n",
+  unixNewline: "\n",
+  LF: "\n",
+  concatBytes: concatString
+};
+var concatUint8Array = (firstChunk, secondChunk) => {
+  const chunk = new Uint8Array(firstChunk.length + secondChunk.length);
+  chunk.set(firstChunk, 0);
+  chunk.set(secondChunk, firstChunk.length);
+  return chunk;
+};
+var linesUint8ArrayInfo = {
+  windowsNewline: new Uint8Array([13, 10]),
+  unixNewline: new Uint8Array([10]),
+  LF: 10,
+  concatBytes: concatUint8Array
+};
+
+// node_modules/execa/lib/transform/validate.js
+var import_node_buffer = require("node:buffer");
+var getValidateTransformInput = (writableObjectMode, optionName) => writableObjectMode ? void 0 : validateStringTransformInput.bind(void 0, optionName);
+var validateStringTransformInput = function* (optionName, chunk) {
+  if (typeof chunk !== "string" && !isUint8Array(chunk) && !import_node_buffer.Buffer.isBuffer(chunk)) {
+    throw new TypeError(`The \`${optionName}\` option's transform must use "objectMode: true" to receive as input: ${typeof chunk}.`);
+  }
+  yield chunk;
+};
+var getValidateTransformReturn = (readableObjectMode, optionName) => readableObjectMode ? validateObjectTransformReturn.bind(void 0, optionName) : validateStringTransformReturn.bind(void 0, optionName);
+var validateObjectTransformReturn = function* (optionName, chunk) {
+  validateEmptyReturn(optionName, chunk);
+  yield chunk;
+};
+var validateStringTransformReturn = function* (optionName, chunk) {
+  validateEmptyReturn(optionName, chunk);
+  if (typeof chunk !== "string" && !isUint8Array(chunk)) {
+    throw new TypeError(`The \`${optionName}\` option's function must yield a string or an Uint8Array, not ${typeof chunk}.`);
+  }
+  yield chunk;
+};
+var validateEmptyReturn = (optionName, chunk) => {
+  if (chunk === null || chunk === void 0) {
+    throw new TypeError(`The \`${optionName}\` option's function must not call \`yield ${chunk}\`.
+Instead, \`yield\` should either be called with a value, or not be called at all. For example:
+  if (condition) { yield value; }`);
+  }
+};
+
+// node_modules/execa/lib/transform/encoding-transform.js
+var import_node_buffer2 = require("node:buffer");
+var import_node_string_decoder2 = require("node:string_decoder");
+var getEncodingTransformGenerator = (binary, encoding, skipped) => {
+  if (skipped) {
+    return;
+  }
+  if (binary) {
+    return { transform: encodingUint8ArrayGenerator.bind(void 0, new TextEncoder()) };
+  }
+  const stringDecoder = new import_node_string_decoder2.StringDecoder(encoding);
+  return {
+    transform: encodingStringGenerator.bind(void 0, stringDecoder),
+    final: encodingStringFinal.bind(void 0, stringDecoder)
+  };
+};
+var encodingUint8ArrayGenerator = function* (textEncoder4, chunk) {
+  if (import_node_buffer2.Buffer.isBuffer(chunk)) {
+    yield bufferToUint8Array(chunk);
+  } else if (typeof chunk === "string") {
+    yield textEncoder4.encode(chunk);
+  } else {
+    yield chunk;
+  }
+};
+var encodingStringGenerator = function* (stringDecoder, chunk) {
+  yield isUint8Array(chunk) ? stringDecoder.write(chunk) : chunk;
+};
+var encodingStringFinal = function* (stringDecoder) {
+  const lastChunk = stringDecoder.end();
+  if (lastChunk !== "") {
+    yield lastChunk;
+  }
+};
+
+// node_modules/execa/lib/transform/run-async.js
+var import_node_util7 = require("node:util");
+var pushChunks = (0, import_node_util7.callbackify)(async (getChunks, state, getChunksArguments, transformStream) => {
+  state.currentIterable = getChunks(...getChunksArguments);
+  try {
+    for await (const chunk of state.currentIterable) {
+      transformStream.push(chunk);
+    }
+  } finally {
+    delete state.currentIterable;
+  }
+});
+var transformChunk = async function* (chunk, generators, index) {
+  if (index === generators.length) {
+    yield chunk;
+    return;
+  }
+  const { transform = identityGenerator } = generators[index];
+  for await (const transformedChunk of transform(chunk)) {
+    yield* transformChunk(transformedChunk, generators, index + 1);
+  }
+};
+var finalChunks = async function* (generators) {
+  for (const [index, { final }] of Object.entries(generators)) {
+    yield* generatorFinalChunks(final, Number(index), generators);
+  }
+};
+var generatorFinalChunks = async function* (final, index, generators) {
+  if (final === void 0) {
+    return;
+  }
+  for await (const finalChunk of final()) {
+    yield* transformChunk(finalChunk, generators, index + 1);
+  }
+};
+var destroyTransform = (0, import_node_util7.callbackify)(async ({ currentIterable }, error) => {
+  if (currentIterable !== void 0) {
+    await (error ? currentIterable.throw(error) : currentIterable.return());
+    return;
+  }
+  if (error) {
+    throw error;
+  }
+});
+var identityGenerator = function* (chunk) {
+  yield chunk;
+};
+
+// node_modules/execa/lib/transform/run-sync.js
+var pushChunksSync = (getChunksSync, getChunksArguments, transformStream, done) => {
+  try {
+    for (const chunk of getChunksSync(...getChunksArguments)) {
+      transformStream.push(chunk);
+    }
+    done();
+  } catch (error) {
+    done(error);
+  }
+};
+var runTransformSync = (generators, chunks) => [
+  ...chunks.flatMap((chunk) => [...transformChunkSync(chunk, generators, 0)]),
+  ...finalChunksSync(generators)
+];
+var transformChunkSync = function* (chunk, generators, index) {
+  if (index === generators.length) {
+    yield chunk;
+    return;
+  }
+  const { transform = identityGenerator2 } = generators[index];
+  for (const transformedChunk of transform(chunk)) {
+    yield* transformChunkSync(transformedChunk, generators, index + 1);
+  }
+};
+var finalChunksSync = function* (generators) {
+  for (const [index, { final }] of Object.entries(generators)) {
+    yield* generatorFinalChunksSync(final, Number(index), generators);
+  }
+};
+var generatorFinalChunksSync = function* (final, index, generators) {
+  if (final === void 0) {
+    return;
+  }
+  for (const finalChunk of final()) {
+    yield* transformChunkSync(finalChunk, generators, index + 1);
+  }
+};
+var identityGenerator2 = function* (chunk) {
+  yield chunk;
+};
+
+// node_modules/execa/lib/transform/generator.js
+var generatorToStream = ({
+  value,
+  value: { transform, final, writableObjectMode, readableObjectMode },
+  optionName
+}, { encoding }) => {
+  const state = {};
+  const generators = addInternalGenerators(value, encoding, optionName);
+  const transformAsync = isAsyncGenerator(transform);
+  const finalAsync = isAsyncGenerator(final);
+  const transformMethod = transformAsync ? pushChunks.bind(void 0, transformChunk, state) : pushChunksSync.bind(void 0, transformChunkSync);
+  const finalMethod = transformAsync || finalAsync ? pushChunks.bind(void 0, finalChunks, state) : pushChunksSync.bind(void 0, finalChunksSync);
+  const destroyMethod = transformAsync || finalAsync ? destroyTransform.bind(void 0, state) : void 0;
+  const stream5 = new import_node_stream.Transform({
+    writableObjectMode,
+    writableHighWaterMark: (0, import_node_stream.getDefaultHighWaterMark)(writableObjectMode),
+    readableObjectMode,
+    readableHighWaterMark: (0, import_node_stream.getDefaultHighWaterMark)(readableObjectMode),
+    transform(chunk, encoding2, done) {
+      transformMethod([chunk, generators, 0], this, done);
+    },
+    flush(done) {
+      finalMethod([generators], this, done);
+    },
+    destroy: destroyMethod
+  });
+  return { stream: stream5 };
+};
+var runGeneratorsSync = (chunks, stdioItems, encoding, isInput) => {
+  const generators = stdioItems.filter(({ type }) => type === "generator");
+  const reversedGenerators = isInput ? generators.reverse() : generators;
+  for (const { value, optionName } of reversedGenerators) {
+    const generators2 = addInternalGenerators(value, encoding, optionName);
+    chunks = runTransformSync(generators2, chunks);
+  }
+  return chunks;
+};
+var addInternalGenerators = ({ transform, final, binary, writableObjectMode, readableObjectMode, preserveNewlines }, encoding, optionName) => {
+  const state = {};
+  return [
+    { transform: getValidateTransformInput(writableObjectMode, optionName) },
+    getEncodingTransformGenerator(binary, encoding, writableObjectMode),
+    getSplitLinesGenerator(binary, preserveNewlines, writableObjectMode, state),
+    { transform, final },
+    { transform: getValidateTransformReturn(readableObjectMode, optionName) },
+    getAppendNewlineGenerator({
+      binary,
+      preserveNewlines,
+      readableObjectMode,
+      state
+    })
+  ].filter(Boolean);
+};
+
+// node_modules/execa/lib/io/input-sync.js
+var addInputOptionsSync = (fileDescriptors, options) => {
+  for (const fdNumber of getInputFdNumbers(fileDescriptors)) {
+    addInputOptionSync(fileDescriptors, fdNumber, options);
+  }
+};
+var getInputFdNumbers = (fileDescriptors) => new Set(Object.entries(fileDescriptors).filter(([, { direction }]) => direction === "input").map(([fdNumber]) => Number(fdNumber)));
+var addInputOptionSync = (fileDescriptors, fdNumber, options) => {
+  const { stdioItems } = fileDescriptors[fdNumber];
+  const allStdioItems = stdioItems.filter(({ contents }) => contents !== void 0);
+  if (allStdioItems.length === 0) {
+    return;
+  }
+  if (fdNumber !== 0) {
+    const [{ type, optionName }] = allStdioItems;
+    throw new TypeError(`Only the \`stdin\` option, not \`${optionName}\`, can be ${TYPE_TO_MESSAGE[type]} with synchronous methods.`);
+  }
+  const allContents = allStdioItems.map(({ contents }) => contents);
+  const transformedContents = allContents.map((contents) => applySingleInputGeneratorsSync(contents, stdioItems));
+  options.input = joinToUint8Array(transformedContents);
+};
+var applySingleInputGeneratorsSync = (contents, stdioItems) => {
+  const newContents = runGeneratorsSync(contents, stdioItems, "utf8", true);
+  validateSerializable(newContents);
+  return joinToUint8Array(newContents);
+};
+var validateSerializable = (newContents) => {
+  const invalidItem = newContents.find((item) => typeof item !== "string" && !isUint8Array(item));
+  if (invalidItem !== void 0) {
+    throw new TypeError(`The \`stdin\` option is invalid: when passing objects as input, a transform must be used to serialize them to strings or Uint8Arrays: ${invalidItem}.`);
+  }
+};
+
+// node_modules/execa/lib/io/output-sync.js
+var import_node_fs4 = require("node:fs");
+
+// node_modules/execa/lib/verbose/output.js
+var shouldLogOutput = ({ stdioItems, encoding, verboseInfo, fdNumber }) => fdNumber !== "all" && isFullVerbose(verboseInfo, fdNumber) && !BINARY_ENCODINGS.has(encoding) && fdUsesVerbose(fdNumber) && (stdioItems.some(({ type, value }) => type === "native" && PIPED_STDIO_VALUES.has(value)) || stdioItems.every(({ type }) => TRANSFORM_TYPES.has(type)));
+var fdUsesVerbose = (fdNumber) => fdNumber === 1 || fdNumber === 2;
+var PIPED_STDIO_VALUES = /* @__PURE__ */ new Set(["pipe", "overlapped"]);
+var logLines = async (linesIterable, stream5, fdNumber, verboseInfo) => {
+  for await (const line of linesIterable) {
+    if (!isPipingStream(stream5)) {
+      logLine(line, fdNumber, verboseInfo);
+    }
+  }
+};
+var logLinesSync = (linesArray, fdNumber, verboseInfo) => {
+  for (const line of linesArray) {
+    logLine(line, fdNumber, verboseInfo);
+  }
+};
+var isPipingStream = (stream5) => stream5._readableState.pipes.length > 0;
+var logLine = (line, fdNumber, verboseInfo) => {
+  const verboseMessage = serializeVerboseMessage(line);
+  verboseLog({
+    type: "output",
+    verboseMessage,
+    fdNumber,
+    verboseInfo
+  });
+};
+
+// node_modules/execa/lib/io/output-sync.js
+var transformOutputSync = ({ fileDescriptors, syncResult: { output }, options, isMaxBuffer, verboseInfo }) => {
+  if (output === null) {
+    return { output: Array.from({ length: 3 }) };
+  }
+  const state = {};
+  const outputFiles = /* @__PURE__ */ new Set([]);
+  const transformedOutput = output.map((result, fdNumber) => transformOutputResultSync({
+    result,
+    fileDescriptors,
+    fdNumber,
+    state,
+    outputFiles,
+    isMaxBuffer,
+    verboseInfo
+  }, options));
+  return { output: transformedOutput, ...state };
+};
+var transformOutputResultSync = ({ result, fileDescriptors, fdNumber, state, outputFiles, isMaxBuffer, verboseInfo }, { buffer, encoding, lines, stripFinalNewline: stripFinalNewline2, maxBuffer }) => {
+  if (result === null) {
+    return;
+  }
+  const truncatedResult = truncateMaxBufferSync(result, isMaxBuffer, maxBuffer);
+  const uint8ArrayResult = bufferToUint8Array(truncatedResult);
+  const { stdioItems, objectMode } = fileDescriptors[fdNumber];
+  const chunks = runOutputGeneratorsSync([uint8ArrayResult], stdioItems, encoding, state);
+  const { serializedResult, finalResult = serializedResult } = serializeChunks({
+    chunks,
+    objectMode,
+    encoding,
+    lines,
+    stripFinalNewline: stripFinalNewline2,
+    fdNumber
+  });
+  logOutputSync({
+    serializedResult,
+    fdNumber,
+    state,
+    verboseInfo,
+    encoding,
+    stdioItems,
+    objectMode
+  });
+  const returnedResult = buffer[fdNumber] ? finalResult : void 0;
+  try {
+    if (state.error === void 0) {
+      writeToFiles(serializedResult, stdioItems, outputFiles);
+    }
+    return returnedResult;
+  } catch (error) {
+    state.error = error;
+    return returnedResult;
+  }
+};
+var runOutputGeneratorsSync = (chunks, stdioItems, encoding, state) => {
+  try {
+    return runGeneratorsSync(chunks, stdioItems, encoding, false);
+  } catch (error) {
+    state.error = error;
+    return chunks;
+  }
+};
+var serializeChunks = ({ chunks, objectMode, encoding, lines, stripFinalNewline: stripFinalNewline2, fdNumber }) => {
+  if (objectMode) {
+    return { serializedResult: chunks };
+  }
+  if (encoding === "buffer") {
+    return { serializedResult: joinToUint8Array(chunks) };
+  }
+  const serializedResult = joinToString(chunks, encoding);
+  if (lines[fdNumber]) {
+    return { serializedResult, finalResult: splitLinesSync(serializedResult, !stripFinalNewline2[fdNumber], objectMode) };
+  }
+  return { serializedResult };
+};
+var logOutputSync = ({ serializedResult, fdNumber, state, verboseInfo, encoding, stdioItems, objectMode }) => {
+  if (!shouldLogOutput({
+    stdioItems,
+    encoding,
+    verboseInfo,
+    fdNumber
+  })) {
+    return;
+  }
+  const linesArray = splitLinesSync(serializedResult, false, objectMode);
+  try {
+    logLinesSync(linesArray, fdNumber, verboseInfo);
+  } catch (error) {
+    state.error ??= error;
+  }
+};
+var writeToFiles = (serializedResult, stdioItems, outputFiles) => {
+  for (const { path: path15, append: append2 } of stdioItems.filter(({ type }) => FILE_TYPES.has(type))) {
+    const pathString = typeof path15 === "string" ? path15 : path15.toString();
+    if (append2 || outputFiles.has(pathString)) {
+      (0, import_node_fs4.appendFileSync)(path15, serializedResult);
+    } else {
+      outputFiles.add(pathString);
+      (0, import_node_fs4.writeFileSync)(path15, serializedResult);
+    }
+  }
+};
+
+// node_modules/execa/lib/resolve/all-sync.js
+var getAllSync = ([, stdout, stderr], options) => {
+  if (!options.all) {
+    return;
+  }
+  if (stdout === void 0) {
+    return stderr;
+  }
+  if (stderr === void 0) {
+    return stdout;
+  }
+  if (Array.isArray(stdout)) {
+    return Array.isArray(stderr) ? [...stdout, ...stderr] : [...stdout, stripNewline(stderr, options, "all")];
+  }
+  if (Array.isArray(stderr)) {
+    return [stripNewline(stdout, options, "all"), ...stderr];
+  }
+  if (isUint8Array(stdout) && isUint8Array(stderr)) {
+    return concatUint8Arrays([stdout, stderr]);
+  }
+  return `${stdout}${stderr}`;
+};
+
+// node_modules/execa/lib/resolve/exit-async.js
+var import_node_events7 = require("node:events");
+var waitForExit = async (subprocess, context) => {
+  const [exitCode, signal] = await waitForExitOrError(subprocess);
+  context.isForcefullyTerminated ??= false;
+  return [exitCode, signal];
+};
+var waitForExitOrError = async (subprocess) => {
+  const [spawnPayload, exitPayload] = await Promise.allSettled([
+    (0, import_node_events7.once)(subprocess, "spawn"),
+    (0, import_node_events7.once)(subprocess, "exit")
+  ]);
+  if (spawnPayload.status === "rejected") {
+    return [];
+  }
+  return exitPayload.status === "rejected" ? waitForSubprocessExit(subprocess) : exitPayload.value;
+};
+var waitForSubprocessExit = async (subprocess) => {
+  try {
+    return await (0, import_node_events7.once)(subprocess, "exit");
+  } catch {
+    return waitForSubprocessExit(subprocess);
+  }
+};
+var waitForSuccessfulExit = async (exitPromise) => {
+  const [exitCode, signal] = await exitPromise;
+  if (!isSubprocessErrorExit(exitCode, signal) && isFailedExit(exitCode, signal)) {
+    throw new DiscardedError();
+  }
+  return [exitCode, signal];
+};
+var isSubprocessErrorExit = (exitCode, signal) => exitCode === void 0 && signal === void 0;
+var isFailedExit = (exitCode, signal) => exitCode !== 0 || signal !== null;
+
+// node_modules/execa/lib/resolve/exit-sync.js
+var getExitResultSync = ({ error, status: exitCode, signal, output }, { maxBuffer }) => {
+  const resultError = getResultError(error, exitCode, signal);
+  const timedOut = resultError?.code === "ETIMEDOUT";
+  const isMaxBuffer = isMaxBufferSync(resultError, output, maxBuffer);
+  return {
+    resultError,
+    exitCode,
+    signal,
+    timedOut,
+    isMaxBuffer
+  };
+};
+var getResultError = (error, exitCode, signal) => {
+  if (error !== void 0) {
+    return error;
+  }
+  return isFailedExit(exitCode, signal) ? new DiscardedError() : void 0;
+};
+
+// node_modules/execa/lib/methods/main-sync.js
+var execaCoreSync = (rawFile, rawArguments, rawOptions) => {
+  const { file, commandArguments, command, escapedCommand, startTime, verboseInfo, options, fileDescriptors } = handleSyncArguments(rawFile, rawArguments, rawOptions);
+  const result = spawnSubprocessSync({
+    file,
+    commandArguments,
+    options,
+    command,
+    escapedCommand,
+    verboseInfo,
+    fileDescriptors,
+    startTime
+  });
+  return handleResult(result, verboseInfo, options);
+};
+var handleSyncArguments = (rawFile, rawArguments, rawOptions) => {
+  const { command, escapedCommand, startTime, verboseInfo } = handleCommand(rawFile, rawArguments, rawOptions);
+  const syncOptions = normalizeSyncOptions(rawOptions);
+  const { file, commandArguments, options } = normalizeOptions(rawFile, rawArguments, syncOptions);
+  validateSyncOptions(options);
+  const fileDescriptors = handleStdioSync(options, verboseInfo);
+  return {
+    file,
+    commandArguments,
+    command,
+    escapedCommand,
+    startTime,
+    verboseInfo,
+    options,
+    fileDescriptors
+  };
+};
+var normalizeSyncOptions = (options) => options.node && !options.ipc ? { ...options, ipc: false } : options;
+var validateSyncOptions = ({ ipc, ipcInput, detached, cancelSignal }) => {
+  if (ipcInput) {
+    throwInvalidSyncOption("ipcInput");
+  }
+  if (ipc) {
+    throwInvalidSyncOption("ipc: true");
+  }
+  if (detached) {
+    throwInvalidSyncOption("detached: true");
+  }
+  if (cancelSignal) {
+    throwInvalidSyncOption("cancelSignal");
+  }
+};
+var throwInvalidSyncOption = (value) => {
+  throw new TypeError(`The "${value}" option cannot be used with synchronous methods.`);
+};
+var spawnSubprocessSync = ({ file, commandArguments, options, command, escapedCommand, verboseInfo, fileDescriptors, startTime }) => {
+  const syncResult = runSubprocessSync({
+    file,
+    commandArguments,
+    options,
+    command,
+    escapedCommand,
+    fileDescriptors,
+    startTime
+  });
+  if (syncResult.failed) {
+    return syncResult;
+  }
+  const { resultError, exitCode, signal, timedOut, isMaxBuffer } = getExitResultSync(syncResult, options);
+  const { output, error = resultError } = transformOutputSync({
+    fileDescriptors,
+    syncResult,
+    options,
+    isMaxBuffer,
+    verboseInfo
+  });
+  const stdio = output.map((stdioOutput, fdNumber) => stripNewline(stdioOutput, options, fdNumber));
+  const all3 = stripNewline(getAllSync(output, options), options, "all");
+  return getSyncResult({
+    error,
+    exitCode,
+    signal,
+    timedOut,
+    isMaxBuffer,
+    stdio,
+    all: all3,
+    options,
+    command,
+    escapedCommand,
+    startTime
+  });
+};
+var runSubprocessSync = ({ file, commandArguments, options, command, escapedCommand, fileDescriptors, startTime }) => {
+  try {
+    addInputOptionsSync(fileDescriptors, options);
+    const normalizedOptions = normalizeSpawnSyncOptions(options);
+    return (0, import_node_child_process3.spawnSync)(...concatenateShell(file, commandArguments, normalizedOptions));
+  } catch (error) {
+    return makeEarlyError({
+      error,
+      command,
+      escapedCommand,
+      fileDescriptors,
+      options,
+      startTime,
+      isSync: true
+    });
+  }
+};
+var normalizeSpawnSyncOptions = ({ encoding, maxBuffer, ...options }) => ({ ...options, encoding: "buffer", maxBuffer: getMaxBufferSync(maxBuffer) });
+var getSyncResult = ({ error, exitCode, signal, timedOut, isMaxBuffer, stdio, all: all3, options, command, escapedCommand, startTime }) => error === void 0 ? makeSuccessResult({
+  command,
+  escapedCommand,
+  stdio,
+  all: all3,
+  ipcOutput: [],
+  options,
+  startTime
+}) : makeError({
+  error,
+  command,
+  escapedCommand,
+  timedOut,
+  isCanceled: false,
+  isGracefullyCanceled: false,
+  isMaxBuffer,
+  isForcefullyTerminated: false,
+  exitCode,
+  signal,
+  stdio,
+  all: all3,
+  ipcOutput: [],
+  options,
+  startTime,
+  isSync: true
+});
+
+// node_modules/execa/lib/methods/main-async.js
+var import_node_events14 = require("node:events");
+var import_node_child_process5 = require("node:child_process");
+
+// node_modules/execa/lib/ipc/methods.js
+var import_node_process10 = __toESM(require("node:process"), 1);
+
+// node_modules/execa/lib/ipc/get-one.js
+var import_node_events8 = require("node:events");
+var getOneMessage = ({ anyProcess, channel, isSubprocess, ipc }, { reference: reference2 = true, filter: filter3 } = {}) => {
+  validateIpcMethod({
+    methodName: "getOneMessage",
+    isSubprocess,
+    ipc,
+    isConnected: isConnected(anyProcess)
+  });
+  return getOneMessageAsync({
+    anyProcess,
+    channel,
+    isSubprocess,
+    filter: filter3,
+    reference: reference2
+  });
+};
+var getOneMessageAsync = async ({ anyProcess, channel, isSubprocess, filter: filter3, reference: reference2 }) => {
+  addReference(channel, reference2);
+  const ipcEmitter = getIpcEmitter(anyProcess, channel, isSubprocess);
+  const controller = new AbortController();
+  try {
+    return await Promise.race([
+      getMessage(ipcEmitter, filter3, controller),
+      throwOnDisconnect2(ipcEmitter, isSubprocess, controller),
+      throwOnStrictError(ipcEmitter, isSubprocess, controller)
+    ]);
+  } catch (error) {
+    disconnect(anyProcess);
+    throw error;
+  } finally {
+    controller.abort();
+    removeReference(channel, reference2);
+  }
+};
+var getMessage = async (ipcEmitter, filter3, { signal }) => {
+  if (filter3 === void 0) {
+    const [message] = await (0, import_node_events8.once)(ipcEmitter, "message", { signal });
+    return message;
+  }
+  for await (const [message] of (0, import_node_events8.on)(ipcEmitter, "message", { signal })) {
+    if (filter3(message)) {
+      return message;
+    }
+  }
+};
+var throwOnDisconnect2 = async (ipcEmitter, isSubprocess, { signal }) => {
+  await (0, import_node_events8.once)(ipcEmitter, "disconnect", { signal });
+  throwOnEarlyDisconnect(isSubprocess);
+};
+var throwOnStrictError = async (ipcEmitter, isSubprocess, { signal }) => {
+  const [error] = await (0, import_node_events8.once)(ipcEmitter, "strict:error", { signal });
+  throw getStrictResponseError(error, isSubprocess);
+};
+
+// node_modules/execa/lib/ipc/get-each.js
+var import_node_events9 = require("node:events");
+var getEachMessage = ({ anyProcess, channel, isSubprocess, ipc }, { reference: reference2 = true } = {}) => loopOnMessages({
+  anyProcess,
+  channel,
+  isSubprocess,
+  ipc,
+  shouldAwait: !isSubprocess,
+  reference: reference2
+});
+var loopOnMessages = ({ anyProcess, channel, isSubprocess, ipc, shouldAwait, reference: reference2 }) => {
+  validateIpcMethod({
+    methodName: "getEachMessage",
+    isSubprocess,
+    ipc,
+    isConnected: isConnected(anyProcess)
+  });
+  addReference(channel, reference2);
+  const ipcEmitter = getIpcEmitter(anyProcess, channel, isSubprocess);
+  const controller = new AbortController();
+  const state = {};
+  stopOnDisconnect(anyProcess, ipcEmitter, controller);
+  abortOnStrictError({
+    ipcEmitter,
+    isSubprocess,
+    controller,
+    state
+  });
+  return iterateOnMessages({
+    anyProcess,
+    channel,
+    ipcEmitter,
+    isSubprocess,
+    shouldAwait,
+    controller,
+    state,
+    reference: reference2
+  });
+};
+var stopOnDisconnect = async (anyProcess, ipcEmitter, controller) => {
+  try {
+    await (0, import_node_events9.once)(ipcEmitter, "disconnect", { signal: controller.signal });
+    controller.abort();
+  } catch {
+  }
+};
+var abortOnStrictError = async ({ ipcEmitter, isSubprocess, controller, state }) => {
+  try {
+    const [error] = await (0, import_node_events9.once)(ipcEmitter, "strict:error", { signal: controller.signal });
+    state.error = getStrictResponseError(error, isSubprocess);
+    controller.abort();
+  } catch {
+  }
+};
+var iterateOnMessages = async function* ({ anyProcess, channel, ipcEmitter, isSubprocess, shouldAwait, controller, state, reference: reference2 }) {
+  try {
+    for await (const [message] of (0, import_node_events9.on)(ipcEmitter, "message", { signal: controller.signal })) {
+      throwIfStrictError(state);
+      yield message;
+    }
+  } catch {
+    throwIfStrictError(state);
+  } finally {
+    controller.abort();
+    removeReference(channel, reference2);
+    if (!isSubprocess) {
+      disconnect(anyProcess);
+    }
+    if (shouldAwait) {
+      await anyProcess;
+    }
+  }
+};
+var throwIfStrictError = ({ error }) => {
+  if (error) {
+    throw error;
+  }
+};
+
+// node_modules/execa/lib/ipc/methods.js
+var addIpcMethods = (subprocess, { ipc }) => {
+  Object.assign(subprocess, getIpcMethods(subprocess, false, ipc));
+};
+var getIpcExport = () => {
+  const anyProcess = import_node_process10.default;
+  const isSubprocess = true;
+  const ipc = import_node_process10.default.channel !== void 0;
+  return {
+    ...getIpcMethods(anyProcess, isSubprocess, ipc),
+    getCancelSignal: getCancelSignal.bind(void 0, {
+      anyProcess,
+      channel: anyProcess.channel,
+      isSubprocess,
+      ipc
+    })
+  };
+};
+var getIpcMethods = (anyProcess, isSubprocess, ipc) => ({
+  sendMessage: sendMessage.bind(void 0, {
+    anyProcess,
+    channel: anyProcess.channel,
+    isSubprocess,
+    ipc
+  }),
+  getOneMessage: getOneMessage.bind(void 0, {
+    anyProcess,
+    channel: anyProcess.channel,
+    isSubprocess,
+    ipc
+  }),
+  getEachMessage: getEachMessage.bind(void 0, {
+    anyProcess,
+    channel: anyProcess.channel,
+    isSubprocess,
+    ipc
+  })
+});
+
+// node_modules/execa/lib/return/early-error.js
+var import_node_child_process4 = require("node:child_process");
+var import_node_stream2 = require("node:stream");
+var handleEarlyError = ({ error, command, escapedCommand, fileDescriptors, options, startTime, verboseInfo }) => {
+  cleanupCustomStreams(fileDescriptors);
+  const subprocess = new import_node_child_process4.ChildProcess();
+  createDummyStreams(subprocess, fileDescriptors);
+  Object.assign(subprocess, { readable, writable, duplex });
+  const earlyError = makeEarlyError({
+    error,
+    command,
+    escapedCommand,
+    fileDescriptors,
+    options,
+    startTime,
+    isSync: false
+  });
+  const promise = handleDummyPromise(earlyError, verboseInfo, options);
+  return { subprocess, promise };
+};
+var createDummyStreams = (subprocess, fileDescriptors) => {
+  const stdin = createDummyStream();
+  const stdout = createDummyStream();
+  const stderr = createDummyStream();
+  const extraStdio = Array.from({ length: fileDescriptors.length - 3 }, createDummyStream);
+  const all3 = createDummyStream();
+  const stdio = [stdin, stdout, stderr, ...extraStdio];
+  Object.assign(subprocess, {
+    stdin,
+    stdout,
+    stderr,
+    all: all3,
+    stdio
+  });
+};
+var createDummyStream = () => {
+  const stream5 = new import_node_stream2.PassThrough();
+  stream5.end();
+  return stream5;
+};
+var readable = () => new import_node_stream2.Readable({ read() {
+} });
+var writable = () => new import_node_stream2.Writable({ write() {
+} });
+var duplex = () => new import_node_stream2.Duplex({ read() {
+}, write() {
+} });
+var handleDummyPromise = async (error, verboseInfo, options) => handleResult(error, verboseInfo, options);
+
+// node_modules/execa/lib/stdio/handle-async.js
+var import_node_fs5 = require("node:fs");
+var import_node_buffer3 = require("node:buffer");
+var import_node_stream3 = require("node:stream");
+var handleStdioAsync = (options, verboseInfo) => handleStdio(addPropertiesAsync, options, verboseInfo, false);
+var forbiddenIfAsync = ({ type, optionName }) => {
+  throw new TypeError(`The \`${optionName}\` option cannot be ${TYPE_TO_MESSAGE[type]}.`);
+};
+var addProperties2 = {
+  fileNumber: forbiddenIfAsync,
+  generator: generatorToStream,
+  asyncGenerator: generatorToStream,
+  nodeStream: ({ value }) => ({ stream: value }),
+  webTransform({ value: { transform, writableObjectMode, readableObjectMode } }) {
+    const objectMode = writableObjectMode || readableObjectMode;
+    const stream5 = import_node_stream3.Duplex.fromWeb(transform, { objectMode });
+    return { stream: stream5 };
+  },
+  duplex: ({ value: { transform } }) => ({ stream: transform }),
+  native() {
+  }
+};
+var addPropertiesAsync = {
+  input: {
+    ...addProperties2,
+    fileUrl: ({ value }) => ({ stream: (0, import_node_fs5.createReadStream)(value) }),
+    filePath: ({ value: { file } }) => ({ stream: (0, import_node_fs5.createReadStream)(file) }),
+    webStream: ({ value }) => ({ stream: import_node_stream3.Readable.fromWeb(value) }),
+    iterable: ({ value }) => ({ stream: import_node_stream3.Readable.from(value) }),
+    asyncIterable: ({ value }) => ({ stream: import_node_stream3.Readable.from(value) }),
+    string: ({ value }) => ({ stream: import_node_stream3.Readable.from(value) }),
+    uint8Array: ({ value }) => ({ stream: import_node_stream3.Readable.from(import_node_buffer3.Buffer.from(value)) })
+  },
+  output: {
+    ...addProperties2,
+    fileUrl: ({ value }) => ({ stream: (0, import_node_fs5.createWriteStream)(value) }),
+    filePath: ({ value: { file, append: append2 } }) => ({ stream: (0, import_node_fs5.createWriteStream)(file, append2 ? { flags: "a" } : {}) }),
+    webStream: ({ value }) => ({ stream: import_node_stream3.Writable.fromWeb(value) }),
+    iterable: forbiddenIfAsync,
+    asyncIterable: forbiddenIfAsync,
+    string: forbiddenIfAsync,
+    uint8Array: forbiddenIfAsync
+  }
+};
+
+// node_modules/@sindresorhus/merge-streams/index.js
+var import_node_events10 = require("node:events");
+var import_node_stream4 = require("node:stream");
+var import_promises6 = require("node:stream/promises");
+function mergeStreams(streams) {
+  if (!Array.isArray(streams)) {
+    throw new TypeError(`Expected an array, got \`${typeof streams}\`.`);
+  }
+  for (const stream5 of streams) {
+    validateStream(stream5);
+  }
+  const objectMode = streams.some(({ readableObjectMode }) => readableObjectMode);
+  const highWaterMark = getHighWaterMark(streams, objectMode);
+  const passThroughStream = new MergedStream({
+    objectMode,
+    writableHighWaterMark: highWaterMark,
+    readableHighWaterMark: highWaterMark
+  });
+  for (const stream5 of streams) {
+    passThroughStream.add(stream5);
+  }
+  return passThroughStream;
+}
+var getHighWaterMark = (streams, objectMode) => {
+  if (streams.length === 0) {
+    return (0, import_node_stream4.getDefaultHighWaterMark)(objectMode);
+  }
+  const highWaterMarks = streams.filter(({ readableObjectMode }) => readableObjectMode === objectMode).map(({ readableHighWaterMark }) => readableHighWaterMark);
+  return Math.max(...highWaterMarks);
+};
+var MergedStream = class extends import_node_stream4.PassThrough {
+  #streams = /* @__PURE__ */ new Set([]);
+  #ended = /* @__PURE__ */ new Set([]);
+  #aborted = /* @__PURE__ */ new Set([]);
+  #onFinished;
+  #unpipeEvent = Symbol("unpipe");
+  #streamPromises = /* @__PURE__ */ new WeakMap();
+  add(stream5) {
+    validateStream(stream5);
+    if (this.#streams.has(stream5)) {
+      return;
+    }
+    this.#streams.add(stream5);
+    this.#onFinished ??= onMergedStreamFinished(this, this.#streams, this.#unpipeEvent);
+    const streamPromise = endWhenStreamsDone({
+      passThroughStream: this,
+      stream: stream5,
+      streams: this.#streams,
+      ended: this.#ended,
+      aborted: this.#aborted,
+      onFinished: this.#onFinished,
+      unpipeEvent: this.#unpipeEvent
+    });
+    this.#streamPromises.set(stream5, streamPromise);
+    stream5.pipe(this, { end: false });
+  }
+  async remove(stream5) {
+    validateStream(stream5);
+    if (!this.#streams.has(stream5)) {
+      return false;
+    }
+    const streamPromise = this.#streamPromises.get(stream5);
+    if (streamPromise === void 0) {
+      return false;
+    }
+    this.#streamPromises.delete(stream5);
+    stream5.unpipe(this);
+    await streamPromise;
+    return true;
+  }
+};
+var onMergedStreamFinished = async (passThroughStream, streams, unpipeEvent) => {
+  updateMaxListeners(passThroughStream, PASSTHROUGH_LISTENERS_COUNT);
+  const controller = new AbortController();
+  try {
+    await Promise.race([
+      onMergedStreamEnd(passThroughStream, controller),
+      onInputStreamsUnpipe(passThroughStream, streams, unpipeEvent, controller)
+    ]);
+  } finally {
+    controller.abort();
+    updateMaxListeners(passThroughStream, -PASSTHROUGH_LISTENERS_COUNT);
+  }
+};
+var onMergedStreamEnd = async (passThroughStream, { signal }) => {
+  try {
+    await (0, import_promises6.finished)(passThroughStream, { signal, cleanup: true });
+  } catch (error) {
+    errorOrAbortStream(passThroughStream, error);
+    throw error;
+  }
+};
+var onInputStreamsUnpipe = async (passThroughStream, streams, unpipeEvent, { signal }) => {
+  for await (const [unpipedStream] of (0, import_node_events10.on)(passThroughStream, "unpipe", { signal })) {
+    if (streams.has(unpipedStream)) {
+      unpipedStream.emit(unpipeEvent);
+    }
+  }
+};
+var validateStream = (stream5) => {
+  if (typeof stream5?.pipe !== "function") {
+    throw new TypeError(`Expected a readable stream, got: \`${typeof stream5}\`.`);
+  }
+};
+var endWhenStreamsDone = async ({ passThroughStream, stream: stream5, streams, ended, aborted: aborted2, onFinished, unpipeEvent }) => {
+  updateMaxListeners(passThroughStream, PASSTHROUGH_LISTENERS_PER_STREAM);
+  const controller = new AbortController();
+  try {
+    await Promise.race([
+      afterMergedStreamFinished(onFinished, stream5, controller),
+      onInputStreamEnd({
+        passThroughStream,
+        stream: stream5,
+        streams,
+        ended,
+        aborted: aborted2,
+        controller
+      }),
+      onInputStreamUnpipe({
+        stream: stream5,
+        streams,
+        ended,
+        aborted: aborted2,
+        unpipeEvent,
+        controller
+      })
+    ]);
+  } finally {
+    controller.abort();
+    updateMaxListeners(passThroughStream, -PASSTHROUGH_LISTENERS_PER_STREAM);
+  }
+  if (streams.size > 0 && streams.size === ended.size + aborted2.size) {
+    if (ended.size === 0 && aborted2.size > 0) {
+      abortStream(passThroughStream);
+    } else {
+      endStream(passThroughStream);
+    }
+  }
+};
+var afterMergedStreamFinished = async (onFinished, stream5, { signal }) => {
+  try {
+    await onFinished;
+    if (!signal.aborted) {
+      abortStream(stream5);
+    }
+  } catch (error) {
+    if (!signal.aborted) {
+      errorOrAbortStream(stream5, error);
+    }
+  }
+};
+var onInputStreamEnd = async ({ passThroughStream, stream: stream5, streams, ended, aborted: aborted2, controller: { signal } }) => {
+  try {
+    await (0, import_promises6.finished)(stream5, {
+      signal,
+      cleanup: true,
+      readable: true,
+      writable: false
+    });
+    if (streams.has(stream5)) {
+      ended.add(stream5);
+    }
+  } catch (error) {
+    if (signal.aborted || !streams.has(stream5)) {
+      return;
+    }
+    if (isAbortError(error)) {
+      aborted2.add(stream5);
+    } else {
+      errorStream(passThroughStream, error);
+    }
+  }
+};
+var onInputStreamUnpipe = async ({ stream: stream5, streams, ended, aborted: aborted2, unpipeEvent, controller: { signal } }) => {
+  await (0, import_node_events10.once)(stream5, unpipeEvent, { signal });
+  if (!stream5.readable) {
+    return (0, import_node_events10.once)(signal, "abort", { signal });
+  }
+  streams.delete(stream5);
+  ended.delete(stream5);
+  aborted2.delete(stream5);
+};
+var endStream = (stream5) => {
+  if (stream5.writable) {
+    stream5.end();
+  }
+};
+var errorOrAbortStream = (stream5, error) => {
+  if (isAbortError(error)) {
+    abortStream(stream5);
+  } else {
+    errorStream(stream5, error);
+  }
+};
+var isAbortError = (error) => error?.code === "ERR_STREAM_PREMATURE_CLOSE";
+var abortStream = (stream5) => {
+  if (stream5.readable || stream5.writable) {
+    stream5.destroy();
+  }
+};
+var errorStream = (stream5, error) => {
+  if (!stream5.destroyed) {
+    stream5.once("error", noop2);
+    stream5.destroy(error);
+  }
+};
+var noop2 = () => {
+};
+var updateMaxListeners = (passThroughStream, increment2) => {
+  const maxListeners = passThroughStream.getMaxListeners();
+  if (maxListeners !== 0 && maxListeners !== Number.POSITIVE_INFINITY) {
+    passThroughStream.setMaxListeners(maxListeners + increment2);
+  }
+};
+var PASSTHROUGH_LISTENERS_COUNT = 2;
+var PASSTHROUGH_LISTENERS_PER_STREAM = 1;
+
+// node_modules/execa/lib/io/pipeline.js
+var import_promises7 = require("node:stream/promises");
+var pipeStreams = (source, destination) => {
+  source.pipe(destination);
+  onSourceFinish(source, destination);
+  onDestinationFinish(source, destination);
+};
+var onSourceFinish = async (source, destination) => {
+  if (isStandardStream(source) || isStandardStream(destination)) {
+    return;
+  }
+  try {
+    await (0, import_promises7.finished)(source, { cleanup: true, readable: true, writable: false });
+  } catch {
+  }
+  endDestinationStream(destination);
+};
+var endDestinationStream = (destination) => {
+  if (destination.writable) {
+    destination.end();
+  }
+};
+var onDestinationFinish = async (source, destination) => {
+  if (isStandardStream(source) || isStandardStream(destination)) {
+    return;
+  }
+  try {
+    await (0, import_promises7.finished)(destination, { cleanup: true, readable: false, writable: true });
+  } catch {
+  }
+  abortSourceStream(source);
+};
+var abortSourceStream = (source) => {
+  if (source.readable) {
+    source.destroy();
+  }
+};
+
+// node_modules/execa/lib/io/output-async.js
+var pipeOutputAsync = (subprocess, fileDescriptors, controller) => {
+  const pipeGroups = /* @__PURE__ */ new Map();
+  for (const [fdNumber, { stdioItems, direction }] of Object.entries(fileDescriptors)) {
+    for (const { stream: stream5 } of stdioItems.filter(({ type }) => TRANSFORM_TYPES.has(type))) {
+      pipeTransform(subprocess, stream5, direction, fdNumber);
+    }
+    for (const { stream: stream5 } of stdioItems.filter(({ type }) => !TRANSFORM_TYPES.has(type))) {
+      pipeStdioItem({
+        subprocess,
+        stream: stream5,
+        direction,
+        fdNumber,
+        pipeGroups,
+        controller
+      });
+    }
+  }
+  for (const [outputStream, inputStreams] of pipeGroups.entries()) {
+    const inputStream = inputStreams.length === 1 ? inputStreams[0] : mergeStreams(inputStreams);
+    pipeStreams(inputStream, outputStream);
+  }
+};
+var pipeTransform = (subprocess, stream5, direction, fdNumber) => {
+  if (direction === "output") {
+    pipeStreams(subprocess.stdio[fdNumber], stream5);
+  } else {
+    pipeStreams(stream5, subprocess.stdio[fdNumber]);
+  }
+  const streamProperty = SUBPROCESS_STREAM_PROPERTIES[fdNumber];
+  if (streamProperty !== void 0) {
+    subprocess[streamProperty] = stream5;
+  }
+  subprocess.stdio[fdNumber] = stream5;
+};
+var SUBPROCESS_STREAM_PROPERTIES = ["stdin", "stdout", "stderr"];
+var pipeStdioItem = ({ subprocess, stream: stream5, direction, fdNumber, pipeGroups, controller }) => {
+  if (stream5 === void 0) {
+    return;
+  }
+  setStandardStreamMaxListeners(stream5, controller);
+  const [inputStream, outputStream] = direction === "output" ? [stream5, subprocess.stdio[fdNumber]] : [subprocess.stdio[fdNumber], stream5];
+  const outputStreams = pipeGroups.get(inputStream) ?? [];
+  pipeGroups.set(inputStream, [...outputStreams, outputStream]);
+};
+var setStandardStreamMaxListeners = (stream5, { signal }) => {
+  if (isStandardStream(stream5)) {
+    incrementMaxListeners(stream5, MAX_LISTENERS_INCREMENT, signal);
+  }
+};
+var MAX_LISTENERS_INCREMENT = 2;
+
+// node_modules/execa/lib/terminate/cleanup.js
+var import_node_events11 = require("node:events");
+
+// node_modules/signal-exit/dist/mjs/signals.js
+var signals = [];
+signals.push("SIGHUP", "SIGINT", "SIGTERM");
+if (process.platform !== "win32") {
+  signals.push(
+    "SIGALRM",
+    "SIGABRT",
+    "SIGVTALRM",
+    "SIGXCPU",
+    "SIGXFSZ",
+    "SIGUSR2",
+    "SIGTRAP",
+    "SIGSYS",
+    "SIGQUIT",
+    "SIGIOT"
+    // should detect profiler and enable/disable accordingly.
+    // see #21
+    // 'SIGPROF'
+  );
+}
+if (process.platform === "linux") {
+  signals.push("SIGIO", "SIGPOLL", "SIGPWR", "SIGSTKFLT");
+}
+
+// node_modules/signal-exit/dist/mjs/index.js
+var processOk = (process10) => !!process10 && typeof process10 === "object" && typeof process10.removeListener === "function" && typeof process10.emit === "function" && typeof process10.reallyExit === "function" && typeof process10.listeners === "function" && typeof process10.kill === "function" && typeof process10.pid === "number" && typeof process10.on === "function";
+var kExitEmitter = Symbol.for("signal-exit emitter");
+var global2 = globalThis;
+var ObjectDefineProperty = Object.defineProperty.bind(Object);
+var Emitter = class {
+  emitted = {
+    afterExit: false,
+    exit: false
+  };
+  listeners = {
+    afterExit: [],
+    exit: []
+  };
+  count = 0;
+  id = Math.random();
+  constructor() {
+    if (global2[kExitEmitter]) {
+      return global2[kExitEmitter];
+    }
+    ObjectDefineProperty(global2, kExitEmitter, {
+      value: this,
+      writable: false,
+      enumerable: false,
+      configurable: false
+    });
+  }
+  on(ev, fn) {
+    this.listeners[ev].push(fn);
+  }
+  removeListener(ev, fn) {
+    const list2 = this.listeners[ev];
+    const i2 = list2.indexOf(fn);
+    if (i2 === -1) {
+      return;
+    }
+    if (i2 === 0 && list2.length === 1) {
+      list2.length = 0;
+    } else {
+      list2.splice(i2, 1);
+    }
+  }
+  emit(ev, code2, signal) {
+    if (this.emitted[ev]) {
+      return false;
+    }
+    this.emitted[ev] = true;
+    let ret = false;
+    for (const fn of this.listeners[ev]) {
+      ret = fn(code2, signal) === true || ret;
+    }
+    if (ev === "exit") {
+      ret = this.emit("afterExit", code2, signal) || ret;
+    }
+    return ret;
+  }
+};
+var SignalExitBase = class {
+};
+var signalExitWrap = (handler) => {
+  return {
+    onExit(cb, opts) {
+      return handler.onExit(cb, opts);
+    },
+    load() {
+      return handler.load();
+    },
+    unload() {
+      return handler.unload();
+    }
+  };
+};
+var SignalExitFallback = class extends SignalExitBase {
+  onExit() {
+    return () => {
+    };
+  }
+  load() {
+  }
+  unload() {
+  }
+};
+var SignalExit = class extends SignalExitBase {
+  // "SIGHUP" throws an `ENOSYS` error on Windows,
+  // so use a supported signal instead
+  /* c8 ignore start */
+  #hupSig = process9.platform === "win32" ? "SIGINT" : "SIGHUP";
+  /* c8 ignore stop */
+  #emitter = new Emitter();
+  #process;
+  #originalProcessEmit;
+  #originalProcessReallyExit;
+  #sigListeners = {};
+  #loaded = false;
+  constructor(process10) {
+    super();
+    this.#process = process10;
+    this.#sigListeners = {};
+    for (const sig of signals) {
+      this.#sigListeners[sig] = () => {
+        const listeners = this.#process.listeners(sig);
+        let { count: count2 } = this.#emitter;
+        const p = process10;
+        if (typeof p.__signal_exit_emitter__ === "object" && typeof p.__signal_exit_emitter__.count === "number") {
+          count2 += p.__signal_exit_emitter__.count;
+        }
+        if (listeners.length === count2) {
+          this.unload();
+          const ret = this.#emitter.emit("exit", null, sig);
+          const s = sig === "SIGHUP" ? this.#hupSig : sig;
+          if (!ret)
+            process10.kill(process10.pid, s);
+        }
+      };
+    }
+    this.#originalProcessReallyExit = process10.reallyExit;
+    this.#originalProcessEmit = process10.emit;
+  }
+  onExit(cb, opts) {
+    if (!processOk(this.#process)) {
+      return () => {
+      };
+    }
+    if (this.#loaded === false) {
+      this.load();
+    }
+    const ev = opts?.alwaysLast ? "afterExit" : "exit";
+    this.#emitter.on(ev, cb);
+    return () => {
+      this.#emitter.removeListener(ev, cb);
+      if (this.#emitter.listeners["exit"].length === 0 && this.#emitter.listeners["afterExit"].length === 0) {
+        this.unload();
+      }
+    };
+  }
+  load() {
+    if (this.#loaded) {
+      return;
+    }
+    this.#loaded = true;
+    this.#emitter.count += 1;
+    for (const sig of signals) {
+      try {
+        const fn = this.#sigListeners[sig];
+        if (fn)
+          this.#process.on(sig, fn);
+      } catch (_) {
+      }
+    }
+    this.#process.emit = (ev, ...a2) => {
+      return this.#processEmit(ev, ...a2);
+    };
+    this.#process.reallyExit = (code2) => {
+      return this.#processReallyExit(code2);
+    };
+  }
+  unload() {
+    if (!this.#loaded) {
+      return;
+    }
+    this.#loaded = false;
+    signals.forEach((sig) => {
+      const listener = this.#sigListeners[sig];
+      if (!listener) {
+        throw new Error("Listener not defined for signal: " + sig);
+      }
+      try {
+        this.#process.removeListener(sig, listener);
+      } catch (_) {
+      }
+    });
+    this.#process.emit = this.#originalProcessEmit;
+    this.#process.reallyExit = this.#originalProcessReallyExit;
+    this.#emitter.count -= 1;
+  }
+  #processReallyExit(code2) {
+    if (!processOk(this.#process)) {
+      return 0;
+    }
+    this.#process.exitCode = code2 || 0;
+    this.#emitter.emit("exit", this.#process.exitCode, null);
+    return this.#originalProcessReallyExit.call(this.#process, this.#process.exitCode);
+  }
+  #processEmit(ev, ...args) {
+    const og = this.#originalProcessEmit;
+    if (ev === "exit" && processOk(this.#process)) {
+      if (typeof args[0] === "number") {
+        this.#process.exitCode = args[0];
+      }
+      const ret = og.call(this.#process, ev, ...args);
+      this.#emitter.emit("exit", this.#process.exitCode, null);
+      return ret;
+    } else {
+      return og.call(this.#process, ev, ...args);
+    }
+  }
+};
+var process9 = globalThis.process;
+var {
+  /**
+   * Called when the process is exiting, whether via signal, explicit
+   * exit, or running out of stuff to do.
+   *
+   * If the global process object is not suitable for instrumentation,
+   * then this will be a no-op.
+   *
+   * Returns a function that may be used to unload signal-exit.
+   */
+  onExit,
+  /**
+   * Load the listeners.  Likely you never need to call this, unless
+   * doing a rather deep integration with signal-exit functionality.
+   * Mostly exposed for the benefit of testing.
+   *
+   * @internal
+   */
+  load,
+  /**
+   * Unload the listeners.  Likely you never need to call this, unless
+   * doing a rather deep integration with signal-exit functionality.
+   * Mostly exposed for the benefit of testing.
+   *
+   * @internal
+   */
+  unload
+} = signalExitWrap(processOk(process9) ? new SignalExit(process9) : new SignalExitFallback());
+
+// node_modules/execa/lib/terminate/cleanup.js
+var cleanupOnExit = (subprocess, { cleanup, detached }, { signal }) => {
+  if (!cleanup || detached) {
+    return;
+  }
+  const removeExitHandler = onExit(() => {
+    subprocess.kill();
+  });
+  (0, import_node_events11.addAbortListener)(signal, () => {
+    removeExitHandler();
+  });
+};
+
+// node_modules/execa/lib/pipe/pipe-arguments.js
+var normalizePipeArguments = ({ source, sourcePromise, boundOptions, createNested }, ...pipeArguments) => {
+  const startTime = getStartTime();
+  const {
+    destination,
+    destinationStream,
+    destinationError,
+    from,
+    unpipeSignal
+  } = getDestinationStream(boundOptions, createNested, pipeArguments);
+  const { sourceStream, sourceError } = getSourceStream(source, from);
+  const { options: sourceOptions, fileDescriptors } = SUBPROCESS_OPTIONS.get(source);
+  return {
+    sourcePromise,
+    sourceStream,
+    sourceOptions,
+    sourceError,
+    destination,
+    destinationStream,
+    destinationError,
+    unpipeSignal,
+    fileDescriptors,
+    startTime
+  };
+};
+var getDestinationStream = (boundOptions, createNested, pipeArguments) => {
+  try {
+    const {
+      destination,
+      pipeOptions: { from, to, unpipeSignal } = {}
+    } = getDestination(boundOptions, createNested, ...pipeArguments);
+    const destinationStream = getToStream(destination, to);
+    return {
+      destination,
+      destinationStream,
+      from,
+      unpipeSignal
+    };
+  } catch (error) {
+    return { destinationError: error };
+  }
+};
+var getDestination = (boundOptions, createNested, firstArgument, ...pipeArguments) => {
+  if (Array.isArray(firstArgument)) {
+    const destination = createNested(mapDestinationArguments, boundOptions)(firstArgument, ...pipeArguments);
+    return { destination, pipeOptions: boundOptions };
+  }
+  if (typeof firstArgument === "string" || firstArgument instanceof URL || isDenoExecPath(firstArgument)) {
+    if (Object.keys(boundOptions).length > 0) {
+      throw new TypeError('Please use .pipe("file", ..., options) or .pipe(execa("file", ..., options)) instead of .pipe(options)("file", ...).');
+    }
+    const [rawFile, rawArguments, rawOptions] = normalizeParameters(firstArgument, ...pipeArguments);
+    const destination = createNested(mapDestinationArguments)(rawFile, rawArguments, rawOptions);
+    return { destination, pipeOptions: rawOptions };
+  }
+  if (SUBPROCESS_OPTIONS.has(firstArgument)) {
+    if (Object.keys(boundOptions).length > 0) {
+      throw new TypeError("Please use .pipe(options)`command` or .pipe($(options)`command`) instead of .pipe(options)($`command`).");
+    }
+    return { destination: firstArgument, pipeOptions: pipeArguments[0] };
+  }
+  throw new TypeError(`The first argument must be a template string, an options object, or an Execa subprocess: ${firstArgument}`);
+};
+var mapDestinationArguments = ({ options }) => ({ options: { ...options, stdin: "pipe", piped: true } });
+var getSourceStream = (source, from) => {
+  try {
+    const sourceStream = getFromStream(source, from);
+    return { sourceStream };
+  } catch (error) {
+    return { sourceError: error };
+  }
+};
+
+// node_modules/execa/lib/pipe/throw.js
+var handlePipeArgumentsError = ({
+  sourceStream,
+  sourceError,
+  destinationStream,
+  destinationError,
+  fileDescriptors,
+  sourceOptions,
+  startTime
+}) => {
+  const error = getPipeArgumentsError({
+    sourceStream,
+    sourceError,
+    destinationStream,
+    destinationError
+  });
+  if (error !== void 0) {
+    throw createNonCommandError({
+      error,
+      fileDescriptors,
+      sourceOptions,
+      startTime
+    });
+  }
+};
+var getPipeArgumentsError = ({ sourceStream, sourceError, destinationStream, destinationError }) => {
+  if (sourceError !== void 0 && destinationError !== void 0) {
+    return destinationError;
+  }
+  if (destinationError !== void 0) {
+    abortSourceStream(sourceStream);
+    return destinationError;
+  }
+  if (sourceError !== void 0) {
+    endDestinationStream(destinationStream);
+    return sourceError;
+  }
+};
+var createNonCommandError = ({ error, fileDescriptors, sourceOptions, startTime }) => makeEarlyError({
+  error,
+  command: PIPE_COMMAND_MESSAGE,
+  escapedCommand: PIPE_COMMAND_MESSAGE,
+  fileDescriptors,
+  options: sourceOptions,
+  startTime,
+  isSync: false
+});
+var PIPE_COMMAND_MESSAGE = "source.pipe(destination)";
+
+// node_modules/execa/lib/pipe/sequence.js
+var waitForBothSubprocesses = async (subprocessPromises) => {
+  const [
+    { status: sourceStatus, reason: sourceReason, value: sourceResult = sourceReason },
+    { status: destinationStatus, reason: destinationReason, value: destinationResult = destinationReason }
+  ] = await subprocessPromises;
+  if (!destinationResult.pipedFrom.includes(sourceResult)) {
+    destinationResult.pipedFrom.push(sourceResult);
+  }
+  if (destinationStatus === "rejected") {
+    throw destinationResult;
+  }
+  if (sourceStatus === "rejected") {
+    throw sourceResult;
+  }
+  return destinationResult;
+};
+
+// node_modules/execa/lib/pipe/streaming.js
+var import_promises8 = require("node:stream/promises");
+var pipeSubprocessStream = (sourceStream, destinationStream, maxListenersController) => {
+  const mergedStream = MERGED_STREAMS.has(destinationStream) ? pipeMoreSubprocessStream(sourceStream, destinationStream) : pipeFirstSubprocessStream(sourceStream, destinationStream);
+  incrementMaxListeners(sourceStream, SOURCE_LISTENERS_PER_PIPE, maxListenersController.signal);
+  incrementMaxListeners(destinationStream, DESTINATION_LISTENERS_PER_PIPE, maxListenersController.signal);
+  cleanupMergedStreamsMap(destinationStream);
+  return mergedStream;
+};
+var pipeFirstSubprocessStream = (sourceStream, destinationStream) => {
+  const mergedStream = mergeStreams([sourceStream]);
+  pipeStreams(mergedStream, destinationStream);
+  MERGED_STREAMS.set(destinationStream, mergedStream);
+  return mergedStream;
+};
+var pipeMoreSubprocessStream = (sourceStream, destinationStream) => {
+  const mergedStream = MERGED_STREAMS.get(destinationStream);
+  mergedStream.add(sourceStream);
+  return mergedStream;
+};
+var cleanupMergedStreamsMap = async (destinationStream) => {
+  try {
+    await (0, import_promises8.finished)(destinationStream, { cleanup: true, readable: false, writable: true });
+  } catch {
+  }
+  MERGED_STREAMS.delete(destinationStream);
+};
+var MERGED_STREAMS = /* @__PURE__ */ new WeakMap();
+var SOURCE_LISTENERS_PER_PIPE = 2;
+var DESTINATION_LISTENERS_PER_PIPE = 1;
+
+// node_modules/execa/lib/pipe/abort.js
+var import_node_util8 = require("node:util");
+var unpipeOnAbort = (unpipeSignal, unpipeContext) => unpipeSignal === void 0 ? [] : [unpipeOnSignalAbort(unpipeSignal, unpipeContext)];
+var unpipeOnSignalAbort = async (unpipeSignal, { sourceStream, mergedStream, fileDescriptors, sourceOptions, startTime }) => {
+  await (0, import_node_util8.aborted)(unpipeSignal, sourceStream);
+  await mergedStream.remove(sourceStream);
+  const error = new Error("Pipe canceled by `unpipeSignal` option.");
+  throw createNonCommandError({
+    error,
+    fileDescriptors,
+    sourceOptions,
+    startTime
+  });
+};
+
+// node_modules/execa/lib/pipe/setup.js
+var pipeToSubprocess = (sourceInfo, ...pipeArguments) => {
+  if (isPlainObject(pipeArguments[0])) {
+    return pipeToSubprocess.bind(void 0, {
+      ...sourceInfo,
+      boundOptions: { ...sourceInfo.boundOptions, ...pipeArguments[0] }
+    });
+  }
+  const { destination, ...normalizedInfo } = normalizePipeArguments(sourceInfo, ...pipeArguments);
+  const promise = handlePipePromise({ ...normalizedInfo, destination });
+  promise.pipe = pipeToSubprocess.bind(void 0, {
+    ...sourceInfo,
+    source: destination,
+    sourcePromise: promise,
+    boundOptions: {}
+  });
+  return promise;
+};
+var handlePipePromise = async ({
+  sourcePromise,
+  sourceStream,
+  sourceOptions,
+  sourceError,
+  destination,
+  destinationStream,
+  destinationError,
+  unpipeSignal,
+  fileDescriptors,
+  startTime
+}) => {
+  const subprocessPromises = getSubprocessPromises(sourcePromise, destination);
+  handlePipeArgumentsError({
+    sourceStream,
+    sourceError,
+    destinationStream,
+    destinationError,
+    fileDescriptors,
+    sourceOptions,
+    startTime
+  });
+  const maxListenersController = new AbortController();
+  try {
+    const mergedStream = pipeSubprocessStream(sourceStream, destinationStream, maxListenersController);
+    return await Promise.race([
+      waitForBothSubprocesses(subprocessPromises),
+      ...unpipeOnAbort(unpipeSignal, {
+        sourceStream,
+        mergedStream,
+        sourceOptions,
+        fileDescriptors,
+        startTime
+      })
+    ]);
+  } finally {
+    maxListenersController.abort();
+  }
+};
+var getSubprocessPromises = (sourcePromise, destination) => Promise.allSettled([sourcePromise, destination]);
+
+// node_modules/execa/lib/io/contents.js
+var import_promises9 = require("node:timers/promises");
+
+// node_modules/execa/lib/io/iterate.js
+var import_node_events12 = require("node:events");
+var import_node_stream5 = require("node:stream");
+var iterateOnSubprocessStream = ({ subprocessStdout, subprocess, binary, shouldEncode, encoding, preserveNewlines }) => {
+  const controller = new AbortController();
+  stopReadingOnExit(subprocess, controller);
+  return iterateOnStream({
+    stream: subprocessStdout,
+    controller,
+    binary,
+    shouldEncode: !subprocessStdout.readableObjectMode && shouldEncode,
+    encoding,
+    shouldSplit: !subprocessStdout.readableObjectMode,
+    preserveNewlines
+  });
+};
+var stopReadingOnExit = async (subprocess, controller) => {
+  try {
+    await subprocess;
+  } catch {
+  } finally {
+    controller.abort();
+  }
+};
+var iterateForResult = ({ stream: stream5, onStreamEnd, lines, encoding, stripFinalNewline: stripFinalNewline2, allMixed }) => {
+  const controller = new AbortController();
+  stopReadingOnStreamEnd(onStreamEnd, controller, stream5);
+  const objectMode = stream5.readableObjectMode && !allMixed;
+  return iterateOnStream({
+    stream: stream5,
+    controller,
+    binary: encoding === "buffer",
+    shouldEncode: !objectMode,
+    encoding,
+    shouldSplit: !objectMode && lines,
+    preserveNewlines: !stripFinalNewline2
+  });
+};
+var stopReadingOnStreamEnd = async (onStreamEnd, controller, stream5) => {
+  try {
+    await onStreamEnd;
+  } catch {
+    stream5.destroy();
+  } finally {
+    controller.abort();
+  }
+};
+var iterateOnStream = ({ stream: stream5, controller, binary, shouldEncode, encoding, shouldSplit, preserveNewlines }) => {
+  const onStdoutChunk = (0, import_node_events12.on)(stream5, "data", {
+    signal: controller.signal,
+    highWaterMark: HIGH_WATER_MARK,
+    // Backward compatibility with older name for this option
+    // See https://github.com/nodejs/node/pull/52080#discussion_r1525227861
+    // @todo Remove after removing support for Node 21
+    highWatermark: HIGH_WATER_MARK
+  });
+  return iterateOnData({
+    onStdoutChunk,
+    controller,
+    binary,
+    shouldEncode,
+    encoding,
+    shouldSplit,
+    preserveNewlines
+  });
+};
+var DEFAULT_OBJECT_HIGH_WATER_MARK = (0, import_node_stream5.getDefaultHighWaterMark)(true);
+var HIGH_WATER_MARK = DEFAULT_OBJECT_HIGH_WATER_MARK;
+var iterateOnData = async function* ({ onStdoutChunk, controller, binary, shouldEncode, encoding, shouldSplit, preserveNewlines }) {
+  const generators = getGenerators({
+    binary,
+    shouldEncode,
+    encoding,
+    shouldSplit,
+    preserveNewlines
+  });
+  try {
+    for await (const [chunk] of onStdoutChunk) {
+      yield* transformChunkSync(chunk, generators, 0);
+    }
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      throw error;
+    }
+  } finally {
+    yield* finalChunksSync(generators);
+  }
+};
+var getGenerators = ({ binary, shouldEncode, encoding, shouldSplit, preserveNewlines }) => [
+  getEncodingTransformGenerator(binary, encoding, !shouldEncode),
+  getSplitLinesGenerator(binary, preserveNewlines, !shouldSplit, {})
+].filter(Boolean);
+
+// node_modules/execa/lib/io/contents.js
+var getStreamOutput = async ({ stream: stream5, onStreamEnd, fdNumber, encoding, buffer, maxBuffer, lines, allMixed, stripFinalNewline: stripFinalNewline2, verboseInfo, streamInfo }) => {
+  const logPromise = logOutputAsync({
+    stream: stream5,
+    onStreamEnd,
+    fdNumber,
+    encoding,
+    allMixed,
+    verboseInfo,
+    streamInfo
+  });
+  if (!buffer) {
+    await Promise.all([resumeStream(stream5), logPromise]);
+    return;
+  }
+  const stripFinalNewlineValue = getStripFinalNewline(stripFinalNewline2, fdNumber);
+  const iterable = iterateForResult({
+    stream: stream5,
+    onStreamEnd,
+    lines,
+    encoding,
+    stripFinalNewline: stripFinalNewlineValue,
+    allMixed
+  });
+  const [output] = await Promise.all([
+    getStreamContents2({
+      stream: stream5,
+      iterable,
+      fdNumber,
+      encoding,
+      maxBuffer,
+      lines
+    }),
+    logPromise
+  ]);
+  return output;
+};
+var logOutputAsync = async ({ stream: stream5, onStreamEnd, fdNumber, encoding, allMixed, verboseInfo, streamInfo: { fileDescriptors } }) => {
+  if (!shouldLogOutput({
+    stdioItems: fileDescriptors[fdNumber]?.stdioItems,
+    encoding,
+    verboseInfo,
+    fdNumber
+  })) {
+    return;
+  }
+  const linesIterable = iterateForResult({
+    stream: stream5,
+    onStreamEnd,
+    lines: true,
+    encoding,
+    stripFinalNewline: true,
+    allMixed
+  });
+  await logLines(linesIterable, stream5, fdNumber, verboseInfo);
+};
+var resumeStream = async (stream5) => {
+  await (0, import_promises9.setImmediate)();
+  if (stream5.readableFlowing === null) {
+    stream5.resume();
+  }
+};
+var getStreamContents2 = async ({ stream: stream5, stream: { readableObjectMode }, iterable, fdNumber, encoding, maxBuffer, lines }) => {
+  try {
+    if (readableObjectMode || lines) {
+      return await getStreamAsArray(iterable, { maxBuffer });
+    }
+    if (encoding === "buffer") {
+      return new Uint8Array(await getStreamAsArrayBuffer(iterable, { maxBuffer }));
+    }
+    return await getStreamAsString(iterable, { maxBuffer });
+  } catch (error) {
+    return handleBufferedData(handleMaxBuffer({
+      error,
+      stream: stream5,
+      readableObjectMode,
+      lines,
+      encoding,
+      fdNumber
+    }));
+  }
+};
+var getBufferedData = async (streamPromise) => {
+  try {
+    return await streamPromise;
+  } catch (error) {
+    return handleBufferedData(error);
+  }
+};
+var handleBufferedData = ({ bufferedData }) => isArrayBuffer(bufferedData) ? new Uint8Array(bufferedData) : bufferedData;
+
+// node_modules/execa/lib/resolve/wait-stream.js
+var import_promises10 = require("node:stream/promises");
+var waitForStream = async (stream5, fdNumber, streamInfo, { isSameDirection, stopOnExit = false } = {}) => {
+  const state = handleStdinDestroy(stream5, streamInfo);
+  const abortController = new AbortController();
+  try {
+    await Promise.race([
+      ...stopOnExit ? [streamInfo.exitPromise] : [],
+      (0, import_promises10.finished)(stream5, { cleanup: true, signal: abortController.signal })
+    ]);
+  } catch (error) {
+    if (!state.stdinCleanedUp) {
+      handleStreamError(error, fdNumber, streamInfo, isSameDirection);
+    }
+  } finally {
+    abortController.abort();
+  }
+};
+var handleStdinDestroy = (stream5, { originalStreams: [originalStdin], subprocess }) => {
+  const state = { stdinCleanedUp: false };
+  if (stream5 === originalStdin) {
+    spyOnStdinDestroy(stream5, subprocess, state);
+  }
+  return state;
+};
+var spyOnStdinDestroy = (subprocessStdin, subprocess, state) => {
+  const { _destroy } = subprocessStdin;
+  subprocessStdin._destroy = (...destroyArguments) => {
+    setStdinCleanedUp(subprocess, state);
+    _destroy.call(subprocessStdin, ...destroyArguments);
+  };
+};
+var setStdinCleanedUp = ({ exitCode, signalCode }, state) => {
+  if (exitCode !== null || signalCode !== null) {
+    state.stdinCleanedUp = true;
+  }
+};
+var handleStreamError = (error, fdNumber, streamInfo, isSameDirection) => {
+  if (!shouldIgnoreStreamError(error, fdNumber, streamInfo, isSameDirection)) {
+    throw error;
+  }
+};
+var shouldIgnoreStreamError = (error, fdNumber, streamInfo, isSameDirection = true) => {
+  if (streamInfo.propagating) {
+    return isStreamEpipe(error) || isStreamAbort(error);
+  }
+  streamInfo.propagating = true;
+  return isInputFileDescriptor(streamInfo, fdNumber) === isSameDirection ? isStreamEpipe(error) : isStreamAbort(error);
+};
+var isInputFileDescriptor = ({ fileDescriptors }, fdNumber) => fdNumber !== "all" && fileDescriptors[fdNumber].direction === "input";
+var isStreamAbort = (error) => error?.code === "ERR_STREAM_PREMATURE_CLOSE";
+var isStreamEpipe = (error) => error?.code === "EPIPE";
+
+// node_modules/execa/lib/resolve/stdio.js
+var waitForStdioStreams = ({ subprocess, encoding, buffer, maxBuffer, lines, stripFinalNewline: stripFinalNewline2, verboseInfo, streamInfo }) => subprocess.stdio.map((stream5, fdNumber) => waitForSubprocessStream({
+  stream: stream5,
+  fdNumber,
+  encoding,
+  buffer: buffer[fdNumber],
+  maxBuffer: maxBuffer[fdNumber],
+  lines: lines[fdNumber],
+  allMixed: false,
+  stripFinalNewline: stripFinalNewline2,
+  verboseInfo,
+  streamInfo
+}));
+var waitForSubprocessStream = async ({ stream: stream5, fdNumber, encoding, buffer, maxBuffer, lines, allMixed, stripFinalNewline: stripFinalNewline2, verboseInfo, streamInfo }) => {
+  if (!stream5) {
+    return;
+  }
+  const onStreamEnd = waitForStream(stream5, fdNumber, streamInfo);
+  if (isInputFileDescriptor(streamInfo, fdNumber)) {
+    await onStreamEnd;
+    return;
+  }
+  const [output] = await Promise.all([
+    getStreamOutput({
+      stream: stream5,
+      onStreamEnd,
+      fdNumber,
+      encoding,
+      buffer,
+      maxBuffer,
+      lines,
+      allMixed,
+      stripFinalNewline: stripFinalNewline2,
+      verboseInfo,
+      streamInfo
+    }),
+    onStreamEnd
+  ]);
+  return output;
+};
+
+// node_modules/execa/lib/resolve/all-async.js
+var makeAllStream = ({ stdout, stderr }, { all: all3 }) => all3 && (stdout || stderr) ? mergeStreams([stdout, stderr].filter(Boolean)) : void 0;
+var waitForAllStream = ({ subprocess, encoding, buffer, maxBuffer, lines, stripFinalNewline: stripFinalNewline2, verboseInfo, streamInfo }) => waitForSubprocessStream({
+  ...getAllStream(subprocess, buffer),
+  fdNumber: "all",
+  encoding,
+  maxBuffer: maxBuffer[1] + maxBuffer[2],
+  lines: lines[1] || lines[2],
+  allMixed: getAllMixed(subprocess),
+  stripFinalNewline: stripFinalNewline2,
+  verboseInfo,
+  streamInfo
+});
+var getAllStream = ({ stdout, stderr, all: all3 }, [, bufferStdout, bufferStderr]) => {
+  const buffer = bufferStdout || bufferStderr;
+  if (!buffer) {
+    return { stream: all3, buffer };
+  }
+  if (!bufferStdout) {
+    return { stream: stderr, buffer };
+  }
+  if (!bufferStderr) {
+    return { stream: stdout, buffer };
+  }
+  return { stream: all3, buffer };
+};
+var getAllMixed = ({ all: all3, stdout, stderr }) => all3 && stdout && stderr && stdout.readableObjectMode !== stderr.readableObjectMode;
+
+// node_modules/execa/lib/resolve/wait-subprocess.js
+var import_node_events13 = require("node:events");
+
+// node_modules/execa/lib/verbose/ipc.js
+var shouldLogIpc = (verboseInfo) => isFullVerbose(verboseInfo, "ipc");
+var logIpcOutput = (message, verboseInfo) => {
+  const verboseMessage = serializeVerboseMessage(message);
+  verboseLog({
+    type: "ipc",
+    verboseMessage,
+    fdNumber: "ipc",
+    verboseInfo
+  });
+};
+
+// node_modules/execa/lib/ipc/buffer-messages.js
+var waitForIpcOutput = async ({
+  subprocess,
+  buffer: bufferArray,
+  maxBuffer: maxBufferArray,
+  ipc,
+  ipcOutput,
+  verboseInfo
+}) => {
+  if (!ipc) {
+    return ipcOutput;
+  }
+  const isVerbose2 = shouldLogIpc(verboseInfo);
+  const buffer = getFdSpecificValue(bufferArray, "ipc");
+  const maxBuffer = getFdSpecificValue(maxBufferArray, "ipc");
+  for await (const message of loopOnMessages({
+    anyProcess: subprocess,
+    channel: subprocess.channel,
+    isSubprocess: false,
+    ipc,
+    shouldAwait: false,
+    reference: true
+  })) {
+    if (buffer) {
+      checkIpcMaxBuffer(subprocess, ipcOutput, maxBuffer);
+      ipcOutput.push(message);
+    }
+    if (isVerbose2) {
+      logIpcOutput(message, verboseInfo);
+    }
+  }
+  return ipcOutput;
+};
+var getBufferedIpcOutput = async (ipcOutputPromise, ipcOutput) => {
+  await Promise.allSettled([ipcOutputPromise]);
+  return ipcOutput;
+};
+
+// node_modules/execa/lib/resolve/wait-subprocess.js
+var waitForSubprocessResult = async ({
+  subprocess,
+  options: {
+    encoding,
+    buffer,
+    maxBuffer,
+    lines,
+    timeoutDuration: timeout,
+    cancelSignal,
+    gracefulCancel,
+    forceKillAfterDelay,
+    stripFinalNewline: stripFinalNewline2,
+    ipc,
+    ipcInput
+  },
+  context,
+  verboseInfo,
+  fileDescriptors,
+  originalStreams,
+  onInternalError,
+  controller
+}) => {
+  const exitPromise = waitForExit(subprocess, context);
+  const streamInfo = {
+    originalStreams,
+    fileDescriptors,
+    subprocess,
+    exitPromise,
+    propagating: false
+  };
+  const stdioPromises = waitForStdioStreams({
+    subprocess,
+    encoding,
+    buffer,
+    maxBuffer,
+    lines,
+    stripFinalNewline: stripFinalNewline2,
+    verboseInfo,
+    streamInfo
+  });
+  const allPromise = waitForAllStream({
+    subprocess,
+    encoding,
+    buffer,
+    maxBuffer,
+    lines,
+    stripFinalNewline: stripFinalNewline2,
+    verboseInfo,
+    streamInfo
+  });
+  const ipcOutput = [];
+  const ipcOutputPromise = waitForIpcOutput({
+    subprocess,
+    buffer,
+    maxBuffer,
+    ipc,
+    ipcOutput,
+    verboseInfo
+  });
+  const originalPromises = waitForOriginalStreams(originalStreams, subprocess, streamInfo);
+  const customStreamsEndPromises = waitForCustomStreamsEnd(fileDescriptors, streamInfo);
+  try {
+    return await Promise.race([
+      Promise.all([
+        {},
+        waitForSuccessfulExit(exitPromise),
+        Promise.all(stdioPromises),
+        allPromise,
+        ipcOutputPromise,
+        sendIpcInput(subprocess, ipcInput),
+        ...originalPromises,
+        ...customStreamsEndPromises
+      ]),
+      onInternalError,
+      throwOnSubprocessError(subprocess, controller),
+      ...throwOnTimeout(subprocess, timeout, context, controller),
+      ...throwOnCancel({
+        subprocess,
+        cancelSignal,
+        gracefulCancel,
+        context,
+        controller
+      }),
+      ...throwOnGracefulCancel({
+        subprocess,
+        cancelSignal,
+        gracefulCancel,
+        forceKillAfterDelay,
+        context,
+        controller
+      })
+    ]);
+  } catch (error) {
+    context.terminationReason ??= "other";
+    return Promise.all([
+      { error },
+      exitPromise,
+      Promise.all(stdioPromises.map((stdioPromise) => getBufferedData(stdioPromise))),
+      getBufferedData(allPromise),
+      getBufferedIpcOutput(ipcOutputPromise, ipcOutput),
+      Promise.allSettled(originalPromises),
+      Promise.allSettled(customStreamsEndPromises)
+    ]);
+  }
+};
+var waitForOriginalStreams = (originalStreams, subprocess, streamInfo) => originalStreams.map((stream5, fdNumber) => stream5 === subprocess.stdio[fdNumber] ? void 0 : waitForStream(stream5, fdNumber, streamInfo));
+var waitForCustomStreamsEnd = (fileDescriptors, streamInfo) => fileDescriptors.flatMap(({ stdioItems }, fdNumber) => stdioItems.filter(({ value, stream: stream5 = value }) => isStream(stream5, { checkOpen: false }) && !isStandardStream(stream5)).map(({ type, value, stream: stream5 = value }) => waitForStream(stream5, fdNumber, streamInfo, {
+  isSameDirection: TRANSFORM_TYPES.has(type),
+  stopOnExit: type === "native"
+})));
+var throwOnSubprocessError = async (subprocess, { signal }) => {
+  const [error] = await (0, import_node_events13.once)(subprocess, "error", { signal });
+  throw error;
+};
+
+// node_modules/execa/lib/convert/concurrent.js
+var initializeConcurrentStreams = () => ({
+  readableDestroy: /* @__PURE__ */ new WeakMap(),
+  writableFinal: /* @__PURE__ */ new WeakMap(),
+  writableDestroy: /* @__PURE__ */ new WeakMap()
+});
+var addConcurrentStream = (concurrentStreams, stream5, waitName) => {
+  const weakMap = concurrentStreams[waitName];
+  if (!weakMap.has(stream5)) {
+    weakMap.set(stream5, []);
+  }
+  const promises = weakMap.get(stream5);
+  const promise = createDeferred();
+  promises.push(promise);
+  const resolve4 = promise.resolve.bind(promise);
+  return { resolve: resolve4, promises };
+};
+var waitForConcurrentStreams = async ({ resolve: resolve4, promises }, subprocess) => {
+  resolve4();
+  const [isSubprocessExit] = await Promise.race([
+    Promise.allSettled([true, subprocess]),
+    Promise.all([false, ...promises])
+  ]);
+  return !isSubprocessExit;
+};
+
+// node_modules/execa/lib/convert/readable.js
+var import_node_stream6 = require("node:stream");
+var import_node_util9 = require("node:util");
+
+// node_modules/execa/lib/convert/shared.js
+var import_promises11 = require("node:stream/promises");
+var safeWaitForSubprocessStdin = async (subprocessStdin) => {
+  if (subprocessStdin === void 0) {
+    return;
+  }
+  try {
+    await waitForSubprocessStdin(subprocessStdin);
+  } catch {
+  }
+};
+var safeWaitForSubprocessStdout = async (subprocessStdout) => {
+  if (subprocessStdout === void 0) {
+    return;
+  }
+  try {
+    await waitForSubprocessStdout(subprocessStdout);
+  } catch {
+  }
+};
+var waitForSubprocessStdin = async (subprocessStdin) => {
+  await (0, import_promises11.finished)(subprocessStdin, { cleanup: true, readable: false, writable: true });
+};
+var waitForSubprocessStdout = async (subprocessStdout) => {
+  await (0, import_promises11.finished)(subprocessStdout, { cleanup: true, readable: true, writable: false });
+};
+var waitForSubprocess = async (subprocess, error) => {
+  await subprocess;
+  if (error) {
+    throw error;
+  }
+};
+var destroyOtherStream = (stream5, isOpen, error) => {
+  if (error && !isStreamAbort(error)) {
+    stream5.destroy(error);
+  } else if (isOpen) {
+    stream5.destroy();
+  }
+};
+
+// node_modules/execa/lib/convert/readable.js
+var createReadable = ({ subprocess, concurrentStreams, encoding }, { from, binary: binaryOption = true, preserveNewlines = true } = {}) => {
+  const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
+  const { subprocessStdout, waitReadableDestroy } = getSubprocessStdout(subprocess, from, concurrentStreams);
+  const { readableEncoding, readableObjectMode, readableHighWaterMark } = getReadableOptions(subprocessStdout, binary);
+  const { read, onStdoutDataDone } = getReadableMethods({
+    subprocessStdout,
+    subprocess,
+    binary,
+    encoding,
+    preserveNewlines
+  });
+  const readable2 = new import_node_stream6.Readable({
+    read,
+    destroy: (0, import_node_util9.callbackify)(onReadableDestroy.bind(void 0, { subprocessStdout, subprocess, waitReadableDestroy })),
+    highWaterMark: readableHighWaterMark,
+    objectMode: readableObjectMode,
+    encoding: readableEncoding
+  });
+  onStdoutFinished({
+    subprocessStdout,
+    onStdoutDataDone,
+    readable: readable2,
+    subprocess
+  });
+  return readable2;
+};
+var getSubprocessStdout = (subprocess, from, concurrentStreams) => {
+  const subprocessStdout = getFromStream(subprocess, from);
+  const waitReadableDestroy = addConcurrentStream(concurrentStreams, subprocessStdout, "readableDestroy");
+  return { subprocessStdout, waitReadableDestroy };
+};
+var getReadableOptions = ({ readableEncoding, readableObjectMode, readableHighWaterMark }, binary) => binary ? { readableEncoding, readableObjectMode, readableHighWaterMark } : { readableEncoding, readableObjectMode: true, readableHighWaterMark: DEFAULT_OBJECT_HIGH_WATER_MARK };
+var getReadableMethods = ({ subprocessStdout, subprocess, binary, encoding, preserveNewlines }) => {
+  const onStdoutDataDone = createDeferred();
+  const onStdoutData = iterateOnSubprocessStream({
+    subprocessStdout,
+    subprocess,
+    binary,
+    shouldEncode: !binary,
+    encoding,
+    preserveNewlines
+  });
+  return {
+    read() {
+      onRead(this, onStdoutData, onStdoutDataDone);
+    },
+    onStdoutDataDone
+  };
+};
+var onRead = async (readable2, onStdoutData, onStdoutDataDone) => {
+  try {
+    const { value, done } = await onStdoutData.next();
+    if (done) {
+      onStdoutDataDone.resolve();
+    } else {
+      readable2.push(value);
+    }
+  } catch {
+  }
+};
+var onStdoutFinished = async ({ subprocessStdout, onStdoutDataDone, readable: readable2, subprocess, subprocessStdin }) => {
+  try {
+    await waitForSubprocessStdout(subprocessStdout);
+    await subprocess;
+    await safeWaitForSubprocessStdin(subprocessStdin);
+    await onStdoutDataDone;
+    if (readable2.readable) {
+      readable2.push(null);
+    }
+  } catch (error) {
+    await safeWaitForSubprocessStdin(subprocessStdin);
+    destroyOtherReadable(readable2, error);
+  }
+};
+var onReadableDestroy = async ({ subprocessStdout, subprocess, waitReadableDestroy }, error) => {
+  if (await waitForConcurrentStreams(waitReadableDestroy, subprocess)) {
+    destroyOtherReadable(subprocessStdout, error);
+    await waitForSubprocess(subprocess, error);
+  }
+};
+var destroyOtherReadable = (stream5, error) => {
+  destroyOtherStream(stream5, stream5.readable, error);
+};
+
+// node_modules/execa/lib/convert/writable.js
+var import_node_stream7 = require("node:stream");
+var import_node_util10 = require("node:util");
+var createWritable = ({ subprocess, concurrentStreams }, { to } = {}) => {
+  const { subprocessStdin, waitWritableFinal, waitWritableDestroy } = getSubprocessStdin(subprocess, to, concurrentStreams);
+  const writable2 = new import_node_stream7.Writable({
+    ...getWritableMethods(subprocessStdin, subprocess, waitWritableFinal),
+    destroy: (0, import_node_util10.callbackify)(onWritableDestroy.bind(void 0, {
+      subprocessStdin,
+      subprocess,
+      waitWritableFinal,
+      waitWritableDestroy
+    })),
+    highWaterMark: subprocessStdin.writableHighWaterMark,
+    objectMode: subprocessStdin.writableObjectMode
+  });
+  onStdinFinished(subprocessStdin, writable2);
+  return writable2;
+};
+var getSubprocessStdin = (subprocess, to, concurrentStreams) => {
+  const subprocessStdin = getToStream(subprocess, to);
+  const waitWritableFinal = addConcurrentStream(concurrentStreams, subprocessStdin, "writableFinal");
+  const waitWritableDestroy = addConcurrentStream(concurrentStreams, subprocessStdin, "writableDestroy");
+  return { subprocessStdin, waitWritableFinal, waitWritableDestroy };
+};
+var getWritableMethods = (subprocessStdin, subprocess, waitWritableFinal) => ({
+  write: onWrite.bind(void 0, subprocessStdin),
+  final: (0, import_node_util10.callbackify)(onWritableFinal.bind(void 0, subprocessStdin, subprocess, waitWritableFinal))
+});
+var onWrite = (subprocessStdin, chunk, encoding, done) => {
+  if (subprocessStdin.write(chunk, encoding)) {
+    done();
+  } else {
+    subprocessStdin.once("drain", done);
+  }
+};
+var onWritableFinal = async (subprocessStdin, subprocess, waitWritableFinal) => {
+  if (await waitForConcurrentStreams(waitWritableFinal, subprocess)) {
+    if (subprocessStdin.writable) {
+      subprocessStdin.end();
+    }
+    await subprocess;
+  }
+};
+var onStdinFinished = async (subprocessStdin, writable2, subprocessStdout) => {
+  try {
+    await waitForSubprocessStdin(subprocessStdin);
+    if (writable2.writable) {
+      writable2.end();
+    }
+  } catch (error) {
+    await safeWaitForSubprocessStdout(subprocessStdout);
+    destroyOtherWritable(writable2, error);
+  }
+};
+var onWritableDestroy = async ({ subprocessStdin, subprocess, waitWritableFinal, waitWritableDestroy }, error) => {
+  await waitForConcurrentStreams(waitWritableFinal, subprocess);
+  if (await waitForConcurrentStreams(waitWritableDestroy, subprocess)) {
+    destroyOtherWritable(subprocessStdin, error);
+    await waitForSubprocess(subprocess, error);
+  }
+};
+var destroyOtherWritable = (stream5, error) => {
+  destroyOtherStream(stream5, stream5.writable, error);
+};
+
+// node_modules/execa/lib/convert/duplex.js
+var import_node_stream8 = require("node:stream");
+var import_node_util11 = require("node:util");
+var createDuplex = ({ subprocess, concurrentStreams, encoding }, { from, to, binary: binaryOption = true, preserveNewlines = true } = {}) => {
+  const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
+  const { subprocessStdout, waitReadableDestroy } = getSubprocessStdout(subprocess, from, concurrentStreams);
+  const { subprocessStdin, waitWritableFinal, waitWritableDestroy } = getSubprocessStdin(subprocess, to, concurrentStreams);
+  const { readableEncoding, readableObjectMode, readableHighWaterMark } = getReadableOptions(subprocessStdout, binary);
+  const { read, onStdoutDataDone } = getReadableMethods({
+    subprocessStdout,
+    subprocess,
+    binary,
+    encoding,
+    preserveNewlines
+  });
+  const duplex2 = new import_node_stream8.Duplex({
+    read,
+    ...getWritableMethods(subprocessStdin, subprocess, waitWritableFinal),
+    destroy: (0, import_node_util11.callbackify)(onDuplexDestroy.bind(void 0, {
+      subprocessStdout,
+      subprocessStdin,
+      subprocess,
+      waitReadableDestroy,
+      waitWritableFinal,
+      waitWritableDestroy
+    })),
+    readableHighWaterMark,
+    writableHighWaterMark: subprocessStdin.writableHighWaterMark,
+    readableObjectMode,
+    writableObjectMode: subprocessStdin.writableObjectMode,
+    encoding: readableEncoding
+  });
+  onStdoutFinished({
+    subprocessStdout,
+    onStdoutDataDone,
+    readable: duplex2,
+    subprocess,
+    subprocessStdin
+  });
+  onStdinFinished(subprocessStdin, duplex2, subprocessStdout);
+  return duplex2;
+};
+var onDuplexDestroy = async ({ subprocessStdout, subprocessStdin, subprocess, waitReadableDestroy, waitWritableFinal, waitWritableDestroy }, error) => {
+  await Promise.all([
+    onReadableDestroy({ subprocessStdout, subprocess, waitReadableDestroy }, error),
+    onWritableDestroy({
+      subprocessStdin,
+      subprocess,
+      waitWritableFinal,
+      waitWritableDestroy
+    }, error)
+  ]);
+};
+
+// node_modules/execa/lib/convert/iterable.js
+var createIterable = (subprocess, encoding, {
+  from,
+  binary: binaryOption = false,
+  preserveNewlines = false
+} = {}) => {
+  const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
+  const subprocessStdout = getFromStream(subprocess, from);
+  const onStdoutData = iterateOnSubprocessStream({
+    subprocessStdout,
+    subprocess,
+    binary,
+    shouldEncode: true,
+    encoding,
+    preserveNewlines
+  });
+  return iterateOnStdoutData(onStdoutData, subprocessStdout, subprocess);
+};
+var iterateOnStdoutData = async function* (onStdoutData, subprocessStdout, subprocess) {
+  try {
+    yield* onStdoutData;
+  } finally {
+    if (subprocessStdout.readable) {
+      subprocessStdout.destroy();
+    }
+    await subprocess;
+  }
+};
+
+// node_modules/execa/lib/convert/add.js
+var addConvertedStreams = (subprocess, { encoding }) => {
+  const concurrentStreams = initializeConcurrentStreams();
+  subprocess.readable = createReadable.bind(void 0, { subprocess, concurrentStreams, encoding });
+  subprocess.writable = createWritable.bind(void 0, { subprocess, concurrentStreams });
+  subprocess.duplex = createDuplex.bind(void 0, { subprocess, concurrentStreams, encoding });
+  subprocess.iterable = createIterable.bind(void 0, subprocess, encoding);
+  subprocess[Symbol.asyncIterator] = createIterable.bind(void 0, subprocess, encoding, {});
+};
+
+// node_modules/execa/lib/methods/promise.js
+var mergePromise = (subprocess, promise) => {
+  for (const [property, descriptor] of descriptors) {
+    const value = descriptor.value.bind(promise);
+    Reflect.defineProperty(subprocess, property, { ...descriptor, value });
+  }
+};
+var nativePromisePrototype = (async () => {
+})().constructor.prototype;
+var descriptors = ["then", "catch", "finally"].map((property) => [
+  property,
+  Reflect.getOwnPropertyDescriptor(nativePromisePrototype, property)
+]);
+
+// node_modules/execa/lib/methods/main-async.js
+var execaCoreAsync = (rawFile, rawArguments, rawOptions, createNested) => {
+  const { file, commandArguments, command, escapedCommand, startTime, verboseInfo, options, fileDescriptors } = handleAsyncArguments(rawFile, rawArguments, rawOptions);
+  const { subprocess, promise } = spawnSubprocessAsync({
+    file,
+    commandArguments,
+    options,
+    startTime,
+    verboseInfo,
+    command,
+    escapedCommand,
+    fileDescriptors
+  });
+  subprocess.pipe = pipeToSubprocess.bind(void 0, {
+    source: subprocess,
+    sourcePromise: promise,
+    boundOptions: {},
+    createNested
+  });
+  mergePromise(subprocess, promise);
+  SUBPROCESS_OPTIONS.set(subprocess, { options, fileDescriptors });
+  return subprocess;
+};
+var handleAsyncArguments = (rawFile, rawArguments, rawOptions) => {
+  const { command, escapedCommand, startTime, verboseInfo } = handleCommand(rawFile, rawArguments, rawOptions);
+  const { file, commandArguments, options: normalizedOptions } = normalizeOptions(rawFile, rawArguments, rawOptions);
+  const options = handleAsyncOptions(normalizedOptions);
+  const fileDescriptors = handleStdioAsync(options, verboseInfo);
+  return {
+    file,
+    commandArguments,
+    command,
+    escapedCommand,
+    startTime,
+    verboseInfo,
+    options,
+    fileDescriptors
+  };
+};
+var handleAsyncOptions = ({ timeout, signal, ...options }) => {
+  if (signal !== void 0) {
+    throw new TypeError('The "signal" option has been renamed to "cancelSignal" instead.');
+  }
+  return { ...options, timeoutDuration: timeout };
+};
+var spawnSubprocessAsync = ({ file, commandArguments, options, startTime, verboseInfo, command, escapedCommand, fileDescriptors }) => {
+  let subprocess;
+  try {
+    subprocess = (0, import_node_child_process5.spawn)(...concatenateShell(file, commandArguments, options));
+  } catch (error) {
+    return handleEarlyError({
+      error,
+      command,
+      escapedCommand,
+      fileDescriptors,
+      options,
+      startTime,
+      verboseInfo
+    });
+  }
+  const controller = new AbortController();
+  (0, import_node_events14.setMaxListeners)(Number.POSITIVE_INFINITY, controller.signal);
+  const originalStreams = [...subprocess.stdio];
+  pipeOutputAsync(subprocess, fileDescriptors, controller);
+  cleanupOnExit(subprocess, options, controller);
+  const context = {};
+  const onInternalError = createDeferred();
+  subprocess.kill = subprocessKill.bind(void 0, {
+    kill: subprocess.kill.bind(subprocess),
+    options,
+    onInternalError,
+    context,
+    controller
+  });
+  subprocess.all = makeAllStream(subprocess, options);
+  addConvertedStreams(subprocess, options);
+  addIpcMethods(subprocess, options);
+  const promise = handlePromise({
+    subprocess,
+    options,
+    startTime,
+    verboseInfo,
+    fileDescriptors,
+    originalStreams,
+    command,
+    escapedCommand,
+    context,
+    onInternalError,
+    controller
+  });
+  return { subprocess, promise };
+};
+var handlePromise = async ({ subprocess, options, startTime, verboseInfo, fileDescriptors, originalStreams, command, escapedCommand, context, onInternalError, controller }) => {
+  const [
+    errorInfo,
+    [exitCode, signal],
+    stdioResults,
+    allResult,
+    ipcOutput
+  ] = await waitForSubprocessResult({
+    subprocess,
+    options,
+    context,
+    verboseInfo,
+    fileDescriptors,
+    originalStreams,
+    onInternalError,
+    controller
+  });
+  controller.abort();
+  onInternalError.resolve();
+  const stdio = stdioResults.map((stdioResult, fdNumber) => stripNewline(stdioResult, options, fdNumber));
+  const all3 = stripNewline(allResult, options, "all");
+  const result = getAsyncResult({
+    errorInfo,
+    exitCode,
+    signal,
+    stdio,
+    all: all3,
+    ipcOutput,
+    context,
+    options,
+    command,
+    escapedCommand,
+    startTime
+  });
+  return handleResult(result, verboseInfo, options);
+};
+var getAsyncResult = ({ errorInfo, exitCode, signal, stdio, all: all3, ipcOutput, context, options, command, escapedCommand, startTime }) => "error" in errorInfo ? makeError({
+  error: errorInfo.error,
+  command,
+  escapedCommand,
+  timedOut: context.terminationReason === "timeout",
+  isCanceled: context.terminationReason === "cancel" || context.terminationReason === "gracefulCancel",
+  isGracefullyCanceled: context.terminationReason === "gracefulCancel",
+  isMaxBuffer: errorInfo.error instanceof MaxBufferError,
+  isForcefullyTerminated: context.isForcefullyTerminated,
+  exitCode,
+  signal,
+  stdio,
+  all: all3,
+  ipcOutput,
+  options,
+  startTime,
+  isSync: false
+}) : makeSuccessResult({
+  command,
+  escapedCommand,
+  stdio,
+  all: all3,
+  ipcOutput,
+  options,
+  startTime
+});
+
+// node_modules/execa/lib/methods/bind.js
+var mergeOptions = (boundOptions, options) => {
+  const newOptions = Object.fromEntries(
+    Object.entries(options).map(([optionName, optionValue]) => [
+      optionName,
+      mergeOption(optionName, boundOptions[optionName], optionValue)
+    ])
+  );
+  return { ...boundOptions, ...newOptions };
+};
+var mergeOption = (optionName, boundOptionValue, optionValue) => {
+  if (DEEP_OPTIONS.has(optionName) && isPlainObject(boundOptionValue) && isPlainObject(optionValue)) {
+    return { ...boundOptionValue, ...optionValue };
+  }
+  return optionValue;
+};
+var DEEP_OPTIONS = /* @__PURE__ */ new Set(["env", ...FD_SPECIFIC_OPTIONS]);
+
+// node_modules/execa/lib/methods/create.js
+var createExeca = (mapArguments, boundOptions, deepOptions, setBoundExeca) => {
+  const createNested = (mapArguments2, boundOptions2, setBoundExeca2) => createExeca(mapArguments2, boundOptions2, deepOptions, setBoundExeca2);
+  const boundExeca = (...execaArguments) => callBoundExeca({
+    mapArguments,
+    deepOptions,
+    boundOptions,
+    setBoundExeca,
+    createNested
+  }, ...execaArguments);
+  if (setBoundExeca !== void 0) {
+    setBoundExeca(boundExeca, createNested, boundOptions);
+  }
+  return boundExeca;
+};
+var callBoundExeca = ({ mapArguments, deepOptions = {}, boundOptions = {}, setBoundExeca, createNested }, firstArgument, ...nextArguments) => {
+  if (isPlainObject(firstArgument)) {
+    return createNested(mapArguments, mergeOptions(boundOptions, firstArgument), setBoundExeca);
+  }
+  const { file, commandArguments, options, isSync } = parseArguments({
+    mapArguments,
+    firstArgument,
+    nextArguments,
+    deepOptions,
+    boundOptions
+  });
+  return isSync ? execaCoreSync(file, commandArguments, options) : execaCoreAsync(file, commandArguments, options, createNested);
+};
+var parseArguments = ({ mapArguments, firstArgument, nextArguments, deepOptions, boundOptions }) => {
+  const callArguments = isTemplateString(firstArgument) ? parseTemplates(firstArgument, nextArguments) : [firstArgument, ...nextArguments];
+  const [initialFile, initialArguments, initialOptions] = normalizeParameters(...callArguments);
+  const mergedOptions = mergeOptions(mergeOptions(deepOptions, boundOptions), initialOptions);
+  const {
+    file = initialFile,
+    commandArguments = initialArguments,
+    options = mergedOptions,
+    isSync = false
+  } = mapArguments({ file: initialFile, commandArguments: initialArguments, options: mergedOptions });
+  return {
+    file,
+    commandArguments,
+    options,
+    isSync
+  };
+};
+
+// node_modules/execa/lib/methods/command.js
+var mapCommandAsync = ({ file, commandArguments }) => parseCommand(file, commandArguments);
+var mapCommandSync = ({ file, commandArguments }) => ({ ...parseCommand(file, commandArguments), isSync: true });
+var parseCommand = (command, unusedArguments) => {
+  if (unusedArguments.length > 0) {
+    throw new TypeError(`The command and its arguments must be passed as a single string: ${command} ${unusedArguments}.`);
+  }
+  const [file, ...commandArguments] = parseCommandString(command);
+  return { file, commandArguments };
+};
+var parseCommandString = (command) => {
+  if (typeof command !== "string") {
+    throw new TypeError(`The command must be a string: ${String(command)}.`);
+  }
+  const trimmedCommand = command.trim();
+  if (trimmedCommand === "") {
+    return [];
+  }
+  const tokens = [];
+  for (const token of trimmedCommand.split(SPACES_REGEXP)) {
+    const previousToken = tokens.at(-1);
+    if (previousToken && previousToken.endsWith("\\")) {
+      tokens[tokens.length - 1] = `${previousToken.slice(0, -1)} ${token}`;
+    } else {
+      tokens.push(token);
+    }
+  }
+  return tokens;
+};
+var SPACES_REGEXP = / +/g;
+
+// node_modules/execa/lib/methods/script.js
+var setScriptSync = (boundExeca, createNested, boundOptions) => {
+  boundExeca.sync = createNested(mapScriptSync, boundOptions);
+  boundExeca.s = boundExeca.sync;
+};
+var mapScriptAsync = ({ options }) => getScriptOptions(options);
+var mapScriptSync = ({ options }) => ({ ...getScriptOptions(options), isSync: true });
+var getScriptOptions = (options) => ({ options: { ...getScriptStdinOption(options), ...options } });
+var getScriptStdinOption = ({ input, inputFile, stdio }) => input === void 0 && inputFile === void 0 && stdio === void 0 ? { stdin: "inherit" } : {};
+var deepScriptOptions = { preferLocal: true };
+
+// node_modules/execa/index.js
+var execa = createExeca(() => ({}));
+var execaSync = createExeca(() => ({ isSync: true }));
+var execaCommand = createExeca(mapCommandAsync);
+var execaCommandSync = createExeca(mapCommandSync);
+var execaNode = createExeca(mapNode);
+var $ = createExeca(mapScriptAsync, {}, deepScriptOptions, setScriptSync);
+var {
+  sendMessage: sendMessage2,
+  getOneMessage: getOneMessage2,
+  getEachMessage: getEachMessage2,
+  getCancelSignal: getCancelSignal2
+} = getIpcExport();
+
+// src/providers/dependenciesProvider.ts
+var DependenciesProvider = class {
+  constructor(context) {
+    this.context = context;
+  }
+  _onDidChangeTreeData = new vscode.EventEmitter();
+  onDidChangeTreeData = this._onDidChangeTreeData.event;
+  refresh() {
+    this._onDidChangeTreeData.fire();
+  }
+  getTreeItem(element) {
+    return element;
+  }
+  async getChildren() {
+    const dependencies = [];
+    const checks = [
+      { label: "Node.js", cmd: "node --version", minVersion: "18.0.0", installCmd: "npm install -g node" },
+      { label: "Salesforce CLI (sf)", cmd: "sf --version", minVersion: "2.0.0", installCmd: "npm install -g @salesforce/cli" },
+      { label: "Salesforce Code Analyzer", cmd: "sf code-analyzer run --help", minVersion: "5.0.0", installCmd: "sf plugins install @salesforce/sfdx-scanner" },
+      { label: "Java", cmd: "java -version", minVersion: "11.0.0", installCmd: "apt install openjdk-11-jdk" },
+      { label: "wkhtmltopdf", cmd: "wkhtmltopdf --version", minVersion: "0.12.6", installCmd: "brew install wkhtmltopdf" }
+    ];
+    for (const dep of checks) {
+      const state = await this.checkCommand(dep);
+      const item = new UavDependencyItem(dep.label, state);
+      const iconMap = {
+        ok: new vscode.ThemeIcon("check", new vscode.ThemeColor("testing.iconPassed")),
+        // verde
+        outdated: new vscode.ThemeIcon("triangle-right", new vscode.ThemeColor("editorWarning.foreground")),
+        // amarillo
+        missing: new vscode.ThemeIcon("close", new vscode.ThemeColor("errorForeground"))
+        // rojo
+      };
+      item.iconPath = iconMap[state];
+      if (state !== "ok" && dep.installCmd) {
+        item.command = {
+          title: "Actualizar dependencia",
+          command: "uav.updateDependency",
+          arguments: [dep]
+        };
+        item.tooltip = `Actualizar ${dep.label}`;
+      }
+      dependencies.push(item);
+    }
+    const cfg = vscode.workspace.getConfiguration("UnifiedApexValidator");
+    const iaFields = [
+      cfg.get("sfGptEndpoint"),
+      cfg.get("sfGptModel"),
+      cfg.get("iaPromptTemplate")
+    ];
+    const iaConfigured = iaFields.every((v) => typeof v === "string" && v.trim() !== "");
+    const iaItem = new UavDependencyItem("IA Configuraci\xF3n", iaConfigured ? "ok" : "missing");
+    iaItem.iconPath = iaConfigured ? new vscode.ThemeIcon("check", new vscode.ThemeColor("testing.iconPassed")) : new vscode.ThemeIcon("close", new vscode.ThemeColor("errorForeground"));
+    dependencies.push(iaItem);
+    return dependencies;
+  }
+  async checkCommand(dep) {
+    try {
+      const { stdout, stderr } = await execa(dep.cmd, { shell: true });
+      const output = stdout || stderr || "";
+      const match3 = output.match(/\d+(\.\d+)+/);
+      if (match3 && dep.minVersion) {
+        return this.compareVersions(match3[0], dep.minVersion) >= 0 ? "ok" : "outdated";
+      }
+      return "ok";
+    } catch {
+      return "missing";
+    }
+  }
+  compareVersions(a2, b) {
+    const pa = a2.split(".").map(Number);
+    const pb = b.split(".").map(Number);
+    for (let i2 = 0; i2 < Math.max(pa.length, pb.length); i2++) {
+      if ((pa[i2] || 0) > (pb[i2] || 0)) return 1;
+      if ((pa[i2] || 0) < (pb[i2] || 0)) return -1;
+    }
+    return 0;
+  }
+};
+var UavDependencyItem = class extends vscode.TreeItem {
+  constructor(label, state) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.label = label;
+    this.state = state;
+    this.description = this.getDescription(state);
+  }
+  getDescription(state) {
+    switch (state) {
+      case "ok":
+        return "Actualizado";
+      case "outdated":
+        return "Desactualizado";
+      case "missing":
+        return "No instalado";
+    }
+  }
+};
+function registerDependencyUpdater(context) {
+  context.subscriptions.push(
+    vscode.commands.registerCommand("uav.updateDependency", async (dep) => {
+      vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: `Actualizando ${dep.label}...` },
+        async () => {
+          try {
+            await execa(dep.installCmd, { shell: true });
+            vscode.window.showInformationMessage(`${dep.label} actualizado correctamente.`);
+          } catch (err) {
+            vscode.window.showErrorMessage(`Error actualizando ${dep.label}: ${err.message}`);
+          }
+        }
+      );
+    })
+  );
+}
 
 // src/core/uavController.ts
-var vscode7 = __toESM(require("vscode"));
+var vscode8 = __toESM(require("vscode"));
 var path12 = __toESM(require("path"));
 var fs6 = __toESM(require_lib());
 
@@ -20277,7 +27170,7 @@ var mdurl_exports = {};
 __export(mdurl_exports, {
   decode: () => decode_default,
   encode: () => encode_default,
-  format: () => format,
+  format: () => format2,
   parse: () => parse_default
 });
 
@@ -20429,7 +27322,7 @@ encode.componentChars = "-_.!~*'()";
 var encode_default = encode;
 
 // node_modules/mdurl/lib/format.mjs
-function format(url2) {
+function format2(url2) {
   let result = "";
   result += url2.protocol || "";
   result += url2.slashes ? "//" : "";
@@ -24749,7 +31642,7 @@ function _class2(obj) {
 function isString2(obj) {
   return _class2(obj) === "[object String]";
 }
-function isObject(obj) {
+function isObject2(obj) {
   return _class2(obj) === "[object Object]";
 }
 function isRegExp(obj) {
@@ -24876,7 +31769,7 @@ function compile(self2) {
     }
     const compiled = { validate: null, link: null };
     self2.__compiled__[name] = compiled;
-    if (isObject(val)) {
+    if (isObject2(val)) {
       if (isRegExp(val.validate)) {
         compiled.validate = createValidator(val.validate);
       } else if (isFunction(val.validate)) {
@@ -25283,7 +32176,7 @@ function normalizeLink(url2) {
       }
     }
   }
-  return encode_default(format(parsed));
+  return encode_default(format2(parsed));
 }
 function normalizeLinkText(url2) {
   const parsed = parse_default(url2, true);
@@ -25295,7 +32188,7 @@ function normalizeLinkText(url2) {
       }
     }
   }
-  return decode_default(format(parsed), decode_default.defaultChars + "%");
+  return decode_default(format2(parsed), decode_default.defaultChars + "%");
 }
 function MarkdownIt(presetName, options) {
   if (!(this instanceof MarkdownIt)) {
@@ -25419,7 +32312,7 @@ var lib_default = MarkdownIt;
 
 // src/core/utils.ts
 var fs = __toESM(require_lib());
-var path2 = __toESM(require("path"));
+var path7 = __toESM(require("path"));
 
 // node_modules/fast-xml-parser/src/util.js
 var nameStartChar = ":A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD";
@@ -26853,7 +33746,7 @@ var XMLParser = class {
 };
 
 // src/core/utils.ts
-var vscode = __toESM(require("vscode"));
+var vscode2 = __toESM(require("vscode"));
 
 // node_modules/@isaacs/balanced-match/dist/esm/index.js
 var balanced = (a2, b, str) => {
@@ -27734,11 +34627,11 @@ var qmarksTestNoExtDot = ([$0]) => {
   return (f) => f.length === len && f !== "." && f !== "..";
 };
 var defaultPlatform = typeof process === "object" && process ? typeof process.env === "object" && process.env && process.env.__MINIMATCH_TESTING_PLATFORM__ || process.platform : "posix";
-var path = {
+var path6 = {
   win32: { sep: "\\" },
   posix: { sep: "/" }
 };
-var sep = defaultPlatform === "win32" ? path.win32.sep : path.posix.sep;
+var sep = defaultPlatform === "win32" ? path6.win32.sep : path6.posix.sep;
 minimatch.sep = sep;
 var GLOBSTAR = Symbol("globstar **");
 minimatch.GLOBSTAR = GLOBSTAR;
@@ -28394,7 +35287,7 @@ minimatch.escape = escape3;
 minimatch.unescape = unescape2;
 
 // node_modules/glob/dist/esm/glob.js
-var import_node_url2 = require("node:url");
+var import_node_url4 = require("node:url");
 
 // node_modules/path-scurry/node_modules/lru-cache/dist/esm/index.js
 var defaultPerf = typeof performance === "object" && performance && typeof performance.now === "function" ? performance : Date;
@@ -29798,24 +36691,24 @@ var LRUCache = class _LRUCache {
 };
 
 // node_modules/path-scurry/dist/esm/index.js
-var import_node_path = require("node:path");
-var import_node_url = require("node:url");
+var import_node_path6 = require("node:path");
+var import_node_url3 = require("node:url");
 var import_fs = require("fs");
 var actualFS = __toESM(require("node:fs"), 1);
-var import_promises = require("node:fs/promises");
+var import_promises12 = require("node:fs/promises");
 
 // node_modules/minipass/dist/esm/index.js
-var import_node_events = require("node:events");
-var import_node_stream = __toESM(require("node:stream"), 1);
-var import_node_string_decoder = require("node:string_decoder");
+var import_node_events15 = require("node:events");
+var import_node_stream9 = __toESM(require("node:stream"), 1);
+var import_node_string_decoder3 = require("node:string_decoder");
 var proc = typeof process === "object" && process ? process : {
   stdout: null,
   stderr: null
 };
-var isStream = (s) => !!s && typeof s === "object" && (s instanceof Minipass || s instanceof import_node_stream.default || isReadable(s) || isWritable(s));
-var isReadable = (s) => !!s && typeof s === "object" && s instanceof import_node_events.EventEmitter && typeof s.pipe === "function" && // node core Writable streams have a pipe() method, but it throws
-s.pipe !== import_node_stream.default.Writable.prototype.pipe;
-var isWritable = (s) => !!s && typeof s === "object" && s instanceof import_node_events.EventEmitter && typeof s.write === "function" && typeof s.end === "function";
+var isStream2 = (s) => !!s && typeof s === "object" && (s instanceof Minipass || s instanceof import_node_stream9.default || isReadable(s) || isWritable(s));
+var isReadable = (s) => !!s && typeof s === "object" && s instanceof import_node_events15.EventEmitter && typeof s.pipe === "function" && // node core Writable streams have a pipe() method, but it throws
+s.pipe !== import_node_stream9.default.Writable.prototype.pipe;
+var isWritable = (s) => !!s && typeof s === "object" && s instanceof import_node_events15.EventEmitter && typeof s.write === "function" && typeof s.end === "function";
 var EOF = Symbol("EOF");
 var MAYBE_EMIT_END = Symbol("maybeEmitEnd");
 var EMITTED_END = Symbol("emittedEnd");
@@ -29891,7 +36784,7 @@ var PipeProxyErrors = class extends Pipe {
 };
 var isObjectModeOptions = (o2) => !!o2.objectMode;
 var isEncodingOptions = (o2) => !o2.objectMode && !!o2.encoding && o2.encoding !== "buffer";
-var Minipass = class extends import_node_events.EventEmitter {
+var Minipass = class extends import_node_events15.EventEmitter {
   [FLOWING] = false;
   [PAUSED] = false;
   [PIPES] = [];
@@ -29942,7 +36835,7 @@ var Minipass = class extends import_node_events.EventEmitter {
       this[ENCODING] = null;
     }
     this[ASYNC] = !!options.async;
-    this[DECODER] = this[ENCODING] ? new import_node_string_decoder.StringDecoder(this[ENCODING]) : null;
+    this[DECODER] = this[ENCODING] ? new import_node_string_decoder3.StringDecoder(this[ENCODING]) : null;
     if (options && options.debugExposeBuffer === true) {
       Object.defineProperty(this, "buffer", { get: () => this[BUFFER] });
     }
@@ -30678,7 +37571,7 @@ var Minipass = class extends import_node_events.EventEmitter {
    * @deprecated
    */
   static get isStream() {
-    return isStream;
+    return isStream2;
   }
 };
 
@@ -30691,10 +37584,10 @@ var defaultFS = {
   readlinkSync: import_fs.readlinkSync,
   realpathSync,
   promises: {
-    lstat: import_promises.lstat,
-    readdir: import_promises.readdir,
-    readlink: import_promises.readlink,
-    realpath: import_promises.realpath
+    lstat: import_promises12.lstat,
+    readdir: import_promises12.readdir,
+    readlink: import_promises12.readlink,
+    realpath: import_promises12.realpath
   }
 };
 var fsFromOption = (fsOption) => !fsOption || fsOption === defaultFS || fsOption === actualFS ? defaultFS : {
@@ -30947,12 +37840,12 @@ var PathBase = class {
   /**
    * Get the Path object referenced by the string path, resolved from this Path
    */
-  resolve(path14) {
-    if (!path14) {
+  resolve(path15) {
+    if (!path15) {
       return this;
     }
-    const rootPath = this.getRootString(path14);
-    const dir = path14.substring(rootPath.length);
+    const rootPath = this.getRootString(path15);
+    const dir = path15.substring(rootPath.length);
     const dirParts = dir.split(this.splitSep);
     const result = rootPath ? this.getRoot(rootPath).#resolveParts(dirParts) : this.#resolveParts(dirParts);
     return result;
@@ -31704,8 +38597,8 @@ var PathWin32 = class _PathWin32 extends PathBase {
   /**
    * @internal
    */
-  getRootString(path14) {
-    return import_node_path.win32.parse(path14).root;
+  getRootString(path15) {
+    return import_node_path6.win32.parse(path15).root;
   }
   /**
    * @internal
@@ -31751,8 +38644,8 @@ var PathPosix = class _PathPosix extends PathBase {
   /**
    * @internal
    */
-  getRootString(path14) {
-    return path14.startsWith("/") ? "/" : "";
+  getRootString(path15) {
+    return path15.startsWith("/") ? "/" : "";
   }
   /**
    * @internal
@@ -31801,10 +38694,10 @@ var PathScurryBase = class {
    *
    * @internal
    */
-  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs7 = defaultFS } = {}) {
-    this.#fs = fsFromOption(fs7);
+  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs8 = defaultFS } = {}) {
+    this.#fs = fsFromOption(fs8);
     if (cwd instanceof URL || cwd.startsWith("file://")) {
-      cwd = (0, import_node_url.fileURLToPath)(cwd);
+      cwd = (0, import_node_url3.fileURLToPath)(cwd);
     }
     const cwdPath = pathImpl.resolve(cwd);
     this.roots = /* @__PURE__ */ Object.create(null);
@@ -31841,11 +38734,11 @@ var PathScurryBase = class {
   /**
    * Get the depth of a provided path, string, or the cwd
    */
-  depth(path14 = this.cwd) {
-    if (typeof path14 === "string") {
-      path14 = this.cwd.resolve(path14);
+  depth(path15 = this.cwd) {
+    if (typeof path15 === "string") {
+      path15 = this.cwd.resolve(path15);
     }
-    return path14.depth();
+    return path15.depth();
   }
   /**
    * Return the cache of child entries.  Exposed so subclasses can create
@@ -32332,9 +39225,9 @@ var PathScurryBase = class {
     process10();
     return results;
   }
-  chdir(path14 = this.cwd) {
+  chdir(path15 = this.cwd) {
     const oldCwd = this.cwd;
-    this.cwd = typeof path14 === "string" ? this.cwd.resolve(path14) : path14;
+    this.cwd = typeof path15 === "string" ? this.cwd.resolve(path15) : path15;
     this.cwd[setAsCwd](oldCwd);
   }
 };
@@ -32345,7 +39238,7 @@ var PathScurryWin32 = class extends PathScurryBase {
   sep = "\\";
   constructor(cwd = process.cwd(), opts = {}) {
     const { nocase = true } = opts;
-    super(cwd, import_node_path.win32, "\\", { ...opts, nocase });
+    super(cwd, import_node_path6.win32, "\\", { ...opts, nocase });
     this.nocase = nocase;
     for (let p = this.cwd; p; p = p.parent) {
       p.nocase = this.nocase;
@@ -32355,13 +39248,13 @@ var PathScurryWin32 = class extends PathScurryBase {
    * @internal
    */
   parseRootPath(dir) {
-    return import_node_path.win32.parse(dir).root.toUpperCase();
+    return import_node_path6.win32.parse(dir).root.toUpperCase();
   }
   /**
    * @internal
    */
-  newRoot(fs7) {
-    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs7 });
+  newRoot(fs8) {
+    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs8 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -32377,7 +39270,7 @@ var PathScurryPosix = class extends PathScurryBase {
   sep = "/";
   constructor(cwd = process.cwd(), opts = {}) {
     const { nocase = false } = opts;
-    super(cwd, import_node_path.posix, "/", { ...opts, nocase });
+    super(cwd, import_node_path6.posix, "/", { ...opts, nocase });
     this.nocase = nocase;
   }
   /**
@@ -32389,8 +39282,8 @@ var PathScurryPosix = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs7) {
-    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs7 });
+  newRoot(fs8) {
+    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs8 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -32690,8 +39583,8 @@ var MatchRecord = class {
   }
   // match, absolute, ifdir
   entries() {
-    return [...this.store.entries()].map(([path14, n2]) => [
-      path14,
+    return [...this.store.entries()].map(([path15, n2]) => [
+      path15,
       !!(n2 & 2),
       !!(n2 & 1)
     ]);
@@ -32896,9 +39789,9 @@ var GlobUtil = class {
   signal;
   maxDepth;
   includeChildMatches;
-  constructor(patterns, path14, opts) {
+  constructor(patterns, path15, opts) {
     this.patterns = patterns;
-    this.path = path14;
+    this.path = path15;
     this.opts = opts;
     this.#sep = !opts.posix && opts.platform === "win32" ? "\\" : "/";
     this.includeChildMatches = opts.includeChildMatches !== false;
@@ -32917,11 +39810,11 @@ var GlobUtil = class {
       });
     }
   }
-  #ignored(path14) {
-    return this.seen.has(path14) || !!this.#ignore?.ignored?.(path14);
+  #ignored(path15) {
+    return this.seen.has(path15) || !!this.#ignore?.ignored?.(path15);
   }
-  #childrenIgnored(path14) {
-    return !!this.#ignore?.childrenIgnored?.(path14);
+  #childrenIgnored(path15) {
+    return !!this.#ignore?.childrenIgnored?.(path15);
   }
   // backpressure mechanism
   pause() {
@@ -33136,8 +40029,8 @@ var GlobUtil = class {
 };
 var GlobWalker = class extends GlobUtil {
   matches = /* @__PURE__ */ new Set();
-  constructor(patterns, path14, opts) {
-    super(patterns, path14, opts);
+  constructor(patterns, path15, opts) {
+    super(patterns, path15, opts);
   }
   matchEmit(e) {
     this.matches.add(e);
@@ -33174,8 +40067,8 @@ var GlobWalker = class extends GlobUtil {
 };
 var GlobStream = class extends GlobUtil {
   results;
-  constructor(patterns, path14, opts) {
-    super(patterns, path14, opts);
+  constructor(patterns, path15, opts) {
+    super(patterns, path15, opts);
     this.results = new Minipass({
       signal: this.signal,
       objectMode: true
@@ -33269,7 +40162,7 @@ var Glob = class {
     if (!opts.cwd) {
       this.cwd = "";
     } else if (opts.cwd instanceof URL || opts.cwd.startsWith("file://")) {
-      opts.cwd = (0, import_node_url2.fileURLToPath)(opts.cwd);
+      opts.cwd = (0, import_node_url4.fileURLToPath)(opts.cwd);
     }
     this.cwd = opts.cwd || "";
     this.root = opts.root;
@@ -33478,14 +40371,14 @@ function setExtensionContext(ctx) {
 var globalChannel = null;
 function getGlobalChannel() {
   if (!globalChannel) {
-    globalChannel = vscode.window.createOutputChannel("Unified Apex Validator");
+    globalChannel = vscode2.window.createOutputChannel("Unified Apex Validator");
     globalChannel.show(true);
   }
   return globalChannel;
 }
 function getStorageRoot() {
-  const base = _ctx?.globalStorageUri?.fsPath || path2.resolve(__dirname, "..", "..");
-  const dir = path2.join(base, ".uav");
+  const base = _ctx?.globalStorageUri?.fsPath || path7.resolve(__dirname, "..", "..");
+  const dir = path7.join(base, ".uav");
   try {
     fs.ensureDirSync(dir);
   } catch (err) {
@@ -33501,13 +40394,13 @@ var Logger = class {
     this.prefix = prefix;
     const storageRoot = getStorageRoot();
     console.log(`[UAV][Logger] Creando logger para ${prefix} en ${storageRoot}`);
-    const logDir = path2.join(storageRoot, "logs");
+    const logDir = path7.join(storageRoot, "logs");
     try {
       fs.ensureDirSync(logDir);
     } catch (err) {
       console.error("[UAV][Logger] \u274C Error creando carpeta de logs:", err);
     }
-    this.logPath = path2.join(logDir, `${prefix}.log`);
+    this.logPath = path7.join(logDir, `${prefix}.log`);
     this.outputChannel = getGlobalChannel();
     if (autoShow) {
       this.outputChannel.show(true);
@@ -33591,6792 +40484,15 @@ async function cleanUpFiles(paths, logger3) {
 }
 
 // src/core/validator.ts
-var vscode2 = __toESM(require("vscode"));
+var vscode3 = __toESM(require("vscode"));
 var fs2 = __toESM(require_lib());
 var path8 = __toESM(require("path"));
-
-// node_modules/is-plain-obj/index.js
-function isPlainObject(value) {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const prototype3 = Object.getPrototypeOf(value);
-  return (prototype3 === null || prototype3 === Object.prototype || Object.getPrototypeOf(prototype3) === null) && !(Symbol.toStringTag in value) && !(Symbol.iterator in value);
-}
-
-// node_modules/execa/lib/arguments/file-url.js
-var import_node_url3 = require("node:url");
-var safeNormalizeFileUrl = (file, name) => {
-  const fileString = normalizeFileUrl(normalizeDenoExecPath(file));
-  if (typeof fileString !== "string") {
-    throw new TypeError(`${name} must be a string or a file URL: ${fileString}.`);
-  }
-  return fileString;
-};
-var normalizeDenoExecPath = (file) => isDenoExecPath(file) ? file.toString() : file;
-var isDenoExecPath = (file) => typeof file !== "string" && file && Object.getPrototypeOf(file) === String.prototype;
-var normalizeFileUrl = (file) => file instanceof URL ? (0, import_node_url3.fileURLToPath)(file) : file;
-
-// node_modules/execa/lib/methods/parameters.js
-var normalizeParameters = (rawFile, rawArguments = [], rawOptions = {}) => {
-  const filePath = safeNormalizeFileUrl(rawFile, "First argument");
-  const [commandArguments, options] = isPlainObject(rawArguments) ? [[], rawArguments] : [rawArguments, rawOptions];
-  if (!Array.isArray(commandArguments)) {
-    throw new TypeError(`Second argument must be either an array of arguments or an options object: ${commandArguments}`);
-  }
-  if (commandArguments.some((commandArgument) => typeof commandArgument === "object" && commandArgument !== null)) {
-    throw new TypeError(`Second argument must be an array of strings: ${commandArguments}`);
-  }
-  const normalizedArguments = commandArguments.map(String);
-  const nullByteArgument = normalizedArguments.find((normalizedArgument) => normalizedArgument.includes("\0"));
-  if (nullByteArgument !== void 0) {
-    throw new TypeError(`Arguments cannot contain null bytes ("\\0"): ${nullByteArgument}`);
-  }
-  if (!isPlainObject(options)) {
-    throw new TypeError(`Last argument must be an options object: ${options}`);
-  }
-  return [filePath, normalizedArguments, options];
-};
-
-// node_modules/execa/lib/methods/template.js
-var import_node_child_process = require("node:child_process");
-
-// node_modules/execa/lib/utils/uint-array.js
-var import_node_string_decoder2 = require("node:string_decoder");
-var { toString: objectToString } = Object.prototype;
-var isArrayBuffer = (value) => objectToString.call(value) === "[object ArrayBuffer]";
-var isUint8Array = (value) => objectToString.call(value) === "[object Uint8Array]";
-var bufferToUint8Array = (buffer) => new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-var textEncoder = new TextEncoder();
-var stringToUint8Array = (string) => textEncoder.encode(string);
-var textDecoder = new TextDecoder();
-var uint8ArrayToString = (uint8Array) => textDecoder.decode(uint8Array);
-var joinToString = (uint8ArraysOrStrings, encoding) => {
-  const strings = uint8ArraysToStrings(uint8ArraysOrStrings, encoding);
-  return strings.join("");
-};
-var uint8ArraysToStrings = (uint8ArraysOrStrings, encoding) => {
-  if (encoding === "utf8" && uint8ArraysOrStrings.every((uint8ArrayOrString) => typeof uint8ArrayOrString === "string")) {
-    return uint8ArraysOrStrings;
-  }
-  const decoder = new import_node_string_decoder2.StringDecoder(encoding);
-  const strings = uint8ArraysOrStrings.map((uint8ArrayOrString) => typeof uint8ArrayOrString === "string" ? stringToUint8Array(uint8ArrayOrString) : uint8ArrayOrString).map((uint8Array) => decoder.write(uint8Array));
-  const finalString = decoder.end();
-  return finalString === "" ? strings : [...strings, finalString];
-};
-var joinToUint8Array = (uint8ArraysOrStrings) => {
-  if (uint8ArraysOrStrings.length === 1 && isUint8Array(uint8ArraysOrStrings[0])) {
-    return uint8ArraysOrStrings[0];
-  }
-  return concatUint8Arrays(stringsToUint8Arrays(uint8ArraysOrStrings));
-};
-var stringsToUint8Arrays = (uint8ArraysOrStrings) => uint8ArraysOrStrings.map((uint8ArrayOrString) => typeof uint8ArrayOrString === "string" ? stringToUint8Array(uint8ArrayOrString) : uint8ArrayOrString);
-var concatUint8Arrays = (uint8Arrays) => {
-  const result = new Uint8Array(getJoinLength(uint8Arrays));
-  let index = 0;
-  for (const uint8Array of uint8Arrays) {
-    result.set(uint8Array, index);
-    index += uint8Array.length;
-  }
-  return result;
-};
-var getJoinLength = (uint8Arrays) => {
-  let joinLength = 0;
-  for (const uint8Array of uint8Arrays) {
-    joinLength += uint8Array.length;
-  }
-  return joinLength;
-};
-
-// node_modules/execa/lib/methods/template.js
-var isTemplateString = (templates) => Array.isArray(templates) && Array.isArray(templates.raw);
-var parseTemplates = (templates, expressions) => {
-  let tokens = [];
-  for (const [index, template] of templates.entries()) {
-    tokens = parseTemplate({
-      templates,
-      expressions,
-      tokens,
-      index,
-      template
-    });
-  }
-  if (tokens.length === 0) {
-    throw new TypeError("Template script must not be empty");
-  }
-  const [file, ...commandArguments] = tokens;
-  return [file, commandArguments, {}];
-};
-var parseTemplate = ({ templates, expressions, tokens, index, template }) => {
-  if (template === void 0) {
-    throw new TypeError(`Invalid backslash sequence: ${templates.raw[index]}`);
-  }
-  const { nextTokens, leadingWhitespaces, trailingWhitespaces } = splitByWhitespaces(template, templates.raw[index]);
-  const newTokens = concatTokens(tokens, nextTokens, leadingWhitespaces);
-  if (index === expressions.length) {
-    return newTokens;
-  }
-  const expression = expressions[index];
-  const expressionTokens = Array.isArray(expression) ? expression.map((expression2) => parseExpression(expression2)) : [parseExpression(expression)];
-  return concatTokens(newTokens, expressionTokens, trailingWhitespaces);
-};
-var splitByWhitespaces = (template, rawTemplate) => {
-  if (rawTemplate.length === 0) {
-    return { nextTokens: [], leadingWhitespaces: false, trailingWhitespaces: false };
-  }
-  const nextTokens = [];
-  let templateStart = 0;
-  const leadingWhitespaces = DELIMITERS.has(rawTemplate[0]);
-  for (let templateIndex = 0, rawIndex = 0; templateIndex < template.length; templateIndex += 1, rawIndex += 1) {
-    const rawCharacter = rawTemplate[rawIndex];
-    if (DELIMITERS.has(rawCharacter)) {
-      if (templateStart !== templateIndex) {
-        nextTokens.push(template.slice(templateStart, templateIndex));
-      }
-      templateStart = templateIndex + 1;
-    } else if (rawCharacter === "\\") {
-      const nextRawCharacter = rawTemplate[rawIndex + 1];
-      if (nextRawCharacter === "\n") {
-        templateIndex -= 1;
-        rawIndex += 1;
-      } else if (nextRawCharacter === "u" && rawTemplate[rawIndex + 2] === "{") {
-        rawIndex = rawTemplate.indexOf("}", rawIndex + 3);
-      } else {
-        rawIndex += ESCAPE_LENGTH[nextRawCharacter] ?? 1;
-      }
-    }
-  }
-  const trailingWhitespaces = templateStart === template.length;
-  if (!trailingWhitespaces) {
-    nextTokens.push(template.slice(templateStart));
-  }
-  return { nextTokens, leadingWhitespaces, trailingWhitespaces };
-};
-var DELIMITERS = /* @__PURE__ */ new Set([" ", "	", "\r", "\n"]);
-var ESCAPE_LENGTH = { x: 3, u: 5 };
-var concatTokens = (tokens, nextTokens, isSeparated) => isSeparated || tokens.length === 0 || nextTokens.length === 0 ? [...tokens, ...nextTokens] : [
-  ...tokens.slice(0, -1),
-  `${tokens.at(-1)}${nextTokens[0]}`,
-  ...nextTokens.slice(1)
-];
-var parseExpression = (expression) => {
-  const typeOfExpression = typeof expression;
-  if (typeOfExpression === "string") {
-    return expression;
-  }
-  if (typeOfExpression === "number") {
-    return String(expression);
-  }
-  if (isPlainObject(expression) && ("stdout" in expression || "isMaxBuffer" in expression)) {
-    return getSubprocessResult(expression);
-  }
-  if (expression instanceof import_node_child_process.ChildProcess || Object.prototype.toString.call(expression) === "[object Promise]") {
-    throw new TypeError("Unexpected subprocess in template expression. Please use ${await subprocess} instead of ${subprocess}.");
-  }
-  throw new TypeError(`Unexpected "${typeOfExpression}" in template expression`);
-};
-var getSubprocessResult = ({ stdout }) => {
-  if (typeof stdout === "string") {
-    return stdout;
-  }
-  if (isUint8Array(stdout)) {
-    return uint8ArrayToString(stdout);
-  }
-  if (stdout === void 0) {
-    throw new TypeError(`Missing result.stdout in template expression. This is probably due to the previous subprocess' "stdout" option.`);
-  }
-  throw new TypeError(`Unexpected "${typeof stdout}" stdout in template expression`);
-};
-
-// node_modules/execa/lib/methods/main-sync.js
-var import_node_child_process3 = require("node:child_process");
-
-// node_modules/execa/lib/arguments/specific.js
-var import_node_util = require("node:util");
-
-// node_modules/execa/lib/utils/standard-stream.js
-var import_node_process = __toESM(require("node:process"), 1);
-var isStandardStream = (stream5) => STANDARD_STREAMS.includes(stream5);
-var STANDARD_STREAMS = [import_node_process.default.stdin, import_node_process.default.stdout, import_node_process.default.stderr];
-var STANDARD_STREAMS_ALIASES = ["stdin", "stdout", "stderr"];
-var getStreamName = (fdNumber) => STANDARD_STREAMS_ALIASES[fdNumber] ?? `stdio[${fdNumber}]`;
-
-// node_modules/execa/lib/arguments/specific.js
-var normalizeFdSpecificOptions = (options) => {
-  const optionsCopy = { ...options };
-  for (const optionName of FD_SPECIFIC_OPTIONS) {
-    optionsCopy[optionName] = normalizeFdSpecificOption(options, optionName);
-  }
-  return optionsCopy;
-};
-var normalizeFdSpecificOption = (options, optionName) => {
-  const optionBaseArray = Array.from({ length: getStdioLength(options) + 1 });
-  const optionArray = normalizeFdSpecificValue(options[optionName], optionBaseArray, optionName);
-  return addDefaultValue(optionArray, optionName);
-};
-var getStdioLength = ({ stdio }) => Array.isArray(stdio) ? Math.max(stdio.length, STANDARD_STREAMS_ALIASES.length) : STANDARD_STREAMS_ALIASES.length;
-var normalizeFdSpecificValue = (optionValue, optionArray, optionName) => isPlainObject(optionValue) ? normalizeOptionObject(optionValue, optionArray, optionName) : optionArray.fill(optionValue);
-var normalizeOptionObject = (optionValue, optionArray, optionName) => {
-  for (const fdName of Object.keys(optionValue).sort(compareFdName)) {
-    for (const fdNumber of parseFdName(fdName, optionName, optionArray)) {
-      optionArray[fdNumber] = optionValue[fdName];
-    }
-  }
-  return optionArray;
-};
-var compareFdName = (fdNameA, fdNameB) => getFdNameOrder(fdNameA) < getFdNameOrder(fdNameB) ? 1 : -1;
-var getFdNameOrder = (fdName) => {
-  if (fdName === "stdout" || fdName === "stderr") {
-    return 0;
-  }
-  return fdName === "all" ? 2 : 1;
-};
-var parseFdName = (fdName, optionName, optionArray) => {
-  if (fdName === "ipc") {
-    return [optionArray.length - 1];
-  }
-  const fdNumber = parseFd(fdName);
-  if (fdNumber === void 0 || fdNumber === 0) {
-    throw new TypeError(`"${optionName}.${fdName}" is invalid.
-It must be "${optionName}.stdout", "${optionName}.stderr", "${optionName}.all", "${optionName}.ipc", or "${optionName}.fd3", "${optionName}.fd4" (and so on).`);
-  }
-  if (fdNumber >= optionArray.length) {
-    throw new TypeError(`"${optionName}.${fdName}" is invalid: that file descriptor does not exist.
-Please set the "stdio" option to ensure that file descriptor exists.`);
-  }
-  return fdNumber === "all" ? [1, 2] : [fdNumber];
-};
-var parseFd = (fdName) => {
-  if (fdName === "all") {
-    return fdName;
-  }
-  if (STANDARD_STREAMS_ALIASES.includes(fdName)) {
-    return STANDARD_STREAMS_ALIASES.indexOf(fdName);
-  }
-  const regexpResult = FD_REGEXP.exec(fdName);
-  if (regexpResult !== null) {
-    return Number(regexpResult[1]);
-  }
-};
-var FD_REGEXP = /^fd(\d+)$/;
-var addDefaultValue = (optionArray, optionName) => optionArray.map((optionValue) => optionValue === void 0 ? DEFAULT_OPTIONS[optionName] : optionValue);
-var verboseDefault = (0, import_node_util.debuglog)("execa").enabled ? "full" : "none";
-var DEFAULT_OPTIONS = {
-  lines: false,
-  buffer: true,
-  maxBuffer: 1e3 * 1e3 * 100,
-  verbose: verboseDefault,
-  stripFinalNewline: true
-};
-var FD_SPECIFIC_OPTIONS = ["lines", "buffer", "maxBuffer", "verbose", "stripFinalNewline"];
-var getFdSpecificValue = (optionArray, fdNumber) => fdNumber === "ipc" ? optionArray.at(-1) : optionArray[fdNumber];
-
-// node_modules/execa/lib/verbose/values.js
-var isVerbose = ({ verbose }, fdNumber) => getFdVerbose(verbose, fdNumber) !== "none";
-var isFullVerbose = ({ verbose }, fdNumber) => !["none", "short"].includes(getFdVerbose(verbose, fdNumber));
-var getVerboseFunction = ({ verbose }, fdNumber) => {
-  const fdVerbose = getFdVerbose(verbose, fdNumber);
-  return isVerboseFunction(fdVerbose) ? fdVerbose : void 0;
-};
-var getFdVerbose = (verbose, fdNumber) => fdNumber === void 0 ? getFdGenericVerbose(verbose) : getFdSpecificValue(verbose, fdNumber);
-var getFdGenericVerbose = (verbose) => verbose.find((fdVerbose) => isVerboseFunction(fdVerbose)) ?? VERBOSE_VALUES.findLast((fdVerbose) => verbose.includes(fdVerbose));
-var isVerboseFunction = (fdVerbose) => typeof fdVerbose === "function";
-var VERBOSE_VALUES = ["none", "short", "full"];
-
-// node_modules/execa/lib/verbose/log.js
-var import_node_util3 = require("node:util");
-
-// node_modules/execa/lib/arguments/escape.js
-var import_node_process2 = require("node:process");
-var import_node_util2 = require("node:util");
-var joinCommand = (filePath, rawArguments) => {
-  const fileAndArguments = [filePath, ...rawArguments];
-  const command = fileAndArguments.join(" ");
-  const escapedCommand = fileAndArguments.map((fileAndArgument) => quoteString(escapeControlCharacters(fileAndArgument))).join(" ");
-  return { command, escapedCommand };
-};
-var escapeLines = (lines) => (0, import_node_util2.stripVTControlCharacters)(lines).split("\n").map((line) => escapeControlCharacters(line)).join("\n");
-var escapeControlCharacters = (line) => line.replaceAll(SPECIAL_CHAR_REGEXP, (character) => escapeControlCharacter(character));
-var escapeControlCharacter = (character) => {
-  const commonEscape = COMMON_ESCAPES[character];
-  if (commonEscape !== void 0) {
-    return commonEscape;
-  }
-  const codepoint = character.codePointAt(0);
-  const codepointHex = codepoint.toString(16);
-  return codepoint <= ASTRAL_START ? `\\u${codepointHex.padStart(4, "0")}` : `\\U${codepointHex}`;
-};
-var getSpecialCharRegExp = () => {
-  try {
-    return new RegExp("\\p{Separator}|\\p{Other}", "gu");
-  } catch {
-    return /[\s\u0000-\u001F\u007F-\u009F\u00AD]/g;
-  }
-};
-var SPECIAL_CHAR_REGEXP = getSpecialCharRegExp();
-var COMMON_ESCAPES = {
-  " ": " ",
-  "\b": "\\b",
-  "\f": "\\f",
-  "\n": "\\n",
-  "\r": "\\r",
-  "	": "\\t"
-};
-var ASTRAL_START = 65535;
-var quoteString = (escapedArgument) => {
-  if (NO_ESCAPE_REGEXP.test(escapedArgument)) {
-    return escapedArgument;
-  }
-  return import_node_process2.platform === "win32" ? `"${escapedArgument.replaceAll('"', '""')}"` : `'${escapedArgument.replaceAll("'", "'\\''")}'`;
-};
-var NO_ESCAPE_REGEXP = /^[\w./-]+$/;
-
-// node_modules/is-unicode-supported/index.js
-var import_node_process3 = __toESM(require("node:process"), 1);
-function isUnicodeSupported() {
-  const { env: env2 } = import_node_process3.default;
-  const { TERM, TERM_PROGRAM } = env2;
-  if (import_node_process3.default.platform !== "win32") {
-    return TERM !== "linux";
-  }
-  return Boolean(env2.WT_SESSION) || Boolean(env2.TERMINUS_SUBLIME) || env2.ConEmuTask === "{cmd::Cmder}" || TERM_PROGRAM === "Terminus-Sublime" || TERM_PROGRAM === "vscode" || TERM === "xterm-256color" || TERM === "alacritty" || TERM === "rxvt-unicode" || TERM === "rxvt-unicode-256color" || env2.TERMINAL_EMULATOR === "JetBrains-JediTerm";
-}
-
-// node_modules/figures/index.js
-var common = {
-  circleQuestionMark: "(?)",
-  questionMarkPrefix: "(?)",
-  square: "\u2588",
-  squareDarkShade: "\u2593",
-  squareMediumShade: "\u2592",
-  squareLightShade: "\u2591",
-  squareTop: "\u2580",
-  squareBottom: "\u2584",
-  squareLeft: "\u258C",
-  squareRight: "\u2590",
-  squareCenter: "\u25A0",
-  bullet: "\u25CF",
-  dot: "\u2024",
-  ellipsis: "\u2026",
-  pointerSmall: "\u203A",
-  triangleUp: "\u25B2",
-  triangleUpSmall: "\u25B4",
-  triangleDown: "\u25BC",
-  triangleDownSmall: "\u25BE",
-  triangleLeftSmall: "\u25C2",
-  triangleRightSmall: "\u25B8",
-  home: "\u2302",
-  heart: "\u2665",
-  musicNote: "\u266A",
-  musicNoteBeamed: "\u266B",
-  arrowUp: "\u2191",
-  arrowDown: "\u2193",
-  arrowLeft: "\u2190",
-  arrowRight: "\u2192",
-  arrowLeftRight: "\u2194",
-  arrowUpDown: "\u2195",
-  almostEqual: "\u2248",
-  notEqual: "\u2260",
-  lessOrEqual: "\u2264",
-  greaterOrEqual: "\u2265",
-  identical: "\u2261",
-  infinity: "\u221E",
-  subscriptZero: "\u2080",
-  subscriptOne: "\u2081",
-  subscriptTwo: "\u2082",
-  subscriptThree: "\u2083",
-  subscriptFour: "\u2084",
-  subscriptFive: "\u2085",
-  subscriptSix: "\u2086",
-  subscriptSeven: "\u2087",
-  subscriptEight: "\u2088",
-  subscriptNine: "\u2089",
-  oneHalf: "\xBD",
-  oneThird: "\u2153",
-  oneQuarter: "\xBC",
-  oneFifth: "\u2155",
-  oneSixth: "\u2159",
-  oneEighth: "\u215B",
-  twoThirds: "\u2154",
-  twoFifths: "\u2156",
-  threeQuarters: "\xBE",
-  threeFifths: "\u2157",
-  threeEighths: "\u215C",
-  fourFifths: "\u2158",
-  fiveSixths: "\u215A",
-  fiveEighths: "\u215D",
-  sevenEighths: "\u215E",
-  line: "\u2500",
-  lineBold: "\u2501",
-  lineDouble: "\u2550",
-  lineDashed0: "\u2504",
-  lineDashed1: "\u2505",
-  lineDashed2: "\u2508",
-  lineDashed3: "\u2509",
-  lineDashed4: "\u254C",
-  lineDashed5: "\u254D",
-  lineDashed6: "\u2574",
-  lineDashed7: "\u2576",
-  lineDashed8: "\u2578",
-  lineDashed9: "\u257A",
-  lineDashed10: "\u257C",
-  lineDashed11: "\u257E",
-  lineDashed12: "\u2212",
-  lineDashed13: "\u2013",
-  lineDashed14: "\u2010",
-  lineDashed15: "\u2043",
-  lineVertical: "\u2502",
-  lineVerticalBold: "\u2503",
-  lineVerticalDouble: "\u2551",
-  lineVerticalDashed0: "\u2506",
-  lineVerticalDashed1: "\u2507",
-  lineVerticalDashed2: "\u250A",
-  lineVerticalDashed3: "\u250B",
-  lineVerticalDashed4: "\u254E",
-  lineVerticalDashed5: "\u254F",
-  lineVerticalDashed6: "\u2575",
-  lineVerticalDashed7: "\u2577",
-  lineVerticalDashed8: "\u2579",
-  lineVerticalDashed9: "\u257B",
-  lineVerticalDashed10: "\u257D",
-  lineVerticalDashed11: "\u257F",
-  lineDownLeft: "\u2510",
-  lineDownLeftArc: "\u256E",
-  lineDownBoldLeftBold: "\u2513",
-  lineDownBoldLeft: "\u2512",
-  lineDownLeftBold: "\u2511",
-  lineDownDoubleLeftDouble: "\u2557",
-  lineDownDoubleLeft: "\u2556",
-  lineDownLeftDouble: "\u2555",
-  lineDownRight: "\u250C",
-  lineDownRightArc: "\u256D",
-  lineDownBoldRightBold: "\u250F",
-  lineDownBoldRight: "\u250E",
-  lineDownRightBold: "\u250D",
-  lineDownDoubleRightDouble: "\u2554",
-  lineDownDoubleRight: "\u2553",
-  lineDownRightDouble: "\u2552",
-  lineUpLeft: "\u2518",
-  lineUpLeftArc: "\u256F",
-  lineUpBoldLeftBold: "\u251B",
-  lineUpBoldLeft: "\u251A",
-  lineUpLeftBold: "\u2519",
-  lineUpDoubleLeftDouble: "\u255D",
-  lineUpDoubleLeft: "\u255C",
-  lineUpLeftDouble: "\u255B",
-  lineUpRight: "\u2514",
-  lineUpRightArc: "\u2570",
-  lineUpBoldRightBold: "\u2517",
-  lineUpBoldRight: "\u2516",
-  lineUpRightBold: "\u2515",
-  lineUpDoubleRightDouble: "\u255A",
-  lineUpDoubleRight: "\u2559",
-  lineUpRightDouble: "\u2558",
-  lineUpDownLeft: "\u2524",
-  lineUpBoldDownBoldLeftBold: "\u252B",
-  lineUpBoldDownBoldLeft: "\u2528",
-  lineUpDownLeftBold: "\u2525",
-  lineUpBoldDownLeftBold: "\u2529",
-  lineUpDownBoldLeftBold: "\u252A",
-  lineUpDownBoldLeft: "\u2527",
-  lineUpBoldDownLeft: "\u2526",
-  lineUpDoubleDownDoubleLeftDouble: "\u2563",
-  lineUpDoubleDownDoubleLeft: "\u2562",
-  lineUpDownLeftDouble: "\u2561",
-  lineUpDownRight: "\u251C",
-  lineUpBoldDownBoldRightBold: "\u2523",
-  lineUpBoldDownBoldRight: "\u2520",
-  lineUpDownRightBold: "\u251D",
-  lineUpBoldDownRightBold: "\u2521",
-  lineUpDownBoldRightBold: "\u2522",
-  lineUpDownBoldRight: "\u251F",
-  lineUpBoldDownRight: "\u251E",
-  lineUpDoubleDownDoubleRightDouble: "\u2560",
-  lineUpDoubleDownDoubleRight: "\u255F",
-  lineUpDownRightDouble: "\u255E",
-  lineDownLeftRight: "\u252C",
-  lineDownBoldLeftBoldRightBold: "\u2533",
-  lineDownLeftBoldRightBold: "\u252F",
-  lineDownBoldLeftRight: "\u2530",
-  lineDownBoldLeftBoldRight: "\u2531",
-  lineDownBoldLeftRightBold: "\u2532",
-  lineDownLeftRightBold: "\u252E",
-  lineDownLeftBoldRight: "\u252D",
-  lineDownDoubleLeftDoubleRightDouble: "\u2566",
-  lineDownDoubleLeftRight: "\u2565",
-  lineDownLeftDoubleRightDouble: "\u2564",
-  lineUpLeftRight: "\u2534",
-  lineUpBoldLeftBoldRightBold: "\u253B",
-  lineUpLeftBoldRightBold: "\u2537",
-  lineUpBoldLeftRight: "\u2538",
-  lineUpBoldLeftBoldRight: "\u2539",
-  lineUpBoldLeftRightBold: "\u253A",
-  lineUpLeftRightBold: "\u2536",
-  lineUpLeftBoldRight: "\u2535",
-  lineUpDoubleLeftDoubleRightDouble: "\u2569",
-  lineUpDoubleLeftRight: "\u2568",
-  lineUpLeftDoubleRightDouble: "\u2567",
-  lineUpDownLeftRight: "\u253C",
-  lineUpBoldDownBoldLeftBoldRightBold: "\u254B",
-  lineUpDownBoldLeftBoldRightBold: "\u2548",
-  lineUpBoldDownLeftBoldRightBold: "\u2547",
-  lineUpBoldDownBoldLeftRightBold: "\u254A",
-  lineUpBoldDownBoldLeftBoldRight: "\u2549",
-  lineUpBoldDownLeftRight: "\u2540",
-  lineUpDownBoldLeftRight: "\u2541",
-  lineUpDownLeftBoldRight: "\u253D",
-  lineUpDownLeftRightBold: "\u253E",
-  lineUpBoldDownBoldLeftRight: "\u2542",
-  lineUpDownLeftBoldRightBold: "\u253F",
-  lineUpBoldDownLeftBoldRight: "\u2543",
-  lineUpBoldDownLeftRightBold: "\u2544",
-  lineUpDownBoldLeftBoldRight: "\u2545",
-  lineUpDownBoldLeftRightBold: "\u2546",
-  lineUpDoubleDownDoubleLeftDoubleRightDouble: "\u256C",
-  lineUpDoubleDownDoubleLeftRight: "\u256B",
-  lineUpDownLeftDoubleRightDouble: "\u256A",
-  lineCross: "\u2573",
-  lineBackslash: "\u2572",
-  lineSlash: "\u2571"
-};
-var specialMainSymbols = {
-  tick: "\u2714",
-  info: "\u2139",
-  warning: "\u26A0",
-  cross: "\u2718",
-  squareSmall: "\u25FB",
-  squareSmallFilled: "\u25FC",
-  circle: "\u25EF",
-  circleFilled: "\u25C9",
-  circleDotted: "\u25CC",
-  circleDouble: "\u25CE",
-  circleCircle: "\u24DE",
-  circleCross: "\u24E7",
-  circlePipe: "\u24BE",
-  radioOn: "\u25C9",
-  radioOff: "\u25EF",
-  checkboxOn: "\u2612",
-  checkboxOff: "\u2610",
-  checkboxCircleOn: "\u24E7",
-  checkboxCircleOff: "\u24BE",
-  pointer: "\u276F",
-  triangleUpOutline: "\u25B3",
-  triangleLeft: "\u25C0",
-  triangleRight: "\u25B6",
-  lozenge: "\u25C6",
-  lozengeOutline: "\u25C7",
-  hamburger: "\u2630",
-  smiley: "\u32E1",
-  mustache: "\u0DF4",
-  star: "\u2605",
-  play: "\u25B6",
-  nodejs: "\u2B22",
-  oneSeventh: "\u2150",
-  oneNinth: "\u2151",
-  oneTenth: "\u2152"
-};
-var specialFallbackSymbols = {
-  tick: "\u221A",
-  info: "i",
-  warning: "\u203C",
-  cross: "\xD7",
-  squareSmall: "\u25A1",
-  squareSmallFilled: "\u25A0",
-  circle: "( )",
-  circleFilled: "(*)",
-  circleDotted: "( )",
-  circleDouble: "( )",
-  circleCircle: "(\u25CB)",
-  circleCross: "(\xD7)",
-  circlePipe: "(\u2502)",
-  radioOn: "(*)",
-  radioOff: "( )",
-  checkboxOn: "[\xD7]",
-  checkboxOff: "[ ]",
-  checkboxCircleOn: "(\xD7)",
-  checkboxCircleOff: "( )",
-  pointer: ">",
-  triangleUpOutline: "\u2206",
-  triangleLeft: "\u25C4",
-  triangleRight: "\u25BA",
-  lozenge: "\u2666",
-  lozengeOutline: "\u25CA",
-  hamburger: "\u2261",
-  smiley: "\u263A",
-  mustache: "\u250C\u2500\u2510",
-  star: "\u2736",
-  play: "\u25BA",
-  nodejs: "\u2666",
-  oneSeventh: "1/7",
-  oneNinth: "1/9",
-  oneTenth: "1/10"
-};
-var mainSymbols = { ...common, ...specialMainSymbols };
-var fallbackSymbols = { ...common, ...specialFallbackSymbols };
-var shouldUseMain = isUnicodeSupported();
-var figures = shouldUseMain ? mainSymbols : fallbackSymbols;
-var figures_default = figures;
-var replacements = Object.entries(specialMainSymbols);
-
-// node_modules/yoctocolors/base.js
-var import_node_tty = __toESM(require("node:tty"), 1);
-var hasColors = import_node_tty.default?.WriteStream?.prototype?.hasColors?.() ?? false;
-var format2 = (open, close) => {
-  if (!hasColors) {
-    return (input) => input;
-  }
-  const openCode = `\x1B[${open}m`;
-  const closeCode = `\x1B[${close}m`;
-  return (input) => {
-    const string = input + "";
-    let index = string.indexOf(closeCode);
-    if (index === -1) {
-      return openCode + string + closeCode;
-    }
-    let result = openCode;
-    let lastIndex = 0;
-    const reopenOnNestedClose = close === 22;
-    const replaceCode = (reopenOnNestedClose ? closeCode : "") + openCode;
-    while (index !== -1) {
-      result += string.slice(lastIndex, index) + replaceCode;
-      lastIndex = index + closeCode.length;
-      index = string.indexOf(closeCode, lastIndex);
-    }
-    result += string.slice(lastIndex) + closeCode;
-    return result;
-  };
-};
-var reset = format2(0, 0);
-var bold = format2(1, 22);
-var dim = format2(2, 22);
-var italic = format2(3, 23);
-var underline = format2(4, 24);
-var overline = format2(53, 55);
-var inverse = format2(7, 27);
-var hidden = format2(8, 28);
-var strikethrough = format2(9, 29);
-var black = format2(30, 39);
-var red = format2(31, 39);
-var green = format2(32, 39);
-var yellow = format2(33, 39);
-var blue = format2(34, 39);
-var magenta = format2(35, 39);
-var cyan = format2(36, 39);
-var white = format2(37, 39);
-var gray = format2(90, 39);
-var bgBlack = format2(40, 49);
-var bgRed = format2(41, 49);
-var bgGreen = format2(42, 49);
-var bgYellow = format2(43, 49);
-var bgBlue = format2(44, 49);
-var bgMagenta = format2(45, 49);
-var bgCyan = format2(46, 49);
-var bgWhite = format2(47, 49);
-var bgGray = format2(100, 49);
-var redBright = format2(91, 39);
-var greenBright = format2(92, 39);
-var yellowBright = format2(93, 39);
-var blueBright = format2(94, 39);
-var magentaBright = format2(95, 39);
-var cyanBright = format2(96, 39);
-var whiteBright = format2(97, 39);
-var bgRedBright = format2(101, 49);
-var bgGreenBright = format2(102, 49);
-var bgYellowBright = format2(103, 49);
-var bgBlueBright = format2(104, 49);
-var bgMagentaBright = format2(105, 49);
-var bgCyanBright = format2(106, 49);
-var bgWhiteBright = format2(107, 49);
-
-// node_modules/execa/lib/verbose/default.js
-var defaultVerboseFunction = ({
-  type,
-  message,
-  timestamp,
-  piped,
-  commandId,
-  result: { failed = false } = {},
-  options: { reject = true }
-}) => {
-  const timestampString = serializeTimestamp(timestamp);
-  const icon = ICONS[type]({ failed, reject, piped });
-  const color = COLORS[type]({ reject });
-  return `${gray(`[${timestampString}]`)} ${gray(`[${commandId}]`)} ${color(icon)} ${color(message)}`;
-};
-var serializeTimestamp = (timestamp) => `${padField(timestamp.getHours(), 2)}:${padField(timestamp.getMinutes(), 2)}:${padField(timestamp.getSeconds(), 2)}.${padField(timestamp.getMilliseconds(), 3)}`;
-var padField = (field, padding) => String(field).padStart(padding, "0");
-var getFinalIcon = ({ failed, reject }) => {
-  if (!failed) {
-    return figures_default.tick;
-  }
-  return reject ? figures_default.cross : figures_default.warning;
-};
-var ICONS = {
-  command: ({ piped }) => piped ? "|" : "$",
-  output: () => " ",
-  ipc: () => "*",
-  error: getFinalIcon,
-  duration: getFinalIcon
-};
-var identity = (string) => string;
-var COLORS = {
-  command: () => bold,
-  output: () => identity,
-  ipc: () => identity,
-  error: ({ reject }) => reject ? redBright : yellowBright,
-  duration: () => gray
-};
-
-// node_modules/execa/lib/verbose/custom.js
-var applyVerboseOnLines = (printedLines, verboseInfo, fdNumber) => {
-  const verboseFunction = getVerboseFunction(verboseInfo, fdNumber);
-  return printedLines.map(({ verboseLine, verboseObject }) => applyVerboseFunction(verboseLine, verboseObject, verboseFunction)).filter((printedLine) => printedLine !== void 0).map((printedLine) => appendNewline(printedLine)).join("");
-};
-var applyVerboseFunction = (verboseLine, verboseObject, verboseFunction) => {
-  if (verboseFunction === void 0) {
-    return verboseLine;
-  }
-  const printedLine = verboseFunction(verboseLine, verboseObject);
-  if (typeof printedLine === "string") {
-    return printedLine;
-  }
-};
-var appendNewline = (printedLine) => printedLine.endsWith("\n") ? printedLine : `${printedLine}
-`;
-
-// node_modules/execa/lib/verbose/log.js
-var verboseLog = ({ type, verboseMessage, fdNumber, verboseInfo, result }) => {
-  const verboseObject = getVerboseObject({ type, result, verboseInfo });
-  const printedLines = getPrintedLines(verboseMessage, verboseObject);
-  const finalLines = applyVerboseOnLines(printedLines, verboseInfo, fdNumber);
-  if (finalLines !== "") {
-    console.warn(finalLines.slice(0, -1));
-  }
-};
-var getVerboseObject = ({
-  type,
-  result,
-  verboseInfo: { escapedCommand, commandId, rawOptions: { piped = false, ...options } }
-}) => ({
-  type,
-  escapedCommand,
-  commandId: `${commandId}`,
-  timestamp: /* @__PURE__ */ new Date(),
-  piped,
-  result,
-  options
-});
-var getPrintedLines = (verboseMessage, verboseObject) => verboseMessage.split("\n").map((message) => getPrintedLine({ ...verboseObject, message }));
-var getPrintedLine = (verboseObject) => {
-  const verboseLine = defaultVerboseFunction(verboseObject);
-  return { verboseLine, verboseObject };
-};
-var serializeVerboseMessage = (message) => {
-  const messageString = typeof message === "string" ? message : (0, import_node_util3.inspect)(message);
-  const escapedMessage = escapeLines(messageString);
-  return escapedMessage.replaceAll("	", " ".repeat(TAB_SIZE));
-};
-var TAB_SIZE = 2;
-
-// node_modules/execa/lib/verbose/start.js
-var logCommand = (escapedCommand, verboseInfo) => {
-  if (!isVerbose(verboseInfo)) {
-    return;
-  }
-  verboseLog({
-    type: "command",
-    verboseMessage: escapedCommand,
-    verboseInfo
-  });
-};
-
-// node_modules/execa/lib/verbose/info.js
-var getVerboseInfo = (verbose, escapedCommand, rawOptions) => {
-  validateVerbose(verbose);
-  const commandId = getCommandId(verbose);
-  return {
-    verbose,
-    escapedCommand,
-    commandId,
-    rawOptions
-  };
-};
-var getCommandId = (verbose) => isVerbose({ verbose }) ? COMMAND_ID++ : void 0;
-var COMMAND_ID = 0n;
-var validateVerbose = (verbose) => {
-  for (const fdVerbose of verbose) {
-    if (fdVerbose === false) {
-      throw new TypeError(`The "verbose: false" option was renamed to "verbose: 'none'".`);
-    }
-    if (fdVerbose === true) {
-      throw new TypeError(`The "verbose: true" option was renamed to "verbose: 'short'".`);
-    }
-    if (!VERBOSE_VALUES.includes(fdVerbose) && !isVerboseFunction(fdVerbose)) {
-      const allowedValues = VERBOSE_VALUES.map((allowedValue) => `'${allowedValue}'`).join(", ");
-      throw new TypeError(`The "verbose" option must not be ${fdVerbose}. Allowed values are: ${allowedValues} or a function.`);
-    }
-  }
-};
-
-// node_modules/execa/lib/return/duration.js
-var import_node_process4 = require("node:process");
-var getStartTime = () => import_node_process4.hrtime.bigint();
-var getDurationMs = (startTime) => Number(import_node_process4.hrtime.bigint() - startTime) / 1e6;
-
-// node_modules/execa/lib/arguments/command.js
-var handleCommand = (filePath, rawArguments, rawOptions) => {
-  const startTime = getStartTime();
-  const { command, escapedCommand } = joinCommand(filePath, rawArguments);
-  const verbose = normalizeFdSpecificOption(rawOptions, "verbose");
-  const verboseInfo = getVerboseInfo(verbose, escapedCommand, { ...rawOptions });
-  logCommand(escapedCommand, verboseInfo);
-  return {
-    command,
-    escapedCommand,
-    startTime,
-    verboseInfo
-  };
-};
-
-// node_modules/execa/lib/arguments/options.js
-var import_node_path6 = __toESM(require("node:path"), 1);
-var import_node_process8 = __toESM(require("node:process"), 1);
-var import_cross_spawn = __toESM(require_cross_spawn(), 1);
-
-// node_modules/npm-run-path/index.js
-var import_node_process5 = __toESM(require("node:process"), 1);
-var import_node_path3 = __toESM(require("node:path"), 1);
-
-// node_modules/npm-run-path/node_modules/path-key/index.js
-function pathKey(options = {}) {
-  const {
-    env: env2 = process.env,
-    platform: platform2 = process.platform
-  } = options;
-  if (platform2 !== "win32") {
-    return "PATH";
-  }
-  return Object.keys(env2).reverse().find((key) => key.toUpperCase() === "PATH") || "Path";
-}
-
-// node_modules/unicorn-magic/node.js
-var import_node_util4 = require("node:util");
-var import_node_child_process2 = require("node:child_process");
-var import_node_path2 = __toESM(require("node:path"), 1);
-var import_node_url4 = require("node:url");
-var execFileOriginal = (0, import_node_util4.promisify)(import_node_child_process2.execFile);
-function toPath(urlOrPath) {
-  return urlOrPath instanceof URL ? (0, import_node_url4.fileURLToPath)(urlOrPath) : urlOrPath;
-}
-function traversePathUp(startPath) {
-  return {
-    *[Symbol.iterator]() {
-      let currentPath = import_node_path2.default.resolve(toPath(startPath));
-      let previousPath;
-      while (previousPath !== currentPath) {
-        yield currentPath;
-        previousPath = currentPath;
-        currentPath = import_node_path2.default.resolve(currentPath, "..");
-      }
-    }
-  };
-}
-var TEN_MEGABYTES_IN_BYTES = 10 * 1024 * 1024;
-
-// node_modules/npm-run-path/index.js
-var npmRunPath = ({
-  cwd = import_node_process5.default.cwd(),
-  path: pathOption = import_node_process5.default.env[pathKey()],
-  preferLocal = true,
-  execPath: execPath2 = import_node_process5.default.execPath,
-  addExecPath = true
-} = {}) => {
-  const cwdPath = import_node_path3.default.resolve(toPath(cwd));
-  const result = [];
-  const pathParts = pathOption.split(import_node_path3.default.delimiter);
-  if (preferLocal) {
-    applyPreferLocal(result, pathParts, cwdPath);
-  }
-  if (addExecPath) {
-    applyExecPath(result, pathParts, execPath2, cwdPath);
-  }
-  return pathOption === "" || pathOption === import_node_path3.default.delimiter ? `${result.join(import_node_path3.default.delimiter)}${pathOption}` : [...result, pathOption].join(import_node_path3.default.delimiter);
-};
-var applyPreferLocal = (result, pathParts, cwdPath) => {
-  for (const directory of traversePathUp(cwdPath)) {
-    const pathPart = import_node_path3.default.join(directory, "node_modules/.bin");
-    if (!pathParts.includes(pathPart)) {
-      result.push(pathPart);
-    }
-  }
-};
-var applyExecPath = (result, pathParts, execPath2, cwdPath) => {
-  const pathPart = import_node_path3.default.resolve(cwdPath, toPath(execPath2), "..");
-  if (!pathParts.includes(pathPart)) {
-    result.push(pathPart);
-  }
-};
-var npmRunPathEnv = ({ env: env2 = import_node_process5.default.env, ...options } = {}) => {
-  env2 = { ...env2 };
-  const pathName = pathKey({ env: env2 });
-  options.path = env2[pathName];
-  env2[pathName] = npmRunPath(options);
-  return env2;
-};
-
-// node_modules/execa/lib/terminate/kill.js
-var import_promises2 = require("node:timers/promises");
-
-// node_modules/execa/lib/return/final-error.js
-var getFinalError = (originalError, message, isSync) => {
-  const ErrorClass = isSync ? ExecaSyncError : ExecaError;
-  const options = originalError instanceof DiscardedError ? {} : { cause: originalError };
-  return new ErrorClass(message, options);
-};
-var DiscardedError = class extends Error {
-};
-var setErrorName = (ErrorClass, value) => {
-  Object.defineProperty(ErrorClass.prototype, "name", {
-    value,
-    writable: true,
-    enumerable: false,
-    configurable: true
-  });
-  Object.defineProperty(ErrorClass.prototype, execaErrorSymbol, {
-    value: true,
-    writable: false,
-    enumerable: false,
-    configurable: false
-  });
-};
-var isExecaError = (error) => isErrorInstance(error) && execaErrorSymbol in error;
-var execaErrorSymbol = Symbol("isExecaError");
-var isErrorInstance = (value) => Object.prototype.toString.call(value) === "[object Error]";
-var ExecaError = class extends Error {
-};
-setErrorName(ExecaError, ExecaError.name);
-var ExecaSyncError = class extends Error {
-};
-setErrorName(ExecaSyncError, ExecaSyncError.name);
-
-// node_modules/execa/lib/terminate/signal.js
-var import_node_os3 = require("node:os");
-
-// node_modules/human-signals/build/src/main.js
-var import_node_os2 = require("node:os");
-
-// node_modules/human-signals/build/src/realtime.js
-var getRealtimeSignals = () => {
-  const length = SIGRTMAX - SIGRTMIN + 1;
-  return Array.from({ length }, getRealtimeSignal);
-};
-var getRealtimeSignal = (value, index) => ({
-  name: `SIGRT${index + 1}`,
-  number: SIGRTMIN + index,
-  action: "terminate",
-  description: "Application-specific signal (realtime)",
-  standard: "posix"
-});
-var SIGRTMIN = 34;
-var SIGRTMAX = 64;
-
-// node_modules/human-signals/build/src/signals.js
-var import_node_os = require("node:os");
-
-// node_modules/human-signals/build/src/core.js
-var SIGNALS = [
-  {
-    name: "SIGHUP",
-    number: 1,
-    action: "terminate",
-    description: "Terminal closed",
-    standard: "posix"
-  },
-  {
-    name: "SIGINT",
-    number: 2,
-    action: "terminate",
-    description: "User interruption with CTRL-C",
-    standard: "ansi"
-  },
-  {
-    name: "SIGQUIT",
-    number: 3,
-    action: "core",
-    description: "User interruption with CTRL-\\",
-    standard: "posix"
-  },
-  {
-    name: "SIGILL",
-    number: 4,
-    action: "core",
-    description: "Invalid machine instruction",
-    standard: "ansi"
-  },
-  {
-    name: "SIGTRAP",
-    number: 5,
-    action: "core",
-    description: "Debugger breakpoint",
-    standard: "posix"
-  },
-  {
-    name: "SIGABRT",
-    number: 6,
-    action: "core",
-    description: "Aborted",
-    standard: "ansi"
-  },
-  {
-    name: "SIGIOT",
-    number: 6,
-    action: "core",
-    description: "Aborted",
-    standard: "bsd"
-  },
-  {
-    name: "SIGBUS",
-    number: 7,
-    action: "core",
-    description: "Bus error due to misaligned, non-existing address or paging error",
-    standard: "bsd"
-  },
-  {
-    name: "SIGEMT",
-    number: 7,
-    action: "terminate",
-    description: "Command should be emulated but is not implemented",
-    standard: "other"
-  },
-  {
-    name: "SIGFPE",
-    number: 8,
-    action: "core",
-    description: "Floating point arithmetic error",
-    standard: "ansi"
-  },
-  {
-    name: "SIGKILL",
-    number: 9,
-    action: "terminate",
-    description: "Forced termination",
-    standard: "posix",
-    forced: true
-  },
-  {
-    name: "SIGUSR1",
-    number: 10,
-    action: "terminate",
-    description: "Application-specific signal",
-    standard: "posix"
-  },
-  {
-    name: "SIGSEGV",
-    number: 11,
-    action: "core",
-    description: "Segmentation fault",
-    standard: "ansi"
-  },
-  {
-    name: "SIGUSR2",
-    number: 12,
-    action: "terminate",
-    description: "Application-specific signal",
-    standard: "posix"
-  },
-  {
-    name: "SIGPIPE",
-    number: 13,
-    action: "terminate",
-    description: "Broken pipe or socket",
-    standard: "posix"
-  },
-  {
-    name: "SIGALRM",
-    number: 14,
-    action: "terminate",
-    description: "Timeout or timer",
-    standard: "posix"
-  },
-  {
-    name: "SIGTERM",
-    number: 15,
-    action: "terminate",
-    description: "Termination",
-    standard: "ansi"
-  },
-  {
-    name: "SIGSTKFLT",
-    number: 16,
-    action: "terminate",
-    description: "Stack is empty or overflowed",
-    standard: "other"
-  },
-  {
-    name: "SIGCHLD",
-    number: 17,
-    action: "ignore",
-    description: "Child process terminated, paused or unpaused",
-    standard: "posix"
-  },
-  {
-    name: "SIGCLD",
-    number: 17,
-    action: "ignore",
-    description: "Child process terminated, paused or unpaused",
-    standard: "other"
-  },
-  {
-    name: "SIGCONT",
-    number: 18,
-    action: "unpause",
-    description: "Unpaused",
-    standard: "posix",
-    forced: true
-  },
-  {
-    name: "SIGSTOP",
-    number: 19,
-    action: "pause",
-    description: "Paused",
-    standard: "posix",
-    forced: true
-  },
-  {
-    name: "SIGTSTP",
-    number: 20,
-    action: "pause",
-    description: 'Paused using CTRL-Z or "suspend"',
-    standard: "posix"
-  },
-  {
-    name: "SIGTTIN",
-    number: 21,
-    action: "pause",
-    description: "Background process cannot read terminal input",
-    standard: "posix"
-  },
-  {
-    name: "SIGBREAK",
-    number: 21,
-    action: "terminate",
-    description: "User interruption with CTRL-BREAK",
-    standard: "other"
-  },
-  {
-    name: "SIGTTOU",
-    number: 22,
-    action: "pause",
-    description: "Background process cannot write to terminal output",
-    standard: "posix"
-  },
-  {
-    name: "SIGURG",
-    number: 23,
-    action: "ignore",
-    description: "Socket received out-of-band data",
-    standard: "bsd"
-  },
-  {
-    name: "SIGXCPU",
-    number: 24,
-    action: "core",
-    description: "Process timed out",
-    standard: "bsd"
-  },
-  {
-    name: "SIGXFSZ",
-    number: 25,
-    action: "core",
-    description: "File too big",
-    standard: "bsd"
-  },
-  {
-    name: "SIGVTALRM",
-    number: 26,
-    action: "terminate",
-    description: "Timeout or timer",
-    standard: "bsd"
-  },
-  {
-    name: "SIGPROF",
-    number: 27,
-    action: "terminate",
-    description: "Timeout or timer",
-    standard: "bsd"
-  },
-  {
-    name: "SIGWINCH",
-    number: 28,
-    action: "ignore",
-    description: "Terminal window size changed",
-    standard: "bsd"
-  },
-  {
-    name: "SIGIO",
-    number: 29,
-    action: "terminate",
-    description: "I/O is available",
-    standard: "other"
-  },
-  {
-    name: "SIGPOLL",
-    number: 29,
-    action: "terminate",
-    description: "Watched event",
-    standard: "other"
-  },
-  {
-    name: "SIGINFO",
-    number: 29,
-    action: "ignore",
-    description: "Request for process information",
-    standard: "other"
-  },
-  {
-    name: "SIGPWR",
-    number: 30,
-    action: "terminate",
-    description: "Device running out of power",
-    standard: "systemv"
-  },
-  {
-    name: "SIGSYS",
-    number: 31,
-    action: "core",
-    description: "Invalid system call",
-    standard: "other"
-  },
-  {
-    name: "SIGUNUSED",
-    number: 31,
-    action: "terminate",
-    description: "Invalid system call",
-    standard: "other"
-  }
-];
-
-// node_modules/human-signals/build/src/signals.js
-var getSignals = () => {
-  const realtimeSignals = getRealtimeSignals();
-  const signals2 = [...SIGNALS, ...realtimeSignals].map(normalizeSignal);
-  return signals2;
-};
-var normalizeSignal = ({
-  name,
-  number: defaultNumber,
-  description,
-  action,
-  forced = false,
-  standard
-}) => {
-  const {
-    signals: { [name]: constantSignal }
-  } = import_node_os.constants;
-  const supported = constantSignal !== void 0;
-  const number = supported ? constantSignal : defaultNumber;
-  return { name, number, description, supported, action, forced, standard };
-};
-
-// node_modules/human-signals/build/src/main.js
-var getSignalsByName = () => {
-  const signals2 = getSignals();
-  return Object.fromEntries(signals2.map(getSignalByName));
-};
-var getSignalByName = ({
-  name,
-  number,
-  description,
-  supported,
-  action,
-  forced,
-  standard
-}) => [name, { name, number, description, supported, action, forced, standard }];
-var signalsByName = getSignalsByName();
-var getSignalsByNumber = () => {
-  const signals2 = getSignals();
-  const length = SIGRTMAX + 1;
-  const signalsA = Array.from(
-    { length },
-    (value, number) => getSignalByNumber(number, signals2)
-  );
-  return Object.assign({}, ...signalsA);
-};
-var getSignalByNumber = (number, signals2) => {
-  const signal = findSignalByNumber(number, signals2);
-  if (signal === void 0) {
-    return {};
-  }
-  const { name, description, supported, action, forced, standard } = signal;
-  return {
-    [number]: {
-      name,
-      number,
-      description,
-      supported,
-      action,
-      forced,
-      standard
-    }
-  };
-};
-var findSignalByNumber = (number, signals2) => {
-  const signal = signals2.find(({ name }) => import_node_os2.constants.signals[name] === number);
-  if (signal !== void 0) {
-    return signal;
-  }
-  return signals2.find((signalA) => signalA.number === number);
-};
-var signalsByNumber = getSignalsByNumber();
-
-// node_modules/execa/lib/terminate/signal.js
-var normalizeKillSignal = (killSignal) => {
-  const optionName = "option `killSignal`";
-  if (killSignal === 0) {
-    throw new TypeError(`Invalid ${optionName}: 0 cannot be used.`);
-  }
-  return normalizeSignal2(killSignal, optionName);
-};
-var normalizeSignalArgument = (signal) => signal === 0 ? signal : normalizeSignal2(signal, "`subprocess.kill()`'s argument");
-var normalizeSignal2 = (signalNameOrInteger, optionName) => {
-  if (Number.isInteger(signalNameOrInteger)) {
-    return normalizeSignalInteger(signalNameOrInteger, optionName);
-  }
-  if (typeof signalNameOrInteger === "string") {
-    return normalizeSignalName(signalNameOrInteger, optionName);
-  }
-  throw new TypeError(`Invalid ${optionName} ${String(signalNameOrInteger)}: it must be a string or an integer.
-${getAvailableSignals()}`);
-};
-var normalizeSignalInteger = (signalInteger, optionName) => {
-  if (signalsIntegerToName.has(signalInteger)) {
-    return signalsIntegerToName.get(signalInteger);
-  }
-  throw new TypeError(`Invalid ${optionName} ${signalInteger}: this signal integer does not exist.
-${getAvailableSignals()}`);
-};
-var getSignalsIntegerToName = () => new Map(Object.entries(import_node_os3.constants.signals).reverse().map(([signalName, signalInteger]) => [signalInteger, signalName]));
-var signalsIntegerToName = getSignalsIntegerToName();
-var normalizeSignalName = (signalName, optionName) => {
-  if (signalName in import_node_os3.constants.signals) {
-    return signalName;
-  }
-  if (signalName.toUpperCase() in import_node_os3.constants.signals) {
-    throw new TypeError(`Invalid ${optionName} '${signalName}': please rename it to '${signalName.toUpperCase()}'.`);
-  }
-  throw new TypeError(`Invalid ${optionName} '${signalName}': this signal name does not exist.
-${getAvailableSignals()}`);
-};
-var getAvailableSignals = () => `Available signal names: ${getAvailableSignalNames()}.
-Available signal numbers: ${getAvailableSignalIntegers()}.`;
-var getAvailableSignalNames = () => Object.keys(import_node_os3.constants.signals).sort().map((signalName) => `'${signalName}'`).join(", ");
-var getAvailableSignalIntegers = () => [...new Set(Object.values(import_node_os3.constants.signals).sort((signalInteger, signalIntegerTwo) => signalInteger - signalIntegerTwo))].join(", ");
-var getSignalDescription = (signal) => signalsByName[signal].description;
-
-// node_modules/execa/lib/terminate/kill.js
-var normalizeForceKillAfterDelay = (forceKillAfterDelay) => {
-  if (forceKillAfterDelay === false) {
-    return forceKillAfterDelay;
-  }
-  if (forceKillAfterDelay === true) {
-    return DEFAULT_FORCE_KILL_TIMEOUT;
-  }
-  if (!Number.isFinite(forceKillAfterDelay) || forceKillAfterDelay < 0) {
-    throw new TypeError(`Expected the \`forceKillAfterDelay\` option to be a non-negative integer, got \`${forceKillAfterDelay}\` (${typeof forceKillAfterDelay})`);
-  }
-  return forceKillAfterDelay;
-};
-var DEFAULT_FORCE_KILL_TIMEOUT = 1e3 * 5;
-var subprocessKill = ({ kill, options: { forceKillAfterDelay, killSignal }, onInternalError, context, controller }, signalOrError, errorArgument) => {
-  const { signal, error } = parseKillArguments(signalOrError, errorArgument, killSignal);
-  emitKillError(error, onInternalError);
-  const killResult = kill(signal);
-  setKillTimeout({
-    kill,
-    signal,
-    forceKillAfterDelay,
-    killSignal,
-    killResult,
-    context,
-    controller
-  });
-  return killResult;
-};
-var parseKillArguments = (signalOrError, errorArgument, killSignal) => {
-  const [signal = killSignal, error] = isErrorInstance(signalOrError) ? [void 0, signalOrError] : [signalOrError, errorArgument];
-  if (typeof signal !== "string" && !Number.isInteger(signal)) {
-    throw new TypeError(`The first argument must be an error instance or a signal name string/integer: ${String(signal)}`);
-  }
-  if (error !== void 0 && !isErrorInstance(error)) {
-    throw new TypeError(`The second argument is optional. If specified, it must be an error instance: ${error}`);
-  }
-  return { signal: normalizeSignalArgument(signal), error };
-};
-var emitKillError = (error, onInternalError) => {
-  if (error !== void 0) {
-    onInternalError.reject(error);
-  }
-};
-var setKillTimeout = async ({ kill, signal, forceKillAfterDelay, killSignal, killResult, context, controller }) => {
-  if (signal === killSignal && killResult) {
-    killOnTimeout({
-      kill,
-      forceKillAfterDelay,
-      context,
-      controllerSignal: controller.signal
-    });
-  }
-};
-var killOnTimeout = async ({ kill, forceKillAfterDelay, context, controllerSignal }) => {
-  if (forceKillAfterDelay === false) {
-    return;
-  }
-  try {
-    await (0, import_promises2.setTimeout)(forceKillAfterDelay, void 0, { signal: controllerSignal });
-    if (kill("SIGKILL")) {
-      context.isForcefullyTerminated ??= true;
-    }
-  } catch {
-  }
-};
-
-// node_modules/execa/lib/utils/abort-signal.js
-var import_node_events2 = require("node:events");
-var onAbortedSignal = async (mainSignal, stopSignal) => {
-  if (!mainSignal.aborted) {
-    await (0, import_node_events2.once)(mainSignal, "abort", { signal: stopSignal });
-  }
-};
-
-// node_modules/execa/lib/terminate/cancel.js
-var validateCancelSignal = ({ cancelSignal }) => {
-  if (cancelSignal !== void 0 && Object.prototype.toString.call(cancelSignal) !== "[object AbortSignal]") {
-    throw new Error(`The \`cancelSignal\` option must be an AbortSignal: ${String(cancelSignal)}`);
-  }
-};
-var throwOnCancel = ({ subprocess, cancelSignal, gracefulCancel, context, controller }) => cancelSignal === void 0 || gracefulCancel ? [] : [terminateOnCancel(subprocess, cancelSignal, context, controller)];
-var terminateOnCancel = async (subprocess, cancelSignal, context, { signal }) => {
-  await onAbortedSignal(cancelSignal, signal);
-  context.terminationReason ??= "cancel";
-  subprocess.kill();
-  throw cancelSignal.reason;
-};
-
-// node_modules/execa/lib/ipc/graceful.js
-var import_promises4 = require("node:timers/promises");
-
-// node_modules/execa/lib/ipc/send.js
-var import_node_util5 = require("node:util");
-
-// node_modules/execa/lib/ipc/validation.js
-var validateIpcMethod = ({ methodName, isSubprocess, ipc, isConnected: isConnected2 }) => {
-  validateIpcOption(methodName, isSubprocess, ipc);
-  validateConnection(methodName, isSubprocess, isConnected2);
-};
-var validateIpcOption = (methodName, isSubprocess, ipc) => {
-  if (!ipc) {
-    throw new Error(`${getMethodName(methodName, isSubprocess)} can only be used if the \`ipc\` option is \`true\`.`);
-  }
-};
-var validateConnection = (methodName, isSubprocess, isConnected2) => {
-  if (!isConnected2) {
-    throw new Error(`${getMethodName(methodName, isSubprocess)} cannot be used: the ${getOtherProcessName(isSubprocess)} has already exited or disconnected.`);
-  }
-};
-var throwOnEarlyDisconnect = (isSubprocess) => {
-  throw new Error(`${getMethodName("getOneMessage", isSubprocess)} could not complete: the ${getOtherProcessName(isSubprocess)} exited or disconnected.`);
-};
-var throwOnStrictDeadlockError = (isSubprocess) => {
-  throw new Error(`${getMethodName("sendMessage", isSubprocess)} failed: the ${getOtherProcessName(isSubprocess)} is sending a message too, instead of listening to incoming messages.
-This can be fixed by both sending a message and listening to incoming messages at the same time:
-
-const [receivedMessage] = await Promise.all([
-	${getMethodName("getOneMessage", isSubprocess)},
-	${getMethodName("sendMessage", isSubprocess, "message, {strict: true}")},
-]);`);
-};
-var getStrictResponseError = (error, isSubprocess) => new Error(`${getMethodName("sendMessage", isSubprocess)} failed when sending an acknowledgment response to the ${getOtherProcessName(isSubprocess)}.`, { cause: error });
-var throwOnMissingStrict = (isSubprocess) => {
-  throw new Error(`${getMethodName("sendMessage", isSubprocess)} failed: the ${getOtherProcessName(isSubprocess)} is not listening to incoming messages.`);
-};
-var throwOnStrictDisconnect = (isSubprocess) => {
-  throw new Error(`${getMethodName("sendMessage", isSubprocess)} failed: the ${getOtherProcessName(isSubprocess)} exited without listening to incoming messages.`);
-};
-var getAbortDisconnectError = () => new Error(`\`cancelSignal\` aborted: the ${getOtherProcessName(true)} disconnected.`);
-var throwOnMissingParent = () => {
-  throw new Error("`getCancelSignal()` cannot be used without setting the `cancelSignal` subprocess option.");
-};
-var handleEpipeError = ({ error, methodName, isSubprocess }) => {
-  if (error.code === "EPIPE") {
-    throw new Error(`${getMethodName(methodName, isSubprocess)} cannot be used: the ${getOtherProcessName(isSubprocess)} is disconnecting.`, { cause: error });
-  }
-};
-var handleSerializationError = ({ error, methodName, isSubprocess, message }) => {
-  if (isSerializationError(error)) {
-    throw new Error(`${getMethodName(methodName, isSubprocess)}'s argument type is invalid: the message cannot be serialized: ${String(message)}.`, { cause: error });
-  }
-};
-var isSerializationError = ({ code: code2, message }) => SERIALIZATION_ERROR_CODES.has(code2) || SERIALIZATION_ERROR_MESSAGES.some((serializationErrorMessage) => message.includes(serializationErrorMessage));
-var SERIALIZATION_ERROR_CODES = /* @__PURE__ */ new Set([
-  // Message is `undefined`
-  "ERR_MISSING_ARGS",
-  // Message is a function, a bigint, a symbol
-  "ERR_INVALID_ARG_TYPE"
-]);
-var SERIALIZATION_ERROR_MESSAGES = [
-  // Message is a promise or a proxy, with `serialization: 'advanced'`
-  "could not be cloned",
-  // Message has cycles, with `serialization: 'json'`
-  "circular structure",
-  // Message has cycles inside toJSON(), with `serialization: 'json'`
-  "call stack size exceeded"
-];
-var getMethodName = (methodName, isSubprocess, parameters = "") => methodName === "cancelSignal" ? "`cancelSignal`'s `controller.abort()`" : `${getNamespaceName(isSubprocess)}${methodName}(${parameters})`;
-var getNamespaceName = (isSubprocess) => isSubprocess ? "" : "subprocess.";
-var getOtherProcessName = (isSubprocess) => isSubprocess ? "parent process" : "subprocess";
-var disconnect = (anyProcess) => {
-  if (anyProcess.connected) {
-    anyProcess.disconnect();
-  }
-};
-
-// node_modules/execa/lib/utils/deferred.js
-var createDeferred = () => {
-  const methods = {};
-  const promise = new Promise((resolve4, reject) => {
-    Object.assign(methods, { resolve: resolve4, reject });
-  });
-  return Object.assign(promise, methods);
-};
-
-// node_modules/execa/lib/arguments/fd-options.js
-var getToStream = (destination, to = "stdin") => {
-  const isWritable2 = true;
-  const { options, fileDescriptors } = SUBPROCESS_OPTIONS.get(destination);
-  const fdNumber = getFdNumber(fileDescriptors, to, isWritable2);
-  const destinationStream = destination.stdio[fdNumber];
-  if (destinationStream === null) {
-    throw new TypeError(getInvalidStdioOptionMessage(fdNumber, to, options, isWritable2));
-  }
-  return destinationStream;
-};
-var getFromStream = (source, from = "stdout") => {
-  const isWritable2 = false;
-  const { options, fileDescriptors } = SUBPROCESS_OPTIONS.get(source);
-  const fdNumber = getFdNumber(fileDescriptors, from, isWritable2);
-  const sourceStream = fdNumber === "all" ? source.all : source.stdio[fdNumber];
-  if (sourceStream === null || sourceStream === void 0) {
-    throw new TypeError(getInvalidStdioOptionMessage(fdNumber, from, options, isWritable2));
-  }
-  return sourceStream;
-};
-var SUBPROCESS_OPTIONS = /* @__PURE__ */ new WeakMap();
-var getFdNumber = (fileDescriptors, fdName, isWritable2) => {
-  const fdNumber = parseFdNumber(fdName, isWritable2);
-  validateFdNumber(fdNumber, fdName, isWritable2, fileDescriptors);
-  return fdNumber;
-};
-var parseFdNumber = (fdName, isWritable2) => {
-  const fdNumber = parseFd(fdName);
-  if (fdNumber !== void 0) {
-    return fdNumber;
-  }
-  const { validOptions, defaultValue } = isWritable2 ? { validOptions: '"stdin"', defaultValue: "stdin" } : { validOptions: '"stdout", "stderr", "all"', defaultValue: "stdout" };
-  throw new TypeError(`"${getOptionName(isWritable2)}" must not be "${fdName}".
-It must be ${validOptions} or "fd3", "fd4" (and so on).
-It is optional and defaults to "${defaultValue}".`);
-};
-var validateFdNumber = (fdNumber, fdName, isWritable2, fileDescriptors) => {
-  const fileDescriptor = fileDescriptors[getUsedDescriptor(fdNumber)];
-  if (fileDescriptor === void 0) {
-    throw new TypeError(`"${getOptionName(isWritable2)}" must not be ${fdName}. That file descriptor does not exist.
-Please set the "stdio" option to ensure that file descriptor exists.`);
-  }
-  if (fileDescriptor.direction === "input" && !isWritable2) {
-    throw new TypeError(`"${getOptionName(isWritable2)}" must not be ${fdName}. It must be a readable stream, not writable.`);
-  }
-  if (fileDescriptor.direction !== "input" && isWritable2) {
-    throw new TypeError(`"${getOptionName(isWritable2)}" must not be ${fdName}. It must be a writable stream, not readable.`);
-  }
-};
-var getInvalidStdioOptionMessage = (fdNumber, fdName, options, isWritable2) => {
-  if (fdNumber === "all" && !options.all) {
-    return `The "all" option must be true to use "from: 'all'".`;
-  }
-  const { optionName, optionValue } = getInvalidStdioOption(fdNumber, options);
-  return `The "${optionName}: ${serializeOptionValue(optionValue)}" option is incompatible with using "${getOptionName(isWritable2)}: ${serializeOptionValue(fdName)}".
-Please set this option with "pipe" instead.`;
-};
-var getInvalidStdioOption = (fdNumber, { stdin, stdout, stderr, stdio }) => {
-  const usedDescriptor = getUsedDescriptor(fdNumber);
-  if (usedDescriptor === 0 && stdin !== void 0) {
-    return { optionName: "stdin", optionValue: stdin };
-  }
-  if (usedDescriptor === 1 && stdout !== void 0) {
-    return { optionName: "stdout", optionValue: stdout };
-  }
-  if (usedDescriptor === 2 && stderr !== void 0) {
-    return { optionName: "stderr", optionValue: stderr };
-  }
-  return { optionName: `stdio[${usedDescriptor}]`, optionValue: stdio[usedDescriptor] };
-};
-var getUsedDescriptor = (fdNumber) => fdNumber === "all" ? 1 : fdNumber;
-var getOptionName = (isWritable2) => isWritable2 ? "to" : "from";
-var serializeOptionValue = (value) => {
-  if (typeof value === "string") {
-    return `'${value}'`;
-  }
-  return typeof value === "number" ? `${value}` : "Stream";
-};
-
-// node_modules/execa/lib/ipc/strict.js
-var import_node_events6 = require("node:events");
-
-// node_modules/execa/lib/utils/max-listeners.js
-var import_node_events3 = require("node:events");
-var incrementMaxListeners = (eventEmitter, maxListenersIncrement, signal) => {
-  const maxListeners = eventEmitter.getMaxListeners();
-  if (maxListeners === 0 || maxListeners === Number.POSITIVE_INFINITY) {
-    return;
-  }
-  eventEmitter.setMaxListeners(maxListeners + maxListenersIncrement);
-  (0, import_node_events3.addAbortListener)(signal, () => {
-    eventEmitter.setMaxListeners(eventEmitter.getMaxListeners() - maxListenersIncrement);
-  });
-};
-
-// node_modules/execa/lib/ipc/forward.js
-var import_node_events5 = require("node:events");
-
-// node_modules/execa/lib/ipc/incoming.js
-var import_node_events4 = require("node:events");
-var import_promises3 = require("node:timers/promises");
-
-// node_modules/execa/lib/ipc/reference.js
-var addReference = (channel, reference2) => {
-  if (reference2) {
-    addReferenceCount(channel);
-  }
-};
-var addReferenceCount = (channel) => {
-  channel.refCounted();
-};
-var removeReference = (channel, reference2) => {
-  if (reference2) {
-    removeReferenceCount(channel);
-  }
-};
-var removeReferenceCount = (channel) => {
-  channel.unrefCounted();
-};
-var undoAddedReferences = (channel, isSubprocess) => {
-  if (isSubprocess) {
-    removeReferenceCount(channel);
-    removeReferenceCount(channel);
-  }
-};
-var redoAddedReferences = (channel, isSubprocess) => {
-  if (isSubprocess) {
-    addReferenceCount(channel);
-    addReferenceCount(channel);
-  }
-};
-
-// node_modules/execa/lib/ipc/incoming.js
-var onMessage = async ({ anyProcess, channel, isSubprocess, ipcEmitter }, wrappedMessage) => {
-  if (handleStrictResponse(wrappedMessage) || handleAbort(wrappedMessage)) {
-    return;
-  }
-  if (!INCOMING_MESSAGES.has(anyProcess)) {
-    INCOMING_MESSAGES.set(anyProcess, []);
-  }
-  const incomingMessages = INCOMING_MESSAGES.get(anyProcess);
-  incomingMessages.push(wrappedMessage);
-  if (incomingMessages.length > 1) {
-    return;
-  }
-  while (incomingMessages.length > 0) {
-    await waitForOutgoingMessages(anyProcess, ipcEmitter, wrappedMessage);
-    await import_promises3.scheduler.yield();
-    const message = await handleStrictRequest({
-      wrappedMessage: incomingMessages[0],
-      anyProcess,
-      channel,
-      isSubprocess,
-      ipcEmitter
-    });
-    incomingMessages.shift();
-    ipcEmitter.emit("message", message);
-    ipcEmitter.emit("message:done");
-  }
-};
-var onDisconnect = async ({ anyProcess, channel, isSubprocess, ipcEmitter, boundOnMessage }) => {
-  abortOnDisconnect();
-  const incomingMessages = INCOMING_MESSAGES.get(anyProcess);
-  while (incomingMessages?.length > 0) {
-    await (0, import_node_events4.once)(ipcEmitter, "message:done");
-  }
-  anyProcess.removeListener("message", boundOnMessage);
-  redoAddedReferences(channel, isSubprocess);
-  ipcEmitter.connected = false;
-  ipcEmitter.emit("disconnect");
-};
-var INCOMING_MESSAGES = /* @__PURE__ */ new WeakMap();
-
-// node_modules/execa/lib/ipc/forward.js
-var getIpcEmitter = (anyProcess, channel, isSubprocess) => {
-  if (IPC_EMITTERS.has(anyProcess)) {
-    return IPC_EMITTERS.get(anyProcess);
-  }
-  const ipcEmitter = new import_node_events5.EventEmitter();
-  ipcEmitter.connected = true;
-  IPC_EMITTERS.set(anyProcess, ipcEmitter);
-  forwardEvents({
-    ipcEmitter,
-    anyProcess,
-    channel,
-    isSubprocess
-  });
-  return ipcEmitter;
-};
-var IPC_EMITTERS = /* @__PURE__ */ new WeakMap();
-var forwardEvents = ({ ipcEmitter, anyProcess, channel, isSubprocess }) => {
-  const boundOnMessage = onMessage.bind(void 0, {
-    anyProcess,
-    channel,
-    isSubprocess,
-    ipcEmitter
-  });
-  anyProcess.on("message", boundOnMessage);
-  anyProcess.once("disconnect", onDisconnect.bind(void 0, {
-    anyProcess,
-    channel,
-    isSubprocess,
-    ipcEmitter,
-    boundOnMessage
-  }));
-  undoAddedReferences(channel, isSubprocess);
-};
-var isConnected = (anyProcess) => {
-  const ipcEmitter = IPC_EMITTERS.get(anyProcess);
-  return ipcEmitter === void 0 ? anyProcess.channel !== null : ipcEmitter.connected;
-};
-
-// node_modules/execa/lib/ipc/strict.js
-var handleSendStrict = ({ anyProcess, channel, isSubprocess, message, strict }) => {
-  if (!strict) {
-    return message;
-  }
-  const ipcEmitter = getIpcEmitter(anyProcess, channel, isSubprocess);
-  const hasListeners = hasMessageListeners(anyProcess, ipcEmitter);
-  return {
-    id: count++,
-    type: REQUEST_TYPE,
-    message,
-    hasListeners
-  };
-};
-var count = 0n;
-var validateStrictDeadlock = (outgoingMessages, wrappedMessage) => {
-  if (wrappedMessage?.type !== REQUEST_TYPE || wrappedMessage.hasListeners) {
-    return;
-  }
-  for (const { id } of outgoingMessages) {
-    if (id !== void 0) {
-      STRICT_RESPONSES[id].resolve({ isDeadlock: true, hasListeners: false });
-    }
-  }
-};
-var handleStrictRequest = async ({ wrappedMessage, anyProcess, channel, isSubprocess, ipcEmitter }) => {
-  if (wrappedMessage?.type !== REQUEST_TYPE || !anyProcess.connected) {
-    return wrappedMessage;
-  }
-  const { id, message } = wrappedMessage;
-  const response = { id, type: RESPONSE_TYPE, message: hasMessageListeners(anyProcess, ipcEmitter) };
-  try {
-    await sendMessage({
-      anyProcess,
-      channel,
-      isSubprocess,
-      ipc: true
-    }, response);
-  } catch (error) {
-    ipcEmitter.emit("strict:error", error);
-  }
-  return message;
-};
-var handleStrictResponse = (wrappedMessage) => {
-  if (wrappedMessage?.type !== RESPONSE_TYPE) {
-    return false;
-  }
-  const { id, message: hasListeners } = wrappedMessage;
-  STRICT_RESPONSES[id]?.resolve({ isDeadlock: false, hasListeners });
-  return true;
-};
-var waitForStrictResponse = async (wrappedMessage, anyProcess, isSubprocess) => {
-  if (wrappedMessage?.type !== REQUEST_TYPE) {
-    return;
-  }
-  const deferred = createDeferred();
-  STRICT_RESPONSES[wrappedMessage.id] = deferred;
-  const controller = new AbortController();
-  try {
-    const { isDeadlock, hasListeners } = await Promise.race([
-      deferred,
-      throwOnDisconnect(anyProcess, isSubprocess, controller)
-    ]);
-    if (isDeadlock) {
-      throwOnStrictDeadlockError(isSubprocess);
-    }
-    if (!hasListeners) {
-      throwOnMissingStrict(isSubprocess);
-    }
-  } finally {
-    controller.abort();
-    delete STRICT_RESPONSES[wrappedMessage.id];
-  }
-};
-var STRICT_RESPONSES = {};
-var throwOnDisconnect = async (anyProcess, isSubprocess, { signal }) => {
-  incrementMaxListeners(anyProcess, 1, signal);
-  await (0, import_node_events6.once)(anyProcess, "disconnect", { signal });
-  throwOnStrictDisconnect(isSubprocess);
-};
-var REQUEST_TYPE = "execa:ipc:request";
-var RESPONSE_TYPE = "execa:ipc:response";
-
-// node_modules/execa/lib/ipc/outgoing.js
-var startSendMessage = (anyProcess, wrappedMessage, strict) => {
-  if (!OUTGOING_MESSAGES.has(anyProcess)) {
-    OUTGOING_MESSAGES.set(anyProcess, /* @__PURE__ */ new Set());
-  }
-  const outgoingMessages = OUTGOING_MESSAGES.get(anyProcess);
-  const onMessageSent = createDeferred();
-  const id = strict ? wrappedMessage.id : void 0;
-  const outgoingMessage = { onMessageSent, id };
-  outgoingMessages.add(outgoingMessage);
-  return { outgoingMessages, outgoingMessage };
-};
-var endSendMessage = ({ outgoingMessages, outgoingMessage }) => {
-  outgoingMessages.delete(outgoingMessage);
-  outgoingMessage.onMessageSent.resolve();
-};
-var waitForOutgoingMessages = async (anyProcess, ipcEmitter, wrappedMessage) => {
-  while (!hasMessageListeners(anyProcess, ipcEmitter) && OUTGOING_MESSAGES.get(anyProcess)?.size > 0) {
-    const outgoingMessages = [...OUTGOING_MESSAGES.get(anyProcess)];
-    validateStrictDeadlock(outgoingMessages, wrappedMessage);
-    await Promise.all(outgoingMessages.map(({ onMessageSent }) => onMessageSent));
-  }
-};
-var OUTGOING_MESSAGES = /* @__PURE__ */ new WeakMap();
-var hasMessageListeners = (anyProcess, ipcEmitter) => ipcEmitter.listenerCount("message") > getMinListenerCount(anyProcess);
-var getMinListenerCount = (anyProcess) => SUBPROCESS_OPTIONS.has(anyProcess) && !getFdSpecificValue(SUBPROCESS_OPTIONS.get(anyProcess).options.buffer, "ipc") ? 1 : 0;
-
-// node_modules/execa/lib/ipc/send.js
-var sendMessage = ({ anyProcess, channel, isSubprocess, ipc }, message, { strict = false } = {}) => {
-  const methodName = "sendMessage";
-  validateIpcMethod({
-    methodName,
-    isSubprocess,
-    ipc,
-    isConnected: anyProcess.connected
-  });
-  return sendMessageAsync({
-    anyProcess,
-    channel,
-    methodName,
-    isSubprocess,
-    message,
-    strict
-  });
-};
-var sendMessageAsync = async ({ anyProcess, channel, methodName, isSubprocess, message, strict }) => {
-  const wrappedMessage = handleSendStrict({
-    anyProcess,
-    channel,
-    isSubprocess,
-    message,
-    strict
-  });
-  const outgoingMessagesState = startSendMessage(anyProcess, wrappedMessage, strict);
-  try {
-    await sendOneMessage({
-      anyProcess,
-      methodName,
-      isSubprocess,
-      wrappedMessage,
-      message
-    });
-  } catch (error) {
-    disconnect(anyProcess);
-    throw error;
-  } finally {
-    endSendMessage(outgoingMessagesState);
-  }
-};
-var sendOneMessage = async ({ anyProcess, methodName, isSubprocess, wrappedMessage, message }) => {
-  const sendMethod = getSendMethod(anyProcess);
-  try {
-    await Promise.all([
-      waitForStrictResponse(wrappedMessage, anyProcess, isSubprocess),
-      sendMethod(wrappedMessage)
-    ]);
-  } catch (error) {
-    handleEpipeError({ error, methodName, isSubprocess });
-    handleSerializationError({
-      error,
-      methodName,
-      isSubprocess,
-      message
-    });
-    throw error;
-  }
-};
-var getSendMethod = (anyProcess) => {
-  if (PROCESS_SEND_METHODS.has(anyProcess)) {
-    return PROCESS_SEND_METHODS.get(anyProcess);
-  }
-  const sendMethod = (0, import_node_util5.promisify)(anyProcess.send.bind(anyProcess));
-  PROCESS_SEND_METHODS.set(anyProcess, sendMethod);
-  return sendMethod;
-};
-var PROCESS_SEND_METHODS = /* @__PURE__ */ new WeakMap();
-
-// node_modules/execa/lib/ipc/graceful.js
-var sendAbort = (subprocess, message) => {
-  const methodName = "cancelSignal";
-  validateConnection(methodName, false, subprocess.connected);
-  return sendOneMessage({
-    anyProcess: subprocess,
-    methodName,
-    isSubprocess: false,
-    wrappedMessage: { type: GRACEFUL_CANCEL_TYPE, message },
-    message
-  });
-};
-var getCancelSignal = async ({ anyProcess, channel, isSubprocess, ipc }) => {
-  await startIpc({
-    anyProcess,
-    channel,
-    isSubprocess,
-    ipc
-  });
-  return cancelController.signal;
-};
-var startIpc = async ({ anyProcess, channel, isSubprocess, ipc }) => {
-  if (cancelListening) {
-    return;
-  }
-  cancelListening = true;
-  if (!ipc) {
-    throwOnMissingParent();
-    return;
-  }
-  if (channel === null) {
-    abortOnDisconnect();
-    return;
-  }
-  getIpcEmitter(anyProcess, channel, isSubprocess);
-  await import_promises4.scheduler.yield();
-};
-var cancelListening = false;
-var handleAbort = (wrappedMessage) => {
-  if (wrappedMessage?.type !== GRACEFUL_CANCEL_TYPE) {
-    return false;
-  }
-  cancelController.abort(wrappedMessage.message);
-  return true;
-};
-var GRACEFUL_CANCEL_TYPE = "execa:ipc:cancel";
-var abortOnDisconnect = () => {
-  cancelController.abort(getAbortDisconnectError());
-};
-var cancelController = new AbortController();
-
-// node_modules/execa/lib/terminate/graceful.js
-var validateGracefulCancel = ({ gracefulCancel, cancelSignal, ipc, serialization }) => {
-  if (!gracefulCancel) {
-    return;
-  }
-  if (cancelSignal === void 0) {
-    throw new Error("The `cancelSignal` option must be defined when setting the `gracefulCancel` option.");
-  }
-  if (!ipc) {
-    throw new Error("The `ipc` option cannot be false when setting the `gracefulCancel` option.");
-  }
-  if (serialization === "json") {
-    throw new Error("The `serialization` option cannot be 'json' when setting the `gracefulCancel` option.");
-  }
-};
-var throwOnGracefulCancel = ({
-  subprocess,
-  cancelSignal,
-  gracefulCancel,
-  forceKillAfterDelay,
-  context,
-  controller
-}) => gracefulCancel ? [sendOnAbort({
-  subprocess,
-  cancelSignal,
-  forceKillAfterDelay,
-  context,
-  controller
-})] : [];
-var sendOnAbort = async ({ subprocess, cancelSignal, forceKillAfterDelay, context, controller: { signal } }) => {
-  await onAbortedSignal(cancelSignal, signal);
-  const reason = getReason(cancelSignal);
-  await sendAbort(subprocess, reason);
-  killOnTimeout({
-    kill: subprocess.kill,
-    forceKillAfterDelay,
-    context,
-    controllerSignal: signal
-  });
-  context.terminationReason ??= "gracefulCancel";
-  throw cancelSignal.reason;
-};
-var getReason = ({ reason }) => {
-  if (!(reason instanceof DOMException)) {
-    return reason;
-  }
-  const error = new Error(reason.message);
-  Object.defineProperty(error, "stack", {
-    value: reason.stack,
-    enumerable: false,
-    configurable: true,
-    writable: true
-  });
-  return error;
-};
-
-// node_modules/execa/lib/terminate/timeout.js
-var import_promises5 = require("node:timers/promises");
-var validateTimeout = ({ timeout }) => {
-  if (timeout !== void 0 && (!Number.isFinite(timeout) || timeout < 0)) {
-    throw new TypeError(`Expected the \`timeout\` option to be a non-negative integer, got \`${timeout}\` (${typeof timeout})`);
-  }
-};
-var throwOnTimeout = (subprocess, timeout, context, controller) => timeout === 0 || timeout === void 0 ? [] : [killAfterTimeout(subprocess, timeout, context, controller)];
-var killAfterTimeout = async (subprocess, timeout, context, { signal }) => {
-  await (0, import_promises5.setTimeout)(timeout, void 0, { signal });
-  context.terminationReason ??= "timeout";
-  subprocess.kill();
-  throw new DiscardedError();
-};
-
-// node_modules/execa/lib/methods/node.js
-var import_node_process6 = require("node:process");
-var import_node_path4 = __toESM(require("node:path"), 1);
-var mapNode = ({ options }) => {
-  if (options.node === false) {
-    throw new TypeError('The "node" option cannot be false with `execaNode()`.');
-  }
-  return { options: { ...options, node: true } };
-};
-var handleNodeOption = (file, commandArguments, {
-  node: shouldHandleNode = false,
-  nodePath = import_node_process6.execPath,
-  nodeOptions = import_node_process6.execArgv.filter((nodeOption) => !nodeOption.startsWith("--inspect")),
-  cwd,
-  execPath: formerNodePath,
-  ...options
-}) => {
-  if (formerNodePath !== void 0) {
-    throw new TypeError('The "execPath" option has been removed. Please use the "nodePath" option instead.');
-  }
-  const normalizedNodePath = safeNormalizeFileUrl(nodePath, 'The "nodePath" option');
-  const resolvedNodePath = import_node_path4.default.resolve(cwd, normalizedNodePath);
-  const newOptions = {
-    ...options,
-    nodePath: resolvedNodePath,
-    node: shouldHandleNode,
-    cwd
-  };
-  if (!shouldHandleNode) {
-    return [file, commandArguments, newOptions];
-  }
-  if (import_node_path4.default.basename(file, ".exe") === "node") {
-    throw new TypeError('When the "node" option is true, the first argument does not need to be "node".');
-  }
-  return [
-    resolvedNodePath,
-    [...nodeOptions, file, ...commandArguments],
-    { ipc: true, ...newOptions, shell: false }
-  ];
-};
-
-// node_modules/execa/lib/ipc/ipc-input.js
-var import_node_v8 = require("node:v8");
-var validateIpcInputOption = ({ ipcInput, ipc, serialization }) => {
-  if (ipcInput === void 0) {
-    return;
-  }
-  if (!ipc) {
-    throw new Error("The `ipcInput` option cannot be set unless the `ipc` option is `true`.");
-  }
-  validateIpcInput[serialization](ipcInput);
-};
-var validateAdvancedInput = (ipcInput) => {
-  try {
-    (0, import_node_v8.serialize)(ipcInput);
-  } catch (error) {
-    throw new Error("The `ipcInput` option is not serializable with a structured clone.", { cause: error });
-  }
-};
-var validateJsonInput = (ipcInput) => {
-  try {
-    JSON.stringify(ipcInput);
-  } catch (error) {
-    throw new Error("The `ipcInput` option is not serializable with JSON.", { cause: error });
-  }
-};
-var validateIpcInput = {
-  advanced: validateAdvancedInput,
-  json: validateJsonInput
-};
-var sendIpcInput = async (subprocess, ipcInput) => {
-  if (ipcInput === void 0) {
-    return;
-  }
-  await subprocess.sendMessage(ipcInput);
-};
-
-// node_modules/execa/lib/arguments/encoding-option.js
-var validateEncoding = ({ encoding }) => {
-  if (ENCODINGS.has(encoding)) {
-    return;
-  }
-  const correctEncoding = getCorrectEncoding(encoding);
-  if (correctEncoding !== void 0) {
-    throw new TypeError(`Invalid option \`encoding: ${serializeEncoding(encoding)}\`.
-Please rename it to ${serializeEncoding(correctEncoding)}.`);
-  }
-  const correctEncodings = [...ENCODINGS].map((correctEncoding2) => serializeEncoding(correctEncoding2)).join(", ");
-  throw new TypeError(`Invalid option \`encoding: ${serializeEncoding(encoding)}\`.
-Please rename it to one of: ${correctEncodings}.`);
-};
-var TEXT_ENCODINGS = /* @__PURE__ */ new Set(["utf8", "utf16le"]);
-var BINARY_ENCODINGS = /* @__PURE__ */ new Set(["buffer", "hex", "base64", "base64url", "latin1", "ascii"]);
-var ENCODINGS = /* @__PURE__ */ new Set([...TEXT_ENCODINGS, ...BINARY_ENCODINGS]);
-var getCorrectEncoding = (encoding) => {
-  if (encoding === null) {
-    return "buffer";
-  }
-  if (typeof encoding !== "string") {
-    return;
-  }
-  const lowerEncoding = encoding.toLowerCase();
-  if (lowerEncoding in ENCODING_ALIASES) {
-    return ENCODING_ALIASES[lowerEncoding];
-  }
-  if (ENCODINGS.has(lowerEncoding)) {
-    return lowerEncoding;
-  }
-};
-var ENCODING_ALIASES = {
-  // eslint-disable-next-line unicorn/text-encoding-identifier-case
-  "utf-8": "utf8",
-  "utf-16le": "utf16le",
-  "ucs-2": "utf16le",
-  ucs2: "utf16le",
-  binary: "latin1"
-};
-var serializeEncoding = (encoding) => typeof encoding === "string" ? `"${encoding}"` : String(encoding);
-
-// node_modules/execa/lib/arguments/cwd.js
-var import_node_fs = require("node:fs");
-var import_node_path5 = __toESM(require("node:path"), 1);
-var import_node_process7 = __toESM(require("node:process"), 1);
-var normalizeCwd = (cwd = getDefaultCwd()) => {
-  const cwdString = safeNormalizeFileUrl(cwd, 'The "cwd" option');
-  return import_node_path5.default.resolve(cwdString);
-};
-var getDefaultCwd = () => {
-  try {
-    return import_node_process7.default.cwd();
-  } catch (error) {
-    error.message = `The current directory does not exist.
-${error.message}`;
-    throw error;
-  }
-};
-var fixCwdError = (originalMessage, cwd) => {
-  if (cwd === getDefaultCwd()) {
-    return originalMessage;
-  }
-  let cwdStat;
-  try {
-    cwdStat = (0, import_node_fs.statSync)(cwd);
-  } catch (error) {
-    return `The "cwd" option is invalid: ${cwd}.
-${error.message}
-${originalMessage}`;
-  }
-  if (!cwdStat.isDirectory()) {
-    return `The "cwd" option is not a directory: ${cwd}.
-${originalMessage}`;
-  }
-  return originalMessage;
-};
-
-// node_modules/execa/lib/arguments/options.js
-var normalizeOptions = (filePath, rawArguments, rawOptions) => {
-  rawOptions.cwd = normalizeCwd(rawOptions.cwd);
-  const [processedFile, processedArguments, processedOptions] = handleNodeOption(filePath, rawArguments, rawOptions);
-  const { command: file, args: commandArguments, options: initialOptions } = import_cross_spawn.default._parse(processedFile, processedArguments, processedOptions);
-  const fdOptions = normalizeFdSpecificOptions(initialOptions);
-  const options = addDefaultOptions(fdOptions);
-  validateTimeout(options);
-  validateEncoding(options);
-  validateIpcInputOption(options);
-  validateCancelSignal(options);
-  validateGracefulCancel(options);
-  options.shell = normalizeFileUrl(options.shell);
-  options.env = getEnv(options);
-  options.killSignal = normalizeKillSignal(options.killSignal);
-  options.forceKillAfterDelay = normalizeForceKillAfterDelay(options.forceKillAfterDelay);
-  options.lines = options.lines.map((lines, fdNumber) => lines && !BINARY_ENCODINGS.has(options.encoding) && options.buffer[fdNumber]);
-  if (import_node_process8.default.platform === "win32" && import_node_path6.default.basename(file, ".exe") === "cmd") {
-    commandArguments.unshift("/q");
-  }
-  return { file, commandArguments, options };
-};
-var addDefaultOptions = ({
-  extendEnv = true,
-  preferLocal = false,
-  cwd,
-  localDir: localDirectory = cwd,
-  encoding = "utf8",
-  reject = true,
-  cleanup = true,
-  all: all3 = false,
-  windowsHide = true,
-  killSignal = "SIGTERM",
-  forceKillAfterDelay = true,
-  gracefulCancel = false,
-  ipcInput,
-  ipc = ipcInput !== void 0 || gracefulCancel,
-  serialization = "advanced",
-  ...options
-}) => ({
-  ...options,
-  extendEnv,
-  preferLocal,
-  cwd,
-  localDirectory,
-  encoding,
-  reject,
-  cleanup,
-  all: all3,
-  windowsHide,
-  killSignal,
-  forceKillAfterDelay,
-  gracefulCancel,
-  ipcInput,
-  ipc,
-  serialization
-});
-var getEnv = ({ env: envOption, extendEnv, preferLocal, node, localDirectory, nodePath }) => {
-  const env2 = extendEnv ? { ...import_node_process8.default.env, ...envOption } : envOption;
-  if (preferLocal || node) {
-    return npmRunPathEnv({
-      env: env2,
-      cwd: localDirectory,
-      execPath: nodePath,
-      preferLocal,
-      addExecPath: node
-    });
-  }
-  return env2;
-};
-
-// node_modules/execa/lib/arguments/shell.js
-var concatenateShell = (file, commandArguments, options) => options.shell && commandArguments.length > 0 ? [[file, ...commandArguments].join(" "), [], options] : [file, commandArguments, options];
-
-// node_modules/execa/lib/return/message.js
-var import_node_util6 = require("node:util");
-
-// node_modules/strip-final-newline/index.js
-function stripFinalNewline(input) {
-  if (typeof input === "string") {
-    return stripFinalNewlineString(input);
-  }
-  if (!(ArrayBuffer.isView(input) && input.BYTES_PER_ELEMENT === 1)) {
-    throw new Error("Input must be a string or a Uint8Array");
-  }
-  return stripFinalNewlineBinary(input);
-}
-var stripFinalNewlineString = (input) => input.at(-1) === LF ? input.slice(0, input.at(-2) === CR ? -2 : -1) : input;
-var stripFinalNewlineBinary = (input) => input.at(-1) === LF_BINARY ? input.subarray(0, input.at(-2) === CR_BINARY ? -2 : -1) : input;
-var LF = "\n";
-var LF_BINARY = LF.codePointAt(0);
-var CR = "\r";
-var CR_BINARY = CR.codePointAt(0);
-
-// node_modules/get-stream/source/index.js
-var import_node_events7 = require("node:events");
-var import_promises6 = require("node:stream/promises");
-
-// node_modules/is-stream/index.js
-function isStream2(stream5, { checkOpen = true } = {}) {
-  return stream5 !== null && typeof stream5 === "object" && (stream5.writable || stream5.readable || !checkOpen || stream5.writable === void 0 && stream5.readable === void 0) && typeof stream5.pipe === "function";
-}
-function isWritableStream(stream5, { checkOpen = true } = {}) {
-  return isStream2(stream5, { checkOpen }) && (stream5.writable || !checkOpen) && typeof stream5.write === "function" && typeof stream5.end === "function" && typeof stream5.writable === "boolean" && typeof stream5.writableObjectMode === "boolean" && typeof stream5.destroy === "function" && typeof stream5.destroyed === "boolean";
-}
-function isReadableStream(stream5, { checkOpen = true } = {}) {
-  return isStream2(stream5, { checkOpen }) && (stream5.readable || !checkOpen) && typeof stream5.read === "function" && typeof stream5.readable === "boolean" && typeof stream5.readableObjectMode === "boolean" && typeof stream5.destroy === "function" && typeof stream5.destroyed === "boolean";
-}
-function isDuplexStream(stream5, options) {
-  return isWritableStream(stream5, options) && isReadableStream(stream5, options);
-}
-
-// node_modules/@sec-ant/readable-stream/dist/ponyfill/asyncIterator.js
-var a = Object.getPrototypeOf(
-  Object.getPrototypeOf(
-    /* istanbul ignore next */
-    async function* () {
-    }
-  ).prototype
-);
-var c = class {
-  #t;
-  #n;
-  #r = false;
-  #e = void 0;
-  constructor(e, t) {
-    this.#t = e, this.#n = t;
-  }
-  next() {
-    const e = () => this.#s();
-    return this.#e = this.#e ? this.#e.then(e, e) : e(), this.#e;
-  }
-  return(e) {
-    const t = () => this.#i(e);
-    return this.#e ? this.#e.then(t, t) : t();
-  }
-  async #s() {
-    if (this.#r)
-      return {
-        done: true,
-        value: void 0
-      };
-    let e;
-    try {
-      e = await this.#t.read();
-    } catch (t) {
-      throw this.#e = void 0, this.#r = true, this.#t.releaseLock(), t;
-    }
-    return e.done && (this.#e = void 0, this.#r = true, this.#t.releaseLock()), e;
-  }
-  async #i(e) {
-    if (this.#r)
-      return {
-        done: true,
-        value: e
-      };
-    if (this.#r = true, !this.#n) {
-      const t = this.#t.cancel(e);
-      return this.#t.releaseLock(), await t, {
-        done: true,
-        value: e
-      };
-    }
-    return this.#t.releaseLock(), {
-      done: true,
-      value: e
-    };
-  }
-};
-var n = Symbol();
-function i() {
-  return this[n].next();
-}
-Object.defineProperty(i, "name", { value: "next" });
-function o(r) {
-  return this[n].return(r);
-}
-Object.defineProperty(o, "name", { value: "return" });
-var u = Object.create(a, {
-  next: {
-    enumerable: true,
-    configurable: true,
-    writable: true,
-    value: i
-  },
-  return: {
-    enumerable: true,
-    configurable: true,
-    writable: true,
-    value: o
-  }
-});
-function h({ preventCancel: r = false } = {}) {
-  const e = this.getReader(), t = new c(
-    e,
-    r
-  ), s = Object.create(u);
-  return s[n] = t, s;
-}
-
-// node_modules/get-stream/source/stream.js
-var getAsyncIterable = (stream5) => {
-  if (isReadableStream(stream5, { checkOpen: false }) && nodeImports.on !== void 0) {
-    return getStreamIterable(stream5);
-  }
-  if (typeof stream5?.[Symbol.asyncIterator] === "function") {
-    return stream5;
-  }
-  if (toString.call(stream5) === "[object ReadableStream]") {
-    return h.call(stream5);
-  }
-  throw new TypeError("The first argument must be a Readable, a ReadableStream, or an async iterable.");
-};
-var { toString } = Object.prototype;
-var getStreamIterable = async function* (stream5) {
-  const controller = new AbortController();
-  const state = {};
-  handleStreamEnd(stream5, controller, state);
-  try {
-    for await (const [chunk] of nodeImports.on(stream5, "data", { signal: controller.signal })) {
-      yield chunk;
-    }
-  } catch (error) {
-    if (state.error !== void 0) {
-      throw state.error;
-    } else if (!controller.signal.aborted) {
-      throw error;
-    }
-  } finally {
-    stream5.destroy();
-  }
-};
-var handleStreamEnd = async (stream5, controller, state) => {
-  try {
-    await nodeImports.finished(stream5, {
-      cleanup: true,
-      readable: true,
-      writable: false,
-      error: false
-    });
-  } catch (error) {
-    state.error = error;
-  } finally {
-    controller.abort();
-  }
-};
-var nodeImports = {};
-
-// node_modules/get-stream/source/contents.js
-var getStreamContents = async (stream5, { init, convertChunk, getSize, truncateChunk, addChunk, getFinalChunk, finalize }, { maxBuffer = Number.POSITIVE_INFINITY } = {}) => {
-  const asyncIterable = getAsyncIterable(stream5);
-  const state = init();
-  state.length = 0;
-  try {
-    for await (const chunk of asyncIterable) {
-      const chunkType = getChunkType(chunk);
-      const convertedChunk = convertChunk[chunkType](chunk, state);
-      appendChunk({
-        convertedChunk,
-        state,
-        getSize,
-        truncateChunk,
-        addChunk,
-        maxBuffer
-      });
-    }
-    appendFinalChunk({
-      state,
-      convertChunk,
-      getSize,
-      truncateChunk,
-      addChunk,
-      getFinalChunk,
-      maxBuffer
-    });
-    return finalize(state);
-  } catch (error) {
-    const normalizedError = typeof error === "object" && error !== null ? error : new Error(error);
-    normalizedError.bufferedData = finalize(state);
-    throw normalizedError;
-  }
-};
-var appendFinalChunk = ({ state, getSize, truncateChunk, addChunk, getFinalChunk, maxBuffer }) => {
-  const convertedChunk = getFinalChunk(state);
-  if (convertedChunk !== void 0) {
-    appendChunk({
-      convertedChunk,
-      state,
-      getSize,
-      truncateChunk,
-      addChunk,
-      maxBuffer
-    });
-  }
-};
-var appendChunk = ({ convertedChunk, state, getSize, truncateChunk, addChunk, maxBuffer }) => {
-  const chunkSize = getSize(convertedChunk);
-  const newLength = state.length + chunkSize;
-  if (newLength <= maxBuffer) {
-    addNewChunk(convertedChunk, state, addChunk, newLength);
-    return;
-  }
-  const truncatedChunk = truncateChunk(convertedChunk, maxBuffer - state.length);
-  if (truncatedChunk !== void 0) {
-    addNewChunk(truncatedChunk, state, addChunk, maxBuffer);
-  }
-  throw new MaxBufferError();
-};
-var addNewChunk = (convertedChunk, state, addChunk, newLength) => {
-  state.contents = addChunk(convertedChunk, state, newLength);
-  state.length = newLength;
-};
-var getChunkType = (chunk) => {
-  const typeOfChunk = typeof chunk;
-  if (typeOfChunk === "string") {
-    return "string";
-  }
-  if (typeOfChunk !== "object" || chunk === null) {
-    return "others";
-  }
-  if (globalThis.Buffer?.isBuffer(chunk)) {
-    return "buffer";
-  }
-  const prototypeName = objectToString2.call(chunk);
-  if (prototypeName === "[object ArrayBuffer]") {
-    return "arrayBuffer";
-  }
-  if (prototypeName === "[object DataView]") {
-    return "dataView";
-  }
-  if (Number.isInteger(chunk.byteLength) && Number.isInteger(chunk.byteOffset) && objectToString2.call(chunk.buffer) === "[object ArrayBuffer]") {
-    return "typedArray";
-  }
-  return "others";
-};
-var { toString: objectToString2 } = Object.prototype;
-var MaxBufferError = class extends Error {
-  name = "MaxBufferError";
-  constructor() {
-    super("maxBuffer exceeded");
-  }
-};
-
-// node_modules/get-stream/source/utils.js
-var identity2 = (value) => value;
-var noop = () => void 0;
-var getContentsProperty = ({ contents }) => contents;
-var throwObjectStream = (chunk) => {
-  throw new Error(`Streams in object mode are not supported: ${String(chunk)}`);
-};
-var getLengthProperty = (convertedChunk) => convertedChunk.length;
-
-// node_modules/get-stream/source/array.js
-async function getStreamAsArray(stream5, options) {
-  return getStreamContents(stream5, arrayMethods, options);
-}
-var initArray = () => ({ contents: [] });
-var increment = () => 1;
-var addArrayChunk = (convertedChunk, { contents }) => {
-  contents.push(convertedChunk);
-  return contents;
-};
-var arrayMethods = {
-  init: initArray,
-  convertChunk: {
-    string: identity2,
-    buffer: identity2,
-    arrayBuffer: identity2,
-    dataView: identity2,
-    typedArray: identity2,
-    others: identity2
-  },
-  getSize: increment,
-  truncateChunk: noop,
-  addChunk: addArrayChunk,
-  getFinalChunk: noop,
-  finalize: getContentsProperty
-};
-
-// node_modules/get-stream/source/array-buffer.js
-async function getStreamAsArrayBuffer(stream5, options) {
-  return getStreamContents(stream5, arrayBufferMethods, options);
-}
-var initArrayBuffer = () => ({ contents: new ArrayBuffer(0) });
-var useTextEncoder = (chunk) => textEncoder2.encode(chunk);
-var textEncoder2 = new TextEncoder();
-var useUint8Array = (chunk) => new Uint8Array(chunk);
-var useUint8ArrayWithOffset = (chunk) => new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-var truncateArrayBufferChunk = (convertedChunk, chunkSize) => convertedChunk.slice(0, chunkSize);
-var addArrayBufferChunk = (convertedChunk, { contents, length: previousLength }, length) => {
-  const newContents = hasArrayBufferResize() ? resizeArrayBuffer(contents, length) : resizeArrayBufferSlow(contents, length);
-  new Uint8Array(newContents).set(convertedChunk, previousLength);
-  return newContents;
-};
-var resizeArrayBufferSlow = (contents, length) => {
-  if (length <= contents.byteLength) {
-    return contents;
-  }
-  const arrayBuffer = new ArrayBuffer(getNewContentsLength(length));
-  new Uint8Array(arrayBuffer).set(new Uint8Array(contents), 0);
-  return arrayBuffer;
-};
-var resizeArrayBuffer = (contents, length) => {
-  if (length <= contents.maxByteLength) {
-    contents.resize(length);
-    return contents;
-  }
-  const arrayBuffer = new ArrayBuffer(length, { maxByteLength: getNewContentsLength(length) });
-  new Uint8Array(arrayBuffer).set(new Uint8Array(contents), 0);
-  return arrayBuffer;
-};
-var getNewContentsLength = (length) => SCALE_FACTOR ** Math.ceil(Math.log(length) / Math.log(SCALE_FACTOR));
-var SCALE_FACTOR = 2;
-var finalizeArrayBuffer = ({ contents, length }) => hasArrayBufferResize() ? contents : contents.slice(0, length);
-var hasArrayBufferResize = () => "resize" in ArrayBuffer.prototype;
-var arrayBufferMethods = {
-  init: initArrayBuffer,
-  convertChunk: {
-    string: useTextEncoder,
-    buffer: useUint8Array,
-    arrayBuffer: useUint8Array,
-    dataView: useUint8ArrayWithOffset,
-    typedArray: useUint8ArrayWithOffset,
-    others: throwObjectStream
-  },
-  getSize: getLengthProperty,
-  truncateChunk: truncateArrayBufferChunk,
-  addChunk: addArrayBufferChunk,
-  getFinalChunk: noop,
-  finalize: finalizeArrayBuffer
-};
-
-// node_modules/get-stream/source/string.js
-async function getStreamAsString(stream5, options) {
-  return getStreamContents(stream5, stringMethods, options);
-}
-var initString = () => ({ contents: "", textDecoder: new TextDecoder() });
-var useTextDecoder = (chunk, { textDecoder: textDecoder2 }) => textDecoder2.decode(chunk, { stream: true });
-var addStringChunk = (convertedChunk, { contents }) => contents + convertedChunk;
-var truncateStringChunk = (convertedChunk, chunkSize) => convertedChunk.slice(0, chunkSize);
-var getFinalStringChunk = ({ textDecoder: textDecoder2 }) => {
-  const finalChunk = textDecoder2.decode();
-  return finalChunk === "" ? void 0 : finalChunk;
-};
-var stringMethods = {
-  init: initString,
-  convertChunk: {
-    string: identity2,
-    buffer: useTextDecoder,
-    arrayBuffer: useTextDecoder,
-    dataView: useTextDecoder,
-    typedArray: useTextDecoder,
-    others: throwObjectStream
-  },
-  getSize: getLengthProperty,
-  truncateChunk: truncateStringChunk,
-  addChunk: addStringChunk,
-  getFinalChunk: getFinalStringChunk,
-  finalize: getContentsProperty
-};
-
-// node_modules/get-stream/source/index.js
-Object.assign(nodeImports, { on: import_node_events7.on, finished: import_promises6.finished });
-
-// node_modules/execa/lib/io/max-buffer.js
-var handleMaxBuffer = ({ error, stream: stream5, readableObjectMode, lines, encoding, fdNumber }) => {
-  if (!(error instanceof MaxBufferError)) {
-    throw error;
-  }
-  if (fdNumber === "all") {
-    return error;
-  }
-  const unit = getMaxBufferUnit(readableObjectMode, lines, encoding);
-  error.maxBufferInfo = { fdNumber, unit };
-  stream5.destroy();
-  throw error;
-};
-var getMaxBufferUnit = (readableObjectMode, lines, encoding) => {
-  if (readableObjectMode) {
-    return "objects";
-  }
-  if (lines) {
-    return "lines";
-  }
-  if (encoding === "buffer") {
-    return "bytes";
-  }
-  return "characters";
-};
-var checkIpcMaxBuffer = (subprocess, ipcOutput, maxBuffer) => {
-  if (ipcOutput.length !== maxBuffer) {
-    return;
-  }
-  const error = new MaxBufferError();
-  error.maxBufferInfo = { fdNumber: "ipc" };
-  throw error;
-};
-var getMaxBufferMessage = (error, maxBuffer) => {
-  const { streamName, threshold, unit } = getMaxBufferInfo(error, maxBuffer);
-  return `Command's ${streamName} was larger than ${threshold} ${unit}`;
-};
-var getMaxBufferInfo = (error, maxBuffer) => {
-  if (error?.maxBufferInfo === void 0) {
-    return { streamName: "output", threshold: maxBuffer[1], unit: "bytes" };
-  }
-  const { maxBufferInfo: { fdNumber, unit } } = error;
-  delete error.maxBufferInfo;
-  const threshold = getFdSpecificValue(maxBuffer, fdNumber);
-  if (fdNumber === "ipc") {
-    return { streamName: "IPC output", threshold, unit: "messages" };
-  }
-  return { streamName: getStreamName(fdNumber), threshold, unit };
-};
-var isMaxBufferSync = (resultError, output, maxBuffer) => resultError?.code === "ENOBUFS" && output !== null && output.some((result) => result !== null && result.length > getMaxBufferSync(maxBuffer));
-var truncateMaxBufferSync = (result, isMaxBuffer, maxBuffer) => {
-  if (!isMaxBuffer) {
-    return result;
-  }
-  const maxBufferValue = getMaxBufferSync(maxBuffer);
-  return result.length > maxBufferValue ? result.slice(0, maxBufferValue) : result;
-};
-var getMaxBufferSync = ([, stdoutMaxBuffer]) => stdoutMaxBuffer;
-
-// node_modules/execa/lib/return/message.js
-var createMessages = ({
-  stdio,
-  all: all3,
-  ipcOutput,
-  originalError,
-  signal,
-  signalDescription,
-  exitCode,
-  escapedCommand,
-  timedOut,
-  isCanceled,
-  isGracefullyCanceled,
-  isMaxBuffer,
-  isForcefullyTerminated,
-  forceKillAfterDelay,
-  killSignal,
-  maxBuffer,
-  timeout,
-  cwd
-}) => {
-  const errorCode = originalError?.code;
-  const prefix = getErrorPrefix({
-    originalError,
-    timedOut,
-    timeout,
-    isMaxBuffer,
-    maxBuffer,
-    errorCode,
-    signal,
-    signalDescription,
-    exitCode,
-    isCanceled,
-    isGracefullyCanceled,
-    isForcefullyTerminated,
-    forceKillAfterDelay,
-    killSignal
-  });
-  const originalMessage = getOriginalMessage(originalError, cwd);
-  const suffix = originalMessage === void 0 ? "" : `
-${originalMessage}`;
-  const shortMessage = `${prefix}: ${escapedCommand}${suffix}`;
-  const messageStdio = all3 === void 0 ? [stdio[2], stdio[1]] : [all3];
-  const message = [
-    shortMessage,
-    ...messageStdio,
-    ...stdio.slice(3),
-    ipcOutput.map((ipcMessage) => serializeIpcMessage(ipcMessage)).join("\n")
-  ].map((messagePart) => escapeLines(stripFinalNewline(serializeMessagePart(messagePart)))).filter(Boolean).join("\n\n");
-  return { originalMessage, shortMessage, message };
-};
-var getErrorPrefix = ({
-  originalError,
-  timedOut,
-  timeout,
-  isMaxBuffer,
-  maxBuffer,
-  errorCode,
-  signal,
-  signalDescription,
-  exitCode,
-  isCanceled,
-  isGracefullyCanceled,
-  isForcefullyTerminated,
-  forceKillAfterDelay,
-  killSignal
-}) => {
-  const forcefulSuffix = getForcefulSuffix(isForcefullyTerminated, forceKillAfterDelay);
-  if (timedOut) {
-    return `Command timed out after ${timeout} milliseconds${forcefulSuffix}`;
-  }
-  if (isGracefullyCanceled) {
-    if (signal === void 0) {
-      return `Command was gracefully canceled with exit code ${exitCode}`;
-    }
-    return isForcefullyTerminated ? `Command was gracefully canceled${forcefulSuffix}` : `Command was gracefully canceled with ${signal} (${signalDescription})`;
-  }
-  if (isCanceled) {
-    return `Command was canceled${forcefulSuffix}`;
-  }
-  if (isMaxBuffer) {
-    return `${getMaxBufferMessage(originalError, maxBuffer)}${forcefulSuffix}`;
-  }
-  if (errorCode !== void 0) {
-    return `Command failed with ${errorCode}${forcefulSuffix}`;
-  }
-  if (isForcefullyTerminated) {
-    return `Command was killed with ${killSignal} (${getSignalDescription(killSignal)})${forcefulSuffix}`;
-  }
-  if (signal !== void 0) {
-    return `Command was killed with ${signal} (${signalDescription})`;
-  }
-  if (exitCode !== void 0) {
-    return `Command failed with exit code ${exitCode}`;
-  }
-  return "Command failed";
-};
-var getForcefulSuffix = (isForcefullyTerminated, forceKillAfterDelay) => isForcefullyTerminated ? ` and was forcefully terminated after ${forceKillAfterDelay} milliseconds` : "";
-var getOriginalMessage = (originalError, cwd) => {
-  if (originalError instanceof DiscardedError) {
-    return;
-  }
-  const originalMessage = isExecaError(originalError) ? originalError.originalMessage : String(originalError?.message ?? originalError);
-  const escapedOriginalMessage = escapeLines(fixCwdError(originalMessage, cwd));
-  return escapedOriginalMessage === "" ? void 0 : escapedOriginalMessage;
-};
-var serializeIpcMessage = (ipcMessage) => typeof ipcMessage === "string" ? ipcMessage : (0, import_node_util6.inspect)(ipcMessage);
-var serializeMessagePart = (messagePart) => Array.isArray(messagePart) ? messagePart.map((messageItem) => stripFinalNewline(serializeMessageItem(messageItem))).filter(Boolean).join("\n") : serializeMessageItem(messagePart);
-var serializeMessageItem = (messageItem) => {
-  if (typeof messageItem === "string") {
-    return messageItem;
-  }
-  if (isUint8Array(messageItem)) {
-    return uint8ArrayToString(messageItem);
-  }
-  return "";
-};
-
-// node_modules/execa/lib/return/result.js
-var makeSuccessResult = ({
-  command,
-  escapedCommand,
-  stdio,
-  all: all3,
-  ipcOutput,
-  options: { cwd },
-  startTime
-}) => omitUndefinedProperties({
-  command,
-  escapedCommand,
-  cwd,
-  durationMs: getDurationMs(startTime),
-  failed: false,
-  timedOut: false,
-  isCanceled: false,
-  isGracefullyCanceled: false,
-  isTerminated: false,
-  isMaxBuffer: false,
-  isForcefullyTerminated: false,
-  exitCode: 0,
-  stdout: stdio[1],
-  stderr: stdio[2],
-  all: all3,
-  stdio,
-  ipcOutput,
-  pipedFrom: []
-});
-var makeEarlyError = ({
-  error,
-  command,
-  escapedCommand,
-  fileDescriptors,
-  options,
-  startTime,
-  isSync
-}) => makeError({
-  error,
-  command,
-  escapedCommand,
-  startTime,
-  timedOut: false,
-  isCanceled: false,
-  isGracefullyCanceled: false,
-  isMaxBuffer: false,
-  isForcefullyTerminated: false,
-  stdio: Array.from({ length: fileDescriptors.length }),
-  ipcOutput: [],
-  options,
-  isSync
-});
-var makeError = ({
-  error: originalError,
-  command,
-  escapedCommand,
-  startTime,
-  timedOut,
-  isCanceled,
-  isGracefullyCanceled,
-  isMaxBuffer,
-  isForcefullyTerminated,
-  exitCode: rawExitCode,
-  signal: rawSignal,
-  stdio,
-  all: all3,
-  ipcOutput,
-  options: {
-    timeoutDuration,
-    timeout = timeoutDuration,
-    forceKillAfterDelay,
-    killSignal,
-    cwd,
-    maxBuffer
-  },
-  isSync
-}) => {
-  const { exitCode, signal, signalDescription } = normalizeExitPayload(rawExitCode, rawSignal);
-  const { originalMessage, shortMessage, message } = createMessages({
-    stdio,
-    all: all3,
-    ipcOutput,
-    originalError,
-    signal,
-    signalDescription,
-    exitCode,
-    escapedCommand,
-    timedOut,
-    isCanceled,
-    isGracefullyCanceled,
-    isMaxBuffer,
-    isForcefullyTerminated,
-    forceKillAfterDelay,
-    killSignal,
-    maxBuffer,
-    timeout,
-    cwd
-  });
-  const error = getFinalError(originalError, message, isSync);
-  Object.assign(error, getErrorProperties({
-    error,
-    command,
-    escapedCommand,
-    startTime,
-    timedOut,
-    isCanceled,
-    isGracefullyCanceled,
-    isMaxBuffer,
-    isForcefullyTerminated,
-    exitCode,
-    signal,
-    signalDescription,
-    stdio,
-    all: all3,
-    ipcOutput,
-    cwd,
-    originalMessage,
-    shortMessage
-  }));
-  return error;
-};
-var getErrorProperties = ({
-  error,
-  command,
-  escapedCommand,
-  startTime,
-  timedOut,
-  isCanceled,
-  isGracefullyCanceled,
-  isMaxBuffer,
-  isForcefullyTerminated,
-  exitCode,
-  signal,
-  signalDescription,
-  stdio,
-  all: all3,
-  ipcOutput,
-  cwd,
-  originalMessage,
-  shortMessage
-}) => omitUndefinedProperties({
-  shortMessage,
-  originalMessage,
-  command,
-  escapedCommand,
-  cwd,
-  durationMs: getDurationMs(startTime),
-  failed: true,
-  timedOut,
-  isCanceled,
-  isGracefullyCanceled,
-  isTerminated: signal !== void 0,
-  isMaxBuffer,
-  isForcefullyTerminated,
-  exitCode,
-  signal,
-  signalDescription,
-  code: error.cause?.code,
-  stdout: stdio[1],
-  stderr: stdio[2],
-  all: all3,
-  stdio,
-  ipcOutput,
-  pipedFrom: []
-});
-var omitUndefinedProperties = (result) => Object.fromEntries(Object.entries(result).filter(([, value]) => value !== void 0));
-var normalizeExitPayload = (rawExitCode, rawSignal) => {
-  const exitCode = rawExitCode === null ? void 0 : rawExitCode;
-  const signal = rawSignal === null ? void 0 : rawSignal;
-  const signalDescription = signal === void 0 ? void 0 : getSignalDescription(rawSignal);
-  return { exitCode, signal, signalDescription };
-};
-
-// node_modules/parse-ms/index.js
-var toZeroIfInfinity = (value) => Number.isFinite(value) ? value : 0;
-function parseNumber(milliseconds) {
-  return {
-    days: Math.trunc(milliseconds / 864e5),
-    hours: Math.trunc(milliseconds / 36e5 % 24),
-    minutes: Math.trunc(milliseconds / 6e4 % 60),
-    seconds: Math.trunc(milliseconds / 1e3 % 60),
-    milliseconds: Math.trunc(milliseconds % 1e3),
-    microseconds: Math.trunc(toZeroIfInfinity(milliseconds * 1e3) % 1e3),
-    nanoseconds: Math.trunc(toZeroIfInfinity(milliseconds * 1e6) % 1e3)
-  };
-}
-function parseBigint(milliseconds) {
-  return {
-    days: milliseconds / 86400000n,
-    hours: milliseconds / 3600000n % 24n,
-    minutes: milliseconds / 60000n % 60n,
-    seconds: milliseconds / 1000n % 60n,
-    milliseconds: milliseconds % 1000n,
-    microseconds: 0n,
-    nanoseconds: 0n
-  };
-}
-function parseMilliseconds(milliseconds) {
-  switch (typeof milliseconds) {
-    case "number": {
-      if (Number.isFinite(milliseconds)) {
-        return parseNumber(milliseconds);
-      }
-      break;
-    }
-    case "bigint": {
-      return parseBigint(milliseconds);
-    }
-  }
-  throw new TypeError("Expected a finite number or bigint");
-}
-
-// node_modules/pretty-ms/index.js
-var isZero = (value) => value === 0 || value === 0n;
-var pluralize = (word, count2) => count2 === 1 || count2 === 1n ? word : `${word}s`;
-var SECOND_ROUNDING_EPSILON = 1e-7;
-var ONE_DAY_IN_MILLISECONDS = 24n * 60n * 60n * 1000n;
-function prettyMilliseconds(milliseconds, options) {
-  const isBigInt = typeof milliseconds === "bigint";
-  if (!isBigInt && !Number.isFinite(milliseconds)) {
-    throw new TypeError("Expected a finite number or bigint");
-  }
-  options = { ...options };
-  const sign = milliseconds < 0 ? "-" : "";
-  milliseconds = milliseconds < 0 ? -milliseconds : milliseconds;
-  if (options.colonNotation) {
-    options.compact = false;
-    options.formatSubMilliseconds = false;
-    options.separateMilliseconds = false;
-    options.verbose = false;
-  }
-  if (options.compact) {
-    options.unitCount = 1;
-    options.secondsDecimalDigits = 0;
-    options.millisecondsDecimalDigits = 0;
-  }
-  let result = [];
-  const floorDecimals = (value, decimalDigits) => {
-    const flooredInterimValue = Math.floor(value * 10 ** decimalDigits + SECOND_ROUNDING_EPSILON);
-    const flooredValue = Math.round(flooredInterimValue) / 10 ** decimalDigits;
-    return flooredValue.toFixed(decimalDigits);
-  };
-  const add2 = (value, long, short, valueString) => {
-    if ((result.length === 0 || !options.colonNotation) && isZero(value) && !(options.colonNotation && short === "m")) {
-      return;
-    }
-    valueString ??= String(value);
-    if (options.colonNotation) {
-      const wholeDigits = valueString.includes(".") ? valueString.split(".")[0].length : valueString.length;
-      const minLength = result.length > 0 ? 2 : 1;
-      valueString = "0".repeat(Math.max(0, minLength - wholeDigits)) + valueString;
-    } else {
-      valueString += options.verbose ? " " + pluralize(long, value) : short;
-    }
-    result.push(valueString);
-  };
-  const parsed = parseMilliseconds(milliseconds);
-  const days = BigInt(parsed.days);
-  if (options.hideYearAndDays) {
-    add2(BigInt(days) * 24n + BigInt(parsed.hours), "hour", "h");
-  } else {
-    if (options.hideYear) {
-      add2(days, "day", "d");
-    } else {
-      add2(days / 365n, "year", "y");
-      add2(days % 365n, "day", "d");
-    }
-    add2(Number(parsed.hours), "hour", "h");
-  }
-  add2(Number(parsed.minutes), "minute", "m");
-  if (!options.hideSeconds) {
-    if (options.separateMilliseconds || options.formatSubMilliseconds || !options.colonNotation && milliseconds < 1e3 && !options.subSecondsAsDecimals) {
-      const seconds = Number(parsed.seconds);
-      const milliseconds2 = Number(parsed.milliseconds);
-      const microseconds = Number(parsed.microseconds);
-      const nanoseconds = Number(parsed.nanoseconds);
-      add2(seconds, "second", "s");
-      if (options.formatSubMilliseconds) {
-        add2(milliseconds2, "millisecond", "ms");
-        add2(microseconds, "microsecond", "\xB5s");
-        add2(nanoseconds, "nanosecond", "ns");
-      } else {
-        const millisecondsAndBelow = milliseconds2 + microseconds / 1e3 + nanoseconds / 1e6;
-        const millisecondsDecimalDigits = typeof options.millisecondsDecimalDigits === "number" ? options.millisecondsDecimalDigits : 0;
-        const roundedMilliseconds = millisecondsAndBelow >= 1 ? Math.round(millisecondsAndBelow) : Math.ceil(millisecondsAndBelow);
-        const millisecondsString = millisecondsDecimalDigits ? millisecondsAndBelow.toFixed(millisecondsDecimalDigits) : roundedMilliseconds;
-        add2(
-          Number.parseFloat(millisecondsString),
-          "millisecond",
-          "ms",
-          millisecondsString
-        );
-      }
-    } else {
-      const seconds = (isBigInt ? Number(milliseconds % ONE_DAY_IN_MILLISECONDS) : milliseconds) / 1e3 % 60;
-      const secondsDecimalDigits = typeof options.secondsDecimalDigits === "number" ? options.secondsDecimalDigits : 1;
-      const secondsFixed = floorDecimals(seconds, secondsDecimalDigits);
-      const secondsString = options.keepDecimalsOnWholeSeconds ? secondsFixed : secondsFixed.replace(/\.0+$/, "");
-      add2(Number.parseFloat(secondsString), "second", "s", secondsString);
-    }
-  }
-  if (result.length === 0) {
-    return sign + "0" + (options.verbose ? " milliseconds" : "ms");
-  }
-  const separator = options.colonNotation ? ":" : " ";
-  if (typeof options.unitCount === "number") {
-    result = result.slice(0, Math.max(options.unitCount, 1));
-  }
-  return sign + result.join(separator);
-}
-
-// node_modules/execa/lib/verbose/error.js
-var logError = (result, verboseInfo) => {
-  if (result.failed) {
-    verboseLog({
-      type: "error",
-      verboseMessage: result.shortMessage,
-      verboseInfo,
-      result
-    });
-  }
-};
-
-// node_modules/execa/lib/verbose/complete.js
-var logResult = (result, verboseInfo) => {
-  if (!isVerbose(verboseInfo)) {
-    return;
-  }
-  logError(result, verboseInfo);
-  logDuration(result, verboseInfo);
-};
-var logDuration = (result, verboseInfo) => {
-  const verboseMessage = `(done in ${prettyMilliseconds(result.durationMs)})`;
-  verboseLog({
-    type: "duration",
-    verboseMessage,
-    verboseInfo,
-    result
-  });
-};
-
-// node_modules/execa/lib/return/reject.js
-var handleResult = (result, verboseInfo, { reject }) => {
-  logResult(result, verboseInfo);
-  if (result.failed && reject) {
-    throw result;
-  }
-  return result;
-};
-
-// node_modules/execa/lib/stdio/handle-sync.js
-var import_node_fs3 = require("node:fs");
-
-// node_modules/execa/lib/stdio/type.js
-var getStdioItemType = (value, optionName) => {
-  if (isAsyncGenerator(value)) {
-    return "asyncGenerator";
-  }
-  if (isSyncGenerator(value)) {
-    return "generator";
-  }
-  if (isUrl(value)) {
-    return "fileUrl";
-  }
-  if (isFilePathObject(value)) {
-    return "filePath";
-  }
-  if (isWebStream(value)) {
-    return "webStream";
-  }
-  if (isStream2(value, { checkOpen: false })) {
-    return "native";
-  }
-  if (isUint8Array(value)) {
-    return "uint8Array";
-  }
-  if (isAsyncIterableObject(value)) {
-    return "asyncIterable";
-  }
-  if (isIterableObject(value)) {
-    return "iterable";
-  }
-  if (isTransformStream(value)) {
-    return getTransformStreamType({ transform: value }, optionName);
-  }
-  if (isTransformOptions(value)) {
-    return getTransformObjectType(value, optionName);
-  }
-  return "native";
-};
-var getTransformObjectType = (value, optionName) => {
-  if (isDuplexStream(value.transform, { checkOpen: false })) {
-    return getDuplexType(value, optionName);
-  }
-  if (isTransformStream(value.transform)) {
-    return getTransformStreamType(value, optionName);
-  }
-  return getGeneratorObjectType(value, optionName);
-};
-var getDuplexType = (value, optionName) => {
-  validateNonGeneratorType(value, optionName, "Duplex stream");
-  return "duplex";
-};
-var getTransformStreamType = (value, optionName) => {
-  validateNonGeneratorType(value, optionName, "web TransformStream");
-  return "webTransform";
-};
-var validateNonGeneratorType = ({ final, binary, objectMode }, optionName, typeName) => {
-  checkUndefinedOption(final, `${optionName}.final`, typeName);
-  checkUndefinedOption(binary, `${optionName}.binary`, typeName);
-  checkBooleanOption(objectMode, `${optionName}.objectMode`);
-};
-var checkUndefinedOption = (value, optionName, typeName) => {
-  if (value !== void 0) {
-    throw new TypeError(`The \`${optionName}\` option can only be defined when using a generator, not a ${typeName}.`);
-  }
-};
-var getGeneratorObjectType = ({ transform, final, binary, objectMode }, optionName) => {
-  if (transform !== void 0 && !isGenerator(transform)) {
-    throw new TypeError(`The \`${optionName}.transform\` option must be a generator, a Duplex stream or a web TransformStream.`);
-  }
-  if (isDuplexStream(final, { checkOpen: false })) {
-    throw new TypeError(`The \`${optionName}.final\` option must not be a Duplex stream.`);
-  }
-  if (isTransformStream(final)) {
-    throw new TypeError(`The \`${optionName}.final\` option must not be a web TransformStream.`);
-  }
-  if (final !== void 0 && !isGenerator(final)) {
-    throw new TypeError(`The \`${optionName}.final\` option must be a generator.`);
-  }
-  checkBooleanOption(binary, `${optionName}.binary`);
-  checkBooleanOption(objectMode, `${optionName}.objectMode`);
-  return isAsyncGenerator(transform) || isAsyncGenerator(final) ? "asyncGenerator" : "generator";
-};
-var checkBooleanOption = (value, optionName) => {
-  if (value !== void 0 && typeof value !== "boolean") {
-    throw new TypeError(`The \`${optionName}\` option must use a boolean.`);
-  }
-};
-var isGenerator = (value) => isAsyncGenerator(value) || isSyncGenerator(value);
-var isAsyncGenerator = (value) => Object.prototype.toString.call(value) === "[object AsyncGeneratorFunction]";
-var isSyncGenerator = (value) => Object.prototype.toString.call(value) === "[object GeneratorFunction]";
-var isTransformOptions = (value) => isPlainObject(value) && (value.transform !== void 0 || value.final !== void 0);
-var isUrl = (value) => Object.prototype.toString.call(value) === "[object URL]";
-var isRegularUrl = (value) => isUrl(value) && value.protocol !== "file:";
-var isFilePathObject = (value) => isPlainObject(value) && Object.keys(value).length > 0 && Object.keys(value).every((key) => FILE_PATH_KEYS.has(key)) && isFilePathString(value.file);
-var FILE_PATH_KEYS = /* @__PURE__ */ new Set(["file", "append"]);
-var isFilePathString = (file) => typeof file === "string";
-var isUnknownStdioString = (type, value) => type === "native" && typeof value === "string" && !KNOWN_STDIO_STRINGS.has(value);
-var KNOWN_STDIO_STRINGS = /* @__PURE__ */ new Set(["ipc", "ignore", "inherit", "overlapped", "pipe"]);
-var isReadableStream2 = (value) => Object.prototype.toString.call(value) === "[object ReadableStream]";
-var isWritableStream2 = (value) => Object.prototype.toString.call(value) === "[object WritableStream]";
-var isWebStream = (value) => isReadableStream2(value) || isWritableStream2(value);
-var isTransformStream = (value) => isReadableStream2(value?.readable) && isWritableStream2(value?.writable);
-var isAsyncIterableObject = (value) => isObject2(value) && typeof value[Symbol.asyncIterator] === "function";
-var isIterableObject = (value) => isObject2(value) && typeof value[Symbol.iterator] === "function";
-var isObject2 = (value) => typeof value === "object" && value !== null;
-var TRANSFORM_TYPES = /* @__PURE__ */ new Set(["generator", "asyncGenerator", "duplex", "webTransform"]);
-var FILE_TYPES = /* @__PURE__ */ new Set(["fileUrl", "filePath", "fileNumber"]);
-var SPECIAL_DUPLICATE_TYPES_SYNC = /* @__PURE__ */ new Set(["fileUrl", "filePath"]);
-var SPECIAL_DUPLICATE_TYPES = /* @__PURE__ */ new Set([...SPECIAL_DUPLICATE_TYPES_SYNC, "webStream", "nodeStream"]);
-var FORBID_DUPLICATE_TYPES = /* @__PURE__ */ new Set(["webTransform", "duplex"]);
-var TYPE_TO_MESSAGE = {
-  generator: "a generator",
-  asyncGenerator: "an async generator",
-  fileUrl: "a file URL",
-  filePath: "a file path string",
-  fileNumber: "a file descriptor number",
-  webStream: "a web stream",
-  nodeStream: "a Node.js stream",
-  webTransform: "a web TransformStream",
-  duplex: "a Duplex stream",
-  native: "any value",
-  iterable: "an iterable",
-  asyncIterable: "an async iterable",
-  string: "a string",
-  uint8Array: "a Uint8Array"
-};
-
-// node_modules/execa/lib/transform/object-mode.js
-var getTransformObjectModes = (objectMode, index, newTransforms, direction) => direction === "output" ? getOutputObjectModes(objectMode, index, newTransforms) : getInputObjectModes(objectMode, index, newTransforms);
-var getOutputObjectModes = (objectMode, index, newTransforms) => {
-  const writableObjectMode = index !== 0 && newTransforms[index - 1].value.readableObjectMode;
-  const readableObjectMode = objectMode ?? writableObjectMode;
-  return { writableObjectMode, readableObjectMode };
-};
-var getInputObjectModes = (objectMode, index, newTransforms) => {
-  const writableObjectMode = index === 0 ? objectMode === true : newTransforms[index - 1].value.readableObjectMode;
-  const readableObjectMode = index !== newTransforms.length - 1 && (objectMode ?? writableObjectMode);
-  return { writableObjectMode, readableObjectMode };
-};
-var getFdObjectMode = (stdioItems, direction) => {
-  const lastTransform = stdioItems.findLast(({ type }) => TRANSFORM_TYPES.has(type));
-  if (lastTransform === void 0) {
-    return false;
-  }
-  return direction === "input" ? lastTransform.value.writableObjectMode : lastTransform.value.readableObjectMode;
-};
-
-// node_modules/execa/lib/transform/normalize.js
-var normalizeTransforms = (stdioItems, optionName, direction, options) => [
-  ...stdioItems.filter(({ type }) => !TRANSFORM_TYPES.has(type)),
-  ...getTransforms(stdioItems, optionName, direction, options)
-];
-var getTransforms = (stdioItems, optionName, direction, { encoding }) => {
-  const transforms = stdioItems.filter(({ type }) => TRANSFORM_TYPES.has(type));
-  const newTransforms = Array.from({ length: transforms.length });
-  for (const [index, stdioItem] of Object.entries(transforms)) {
-    newTransforms[index] = normalizeTransform({
-      stdioItem,
-      index: Number(index),
-      newTransforms,
-      optionName,
-      direction,
-      encoding
-    });
-  }
-  return sortTransforms(newTransforms, direction);
-};
-var normalizeTransform = ({ stdioItem, stdioItem: { type }, index, newTransforms, optionName, direction, encoding }) => {
-  if (type === "duplex") {
-    return normalizeDuplex({ stdioItem, optionName });
-  }
-  if (type === "webTransform") {
-    return normalizeTransformStream({
-      stdioItem,
-      index,
-      newTransforms,
-      direction
-    });
-  }
-  return normalizeGenerator({
-    stdioItem,
-    index,
-    newTransforms,
-    direction,
-    encoding
-  });
-};
-var normalizeDuplex = ({
-  stdioItem,
-  stdioItem: {
-    value: {
-      transform,
-      transform: { writableObjectMode, readableObjectMode },
-      objectMode = readableObjectMode
-    }
-  },
-  optionName
-}) => {
-  if (objectMode && !readableObjectMode) {
-    throw new TypeError(`The \`${optionName}.objectMode\` option can only be \`true\` if \`new Duplex({objectMode: true})\` is used.`);
-  }
-  if (!objectMode && readableObjectMode) {
-    throw new TypeError(`The \`${optionName}.objectMode\` option cannot be \`false\` if \`new Duplex({objectMode: true})\` is used.`);
-  }
-  return {
-    ...stdioItem,
-    value: { transform, writableObjectMode, readableObjectMode }
-  };
-};
-var normalizeTransformStream = ({ stdioItem, stdioItem: { value }, index, newTransforms, direction }) => {
-  const { transform, objectMode } = isPlainObject(value) ? value : { transform: value };
-  const { writableObjectMode, readableObjectMode } = getTransformObjectModes(objectMode, index, newTransforms, direction);
-  return {
-    ...stdioItem,
-    value: { transform, writableObjectMode, readableObjectMode }
-  };
-};
-var normalizeGenerator = ({ stdioItem, stdioItem: { value }, index, newTransforms, direction, encoding }) => {
-  const {
-    transform,
-    final,
-    binary: binaryOption = false,
-    preserveNewlines = false,
-    objectMode
-  } = isPlainObject(value) ? value : { transform: value };
-  const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
-  const { writableObjectMode, readableObjectMode } = getTransformObjectModes(objectMode, index, newTransforms, direction);
-  return {
-    ...stdioItem,
-    value: {
-      transform,
-      final,
-      binary,
-      preserveNewlines,
-      writableObjectMode,
-      readableObjectMode
-    }
-  };
-};
-var sortTransforms = (newTransforms, direction) => direction === "input" ? newTransforms.reverse() : newTransforms;
-
-// node_modules/execa/lib/stdio/direction.js
-var import_node_process9 = __toESM(require("node:process"), 1);
-var getStreamDirection = (stdioItems, fdNumber, optionName) => {
-  const directions = stdioItems.map((stdioItem) => getStdioItemDirection(stdioItem, fdNumber));
-  if (directions.includes("input") && directions.includes("output")) {
-    throw new TypeError(`The \`${optionName}\` option must not be an array of both readable and writable values.`);
-  }
-  return directions.find(Boolean) ?? DEFAULT_DIRECTION;
-};
-var getStdioItemDirection = ({ type, value }, fdNumber) => KNOWN_DIRECTIONS[fdNumber] ?? guessStreamDirection[type](value);
-var KNOWN_DIRECTIONS = ["input", "output", "output"];
-var anyDirection = () => void 0;
-var alwaysInput = () => "input";
-var guessStreamDirection = {
-  generator: anyDirection,
-  asyncGenerator: anyDirection,
-  fileUrl: anyDirection,
-  filePath: anyDirection,
-  iterable: alwaysInput,
-  asyncIterable: alwaysInput,
-  uint8Array: alwaysInput,
-  webStream: (value) => isWritableStream2(value) ? "output" : "input",
-  nodeStream(value) {
-    if (!isReadableStream(value, { checkOpen: false })) {
-      return "output";
-    }
-    return isWritableStream(value, { checkOpen: false }) ? void 0 : "input";
-  },
-  webTransform: anyDirection,
-  duplex: anyDirection,
-  native(value) {
-    const standardStreamDirection = getStandardStreamDirection(value);
-    if (standardStreamDirection !== void 0) {
-      return standardStreamDirection;
-    }
-    if (isStream2(value, { checkOpen: false })) {
-      return guessStreamDirection.nodeStream(value);
-    }
-  }
-};
-var getStandardStreamDirection = (value) => {
-  if ([0, import_node_process9.default.stdin].includes(value)) {
-    return "input";
-  }
-  if ([1, 2, import_node_process9.default.stdout, import_node_process9.default.stderr].includes(value)) {
-    return "output";
-  }
-};
-var DEFAULT_DIRECTION = "output";
-
-// node_modules/execa/lib/ipc/array.js
-var normalizeIpcStdioArray = (stdioArray, ipc) => ipc && !stdioArray.includes("ipc") ? [...stdioArray, "ipc"] : stdioArray;
-
-// node_modules/execa/lib/stdio/stdio-option.js
-var normalizeStdioOption = ({ stdio, ipc, buffer, ...options }, verboseInfo, isSync) => {
-  const stdioArray = getStdioArray(stdio, options).map((stdioOption, fdNumber) => addDefaultValue2(stdioOption, fdNumber));
-  return isSync ? normalizeStdioSync(stdioArray, buffer, verboseInfo) : normalizeIpcStdioArray(stdioArray, ipc);
-};
-var getStdioArray = (stdio, options) => {
-  if (stdio === void 0) {
-    return STANDARD_STREAMS_ALIASES.map((alias) => options[alias]);
-  }
-  if (hasAlias(options)) {
-    throw new Error(`It's not possible to provide \`stdio\` in combination with one of ${STANDARD_STREAMS_ALIASES.map((alias) => `\`${alias}\``).join(", ")}`);
-  }
-  if (typeof stdio === "string") {
-    return [stdio, stdio, stdio];
-  }
-  if (!Array.isArray(stdio)) {
-    throw new TypeError(`Expected \`stdio\` to be of type \`string\` or \`Array\`, got \`${typeof stdio}\``);
-  }
-  const length = Math.max(stdio.length, STANDARD_STREAMS_ALIASES.length);
-  return Array.from({ length }, (_, fdNumber) => stdio[fdNumber]);
-};
-var hasAlias = (options) => STANDARD_STREAMS_ALIASES.some((alias) => options[alias] !== void 0);
-var addDefaultValue2 = (stdioOption, fdNumber) => {
-  if (Array.isArray(stdioOption)) {
-    return stdioOption.map((item) => addDefaultValue2(item, fdNumber));
-  }
-  if (stdioOption === null || stdioOption === void 0) {
-    return fdNumber >= STANDARD_STREAMS_ALIASES.length ? "ignore" : "pipe";
-  }
-  return stdioOption;
-};
-var normalizeStdioSync = (stdioArray, buffer, verboseInfo) => stdioArray.map((stdioOption, fdNumber) => !buffer[fdNumber] && fdNumber !== 0 && !isFullVerbose(verboseInfo, fdNumber) && isOutputPipeOnly(stdioOption) ? "ignore" : stdioOption);
-var isOutputPipeOnly = (stdioOption) => stdioOption === "pipe" || Array.isArray(stdioOption) && stdioOption.every((item) => item === "pipe");
-
-// node_modules/execa/lib/stdio/native.js
-var import_node_fs2 = require("node:fs");
-var import_node_tty2 = __toESM(require("node:tty"), 1);
-var handleNativeStream = ({ stdioItem, stdioItem: { type }, isStdioArray, fdNumber, direction, isSync }) => {
-  if (!isStdioArray || type !== "native") {
-    return stdioItem;
-  }
-  return isSync ? handleNativeStreamSync({ stdioItem, fdNumber, direction }) : handleNativeStreamAsync({ stdioItem, fdNumber });
-};
-var handleNativeStreamSync = ({ stdioItem, stdioItem: { value, optionName }, fdNumber, direction }) => {
-  const targetFd = getTargetFd({
-    value,
-    optionName,
-    fdNumber,
-    direction
-  });
-  if (targetFd !== void 0) {
-    return targetFd;
-  }
-  if (isStream2(value, { checkOpen: false })) {
-    throw new TypeError(`The \`${optionName}: Stream\` option cannot both be an array and include a stream with synchronous methods.`);
-  }
-  return stdioItem;
-};
-var getTargetFd = ({ value, optionName, fdNumber, direction }) => {
-  const targetFdNumber = getTargetFdNumber(value, fdNumber);
-  if (targetFdNumber === void 0) {
-    return;
-  }
-  if (direction === "output") {
-    return { type: "fileNumber", value: targetFdNumber, optionName };
-  }
-  if (import_node_tty2.default.isatty(targetFdNumber)) {
-    throw new TypeError(`The \`${optionName}: ${serializeOptionValue(value)}\` option is invalid: it cannot be a TTY with synchronous methods.`);
-  }
-  return { type: "uint8Array", value: bufferToUint8Array((0, import_node_fs2.readFileSync)(targetFdNumber)), optionName };
-};
-var getTargetFdNumber = (value, fdNumber) => {
-  if (value === "inherit") {
-    return fdNumber;
-  }
-  if (typeof value === "number") {
-    return value;
-  }
-  const standardStreamIndex = STANDARD_STREAMS.indexOf(value);
-  if (standardStreamIndex !== -1) {
-    return standardStreamIndex;
-  }
-};
-var handleNativeStreamAsync = ({ stdioItem, stdioItem: { value, optionName }, fdNumber }) => {
-  if (value === "inherit") {
-    return { type: "nodeStream", value: getStandardStream(fdNumber, value, optionName), optionName };
-  }
-  if (typeof value === "number") {
-    return { type: "nodeStream", value: getStandardStream(value, value, optionName), optionName };
-  }
-  if (isStream2(value, { checkOpen: false })) {
-    return { type: "nodeStream", value, optionName };
-  }
-  return stdioItem;
-};
-var getStandardStream = (fdNumber, value, optionName) => {
-  const standardStream = STANDARD_STREAMS[fdNumber];
-  if (standardStream === void 0) {
-    throw new TypeError(`The \`${optionName}: ${value}\` option is invalid: no such standard stream.`);
-  }
-  return standardStream;
-};
-
-// node_modules/execa/lib/stdio/input-option.js
-var handleInputOptions = ({ input, inputFile }, fdNumber) => fdNumber === 0 ? [
-  ...handleInputOption(input),
-  ...handleInputFileOption(inputFile)
-] : [];
-var handleInputOption = (input) => input === void 0 ? [] : [{
-  type: getInputType(input),
-  value: input,
-  optionName: "input"
-}];
-var getInputType = (input) => {
-  if (isReadableStream(input, { checkOpen: false })) {
-    return "nodeStream";
-  }
-  if (typeof input === "string") {
-    return "string";
-  }
-  if (isUint8Array(input)) {
-    return "uint8Array";
-  }
-  throw new Error("The `input` option must be a string, a Uint8Array or a Node.js Readable stream.");
-};
-var handleInputFileOption = (inputFile) => inputFile === void 0 ? [] : [{
-  ...getInputFileType(inputFile),
-  optionName: "inputFile"
-}];
-var getInputFileType = (inputFile) => {
-  if (isUrl(inputFile)) {
-    return { type: "fileUrl", value: inputFile };
-  }
-  if (isFilePathString(inputFile)) {
-    return { type: "filePath", value: { file: inputFile } };
-  }
-  throw new Error("The `inputFile` option must be a file path string or a file URL.");
-};
-
-// node_modules/execa/lib/stdio/duplicate.js
-var filterDuplicates = (stdioItems) => stdioItems.filter((stdioItemOne, indexOne) => stdioItems.every((stdioItemTwo, indexTwo) => stdioItemOne.value !== stdioItemTwo.value || indexOne >= indexTwo || stdioItemOne.type === "generator" || stdioItemOne.type === "asyncGenerator"));
-var getDuplicateStream = ({ stdioItem: { type, value, optionName }, direction, fileDescriptors, isSync }) => {
-  const otherStdioItems = getOtherStdioItems(fileDescriptors, type);
-  if (otherStdioItems.length === 0) {
-    return;
-  }
-  if (isSync) {
-    validateDuplicateStreamSync({
-      otherStdioItems,
-      type,
-      value,
-      optionName,
-      direction
-    });
-    return;
-  }
-  if (SPECIAL_DUPLICATE_TYPES.has(type)) {
-    return getDuplicateStreamInstance({
-      otherStdioItems,
-      type,
-      value,
-      optionName,
-      direction
-    });
-  }
-  if (FORBID_DUPLICATE_TYPES.has(type)) {
-    validateDuplicateTransform({
-      otherStdioItems,
-      type,
-      value,
-      optionName
-    });
-  }
-};
-var getOtherStdioItems = (fileDescriptors, type) => fileDescriptors.flatMap(({ direction, stdioItems }) => stdioItems.filter((stdioItem) => stdioItem.type === type).map(((stdioItem) => ({ ...stdioItem, direction }))));
-var validateDuplicateStreamSync = ({ otherStdioItems, type, value, optionName, direction }) => {
-  if (SPECIAL_DUPLICATE_TYPES_SYNC.has(type)) {
-    getDuplicateStreamInstance({
-      otherStdioItems,
-      type,
-      value,
-      optionName,
-      direction
-    });
-  }
-};
-var getDuplicateStreamInstance = ({ otherStdioItems, type, value, optionName, direction }) => {
-  const duplicateStdioItems = otherStdioItems.filter((stdioItem) => hasSameValue(stdioItem, value));
-  if (duplicateStdioItems.length === 0) {
-    return;
-  }
-  const differentStdioItem = duplicateStdioItems.find((stdioItem) => stdioItem.direction !== direction);
-  throwOnDuplicateStream(differentStdioItem, optionName, type);
-  return direction === "output" ? duplicateStdioItems[0].stream : void 0;
-};
-var hasSameValue = ({ type, value }, secondValue) => {
-  if (type === "filePath") {
-    return value.file === secondValue.file;
-  }
-  if (type === "fileUrl") {
-    return value.href === secondValue.href;
-  }
-  return value === secondValue;
-};
-var validateDuplicateTransform = ({ otherStdioItems, type, value, optionName }) => {
-  const duplicateStdioItem = otherStdioItems.find(({ value: { transform } }) => transform === value.transform);
-  throwOnDuplicateStream(duplicateStdioItem, optionName, type);
-};
-var throwOnDuplicateStream = (stdioItem, optionName, type) => {
-  if (stdioItem !== void 0) {
-    throw new TypeError(`The \`${stdioItem.optionName}\` and \`${optionName}\` options must not target ${TYPE_TO_MESSAGE[type]} that is the same.`);
-  }
-};
-
-// node_modules/execa/lib/stdio/handle.js
-var handleStdio = (addProperties3, options, verboseInfo, isSync) => {
-  const stdio = normalizeStdioOption(options, verboseInfo, isSync);
-  const initialFileDescriptors = stdio.map((stdioOption, fdNumber) => getFileDescriptor({
-    stdioOption,
-    fdNumber,
-    options,
-    isSync
-  }));
-  const fileDescriptors = getFinalFileDescriptors({
-    initialFileDescriptors,
-    addProperties: addProperties3,
-    options,
-    isSync
-  });
-  options.stdio = fileDescriptors.map(({ stdioItems }) => forwardStdio(stdioItems));
-  return fileDescriptors;
-};
-var getFileDescriptor = ({ stdioOption, fdNumber, options, isSync }) => {
-  const optionName = getStreamName(fdNumber);
-  const { stdioItems: initialStdioItems, isStdioArray } = initializeStdioItems({
-    stdioOption,
-    fdNumber,
-    options,
-    optionName
-  });
-  const direction = getStreamDirection(initialStdioItems, fdNumber, optionName);
-  const stdioItems = initialStdioItems.map((stdioItem) => handleNativeStream({
-    stdioItem,
-    isStdioArray,
-    fdNumber,
-    direction,
-    isSync
-  }));
-  const normalizedStdioItems = normalizeTransforms(stdioItems, optionName, direction, options);
-  const objectMode = getFdObjectMode(normalizedStdioItems, direction);
-  validateFileObjectMode(normalizedStdioItems, objectMode);
-  return { direction, objectMode, stdioItems: normalizedStdioItems };
-};
-var initializeStdioItems = ({ stdioOption, fdNumber, options, optionName }) => {
-  const values = Array.isArray(stdioOption) ? stdioOption : [stdioOption];
-  const initialStdioItems = [
-    ...values.map((value) => initializeStdioItem(value, optionName)),
-    ...handleInputOptions(options, fdNumber)
-  ];
-  const stdioItems = filterDuplicates(initialStdioItems);
-  const isStdioArray = stdioItems.length > 1;
-  validateStdioArray(stdioItems, isStdioArray, optionName);
-  validateStreams(stdioItems);
-  return { stdioItems, isStdioArray };
-};
-var initializeStdioItem = (value, optionName) => ({
-  type: getStdioItemType(value, optionName),
-  value,
-  optionName
-});
-var validateStdioArray = (stdioItems, isStdioArray, optionName) => {
-  if (stdioItems.length === 0) {
-    throw new TypeError(`The \`${optionName}\` option must not be an empty array.`);
-  }
-  if (!isStdioArray) {
-    return;
-  }
-  for (const { value, optionName: optionName2 } of stdioItems) {
-    if (INVALID_STDIO_ARRAY_OPTIONS.has(value)) {
-      throw new Error(`The \`${optionName2}\` option must not include \`${value}\`.`);
-    }
-  }
-};
-var INVALID_STDIO_ARRAY_OPTIONS = /* @__PURE__ */ new Set(["ignore", "ipc"]);
-var validateStreams = (stdioItems) => {
-  for (const stdioItem of stdioItems) {
-    validateFileStdio(stdioItem);
-  }
-};
-var validateFileStdio = ({ type, value, optionName }) => {
-  if (isRegularUrl(value)) {
-    throw new TypeError(`The \`${optionName}: URL\` option must use the \`file:\` scheme.
-For example, you can use the \`pathToFileURL()\` method of the \`url\` core module.`);
-  }
-  if (isUnknownStdioString(type, value)) {
-    throw new TypeError(`The \`${optionName}: { file: '...' }\` option must be used instead of \`${optionName}: '...'\`.`);
-  }
-};
-var validateFileObjectMode = (stdioItems, objectMode) => {
-  if (!objectMode) {
-    return;
-  }
-  const fileStdioItem = stdioItems.find(({ type }) => FILE_TYPES.has(type));
-  if (fileStdioItem !== void 0) {
-    throw new TypeError(`The \`${fileStdioItem.optionName}\` option cannot use both files and transforms in objectMode.`);
-  }
-};
-var getFinalFileDescriptors = ({ initialFileDescriptors, addProperties: addProperties3, options, isSync }) => {
-  const fileDescriptors = [];
-  try {
-    for (const fileDescriptor of initialFileDescriptors) {
-      fileDescriptors.push(getFinalFileDescriptor({
-        fileDescriptor,
-        fileDescriptors,
-        addProperties: addProperties3,
-        options,
-        isSync
-      }));
-    }
-    return fileDescriptors;
-  } catch (error) {
-    cleanupCustomStreams(fileDescriptors);
-    throw error;
-  }
-};
-var getFinalFileDescriptor = ({
-  fileDescriptor: { direction, objectMode, stdioItems },
-  fileDescriptors,
-  addProperties: addProperties3,
-  options,
-  isSync
-}) => {
-  const finalStdioItems = stdioItems.map((stdioItem) => addStreamProperties({
-    stdioItem,
-    addProperties: addProperties3,
-    direction,
-    options,
-    fileDescriptors,
-    isSync
-  }));
-  return { direction, objectMode, stdioItems: finalStdioItems };
-};
-var addStreamProperties = ({ stdioItem, addProperties: addProperties3, direction, options, fileDescriptors, isSync }) => {
-  const duplicateStream = getDuplicateStream({
-    stdioItem,
-    direction,
-    fileDescriptors,
-    isSync
-  });
-  if (duplicateStream !== void 0) {
-    return { ...stdioItem, stream: duplicateStream };
-  }
-  return {
-    ...stdioItem,
-    ...addProperties3[direction][stdioItem.type](stdioItem, options)
-  };
-};
-var cleanupCustomStreams = (fileDescriptors) => {
-  for (const { stdioItems } of fileDescriptors) {
-    for (const { stream: stream5 } of stdioItems) {
-      if (stream5 !== void 0 && !isStandardStream(stream5)) {
-        stream5.destroy();
-      }
-    }
-  }
-};
-var forwardStdio = (stdioItems) => {
-  if (stdioItems.length > 1) {
-    return stdioItems.some(({ value: value2 }) => value2 === "overlapped") ? "overlapped" : "pipe";
-  }
-  const [{ type, value }] = stdioItems;
-  return type === "native" ? value : "pipe";
-};
-
-// node_modules/execa/lib/stdio/handle-sync.js
-var handleStdioSync = (options, verboseInfo) => handleStdio(addPropertiesSync, options, verboseInfo, true);
-var forbiddenIfSync = ({ type, optionName }) => {
-  throwInvalidSyncValue(optionName, TYPE_TO_MESSAGE[type]);
-};
-var forbiddenNativeIfSync = ({ optionName, value }) => {
-  if (value === "ipc" || value === "overlapped") {
-    throwInvalidSyncValue(optionName, `"${value}"`);
-  }
-  return {};
-};
-var throwInvalidSyncValue = (optionName, value) => {
-  throw new TypeError(`The \`${optionName}\` option cannot be ${value} with synchronous methods.`);
-};
-var addProperties = {
-  generator() {
-  },
-  asyncGenerator: forbiddenIfSync,
-  webStream: forbiddenIfSync,
-  nodeStream: forbiddenIfSync,
-  webTransform: forbiddenIfSync,
-  duplex: forbiddenIfSync,
-  asyncIterable: forbiddenIfSync,
-  native: forbiddenNativeIfSync
-};
-var addPropertiesSync = {
-  input: {
-    ...addProperties,
-    fileUrl: ({ value }) => ({ contents: [bufferToUint8Array((0, import_node_fs3.readFileSync)(value))] }),
-    filePath: ({ value: { file } }) => ({ contents: [bufferToUint8Array((0, import_node_fs3.readFileSync)(file))] }),
-    fileNumber: forbiddenIfSync,
-    iterable: ({ value }) => ({ contents: [...value] }),
-    string: ({ value }) => ({ contents: [value] }),
-    uint8Array: ({ value }) => ({ contents: [value] })
-  },
-  output: {
-    ...addProperties,
-    fileUrl: ({ value }) => ({ path: value }),
-    filePath: ({ value: { file, append: append2 } }) => ({ path: file, append: append2 }),
-    fileNumber: ({ value }) => ({ path: value }),
-    iterable: forbiddenIfSync,
-    string: forbiddenIfSync,
-    uint8Array: forbiddenIfSync
-  }
-};
-
-// node_modules/execa/lib/io/strip-newline.js
-var stripNewline = (value, { stripFinalNewline: stripFinalNewline2 }, fdNumber) => getStripFinalNewline(stripFinalNewline2, fdNumber) && value !== void 0 && !Array.isArray(value) ? stripFinalNewline(value) : value;
-var getStripFinalNewline = (stripFinalNewline2, fdNumber) => fdNumber === "all" ? stripFinalNewline2[1] || stripFinalNewline2[2] : stripFinalNewline2[fdNumber];
-
-// node_modules/execa/lib/transform/generator.js
-var import_node_stream2 = require("node:stream");
-
-// node_modules/execa/lib/transform/split.js
-var getSplitLinesGenerator = (binary, preserveNewlines, skipped, state) => binary || skipped ? void 0 : initializeSplitLines(preserveNewlines, state);
-var splitLinesSync = (chunk, preserveNewlines, objectMode) => objectMode ? chunk.flatMap((item) => splitLinesItemSync(item, preserveNewlines)) : splitLinesItemSync(chunk, preserveNewlines);
-var splitLinesItemSync = (chunk, preserveNewlines) => {
-  const { transform, final } = initializeSplitLines(preserveNewlines, {});
-  return [...transform(chunk), ...final()];
-};
-var initializeSplitLines = (preserveNewlines, state) => {
-  state.previousChunks = "";
-  return {
-    transform: splitGenerator.bind(void 0, state, preserveNewlines),
-    final: linesFinal.bind(void 0, state)
-  };
-};
-var splitGenerator = function* (state, preserveNewlines, chunk) {
-  if (typeof chunk !== "string") {
-    yield chunk;
-    return;
-  }
-  let { previousChunks } = state;
-  let start = -1;
-  for (let end = 0; end < chunk.length; end += 1) {
-    if (chunk[end] === "\n") {
-      const newlineLength = getNewlineLength(chunk, end, preserveNewlines, state);
-      let line = chunk.slice(start + 1, end + 1 - newlineLength);
-      if (previousChunks.length > 0) {
-        line = concatString(previousChunks, line);
-        previousChunks = "";
-      }
-      yield line;
-      start = end;
-    }
-  }
-  if (start !== chunk.length - 1) {
-    previousChunks = concatString(previousChunks, chunk.slice(start + 1));
-  }
-  state.previousChunks = previousChunks;
-};
-var getNewlineLength = (chunk, end, preserveNewlines, state) => {
-  if (preserveNewlines) {
-    return 0;
-  }
-  state.isWindowsNewline = end !== 0 && chunk[end - 1] === "\r";
-  return state.isWindowsNewline ? 2 : 1;
-};
-var linesFinal = function* ({ previousChunks }) {
-  if (previousChunks.length > 0) {
-    yield previousChunks;
-  }
-};
-var getAppendNewlineGenerator = ({ binary, preserveNewlines, readableObjectMode, state }) => binary || preserveNewlines || readableObjectMode ? void 0 : { transform: appendNewlineGenerator.bind(void 0, state) };
-var appendNewlineGenerator = function* ({ isWindowsNewline = false }, chunk) {
-  const { unixNewline, windowsNewline, LF: LF2, concatBytes } = typeof chunk === "string" ? linesStringInfo : linesUint8ArrayInfo;
-  if (chunk.at(-1) === LF2) {
-    yield chunk;
-    return;
-  }
-  const newline2 = isWindowsNewline ? windowsNewline : unixNewline;
-  yield concatBytes(chunk, newline2);
-};
-var concatString = (firstChunk, secondChunk) => `${firstChunk}${secondChunk}`;
-var linesStringInfo = {
-  windowsNewline: "\r\n",
-  unixNewline: "\n",
-  LF: "\n",
-  concatBytes: concatString
-};
-var concatUint8Array = (firstChunk, secondChunk) => {
-  const chunk = new Uint8Array(firstChunk.length + secondChunk.length);
-  chunk.set(firstChunk, 0);
-  chunk.set(secondChunk, firstChunk.length);
-  return chunk;
-};
-var linesUint8ArrayInfo = {
-  windowsNewline: new Uint8Array([13, 10]),
-  unixNewline: new Uint8Array([10]),
-  LF: 10,
-  concatBytes: concatUint8Array
-};
-
-// node_modules/execa/lib/transform/validate.js
-var import_node_buffer = require("node:buffer");
-var getValidateTransformInput = (writableObjectMode, optionName) => writableObjectMode ? void 0 : validateStringTransformInput.bind(void 0, optionName);
-var validateStringTransformInput = function* (optionName, chunk) {
-  if (typeof chunk !== "string" && !isUint8Array(chunk) && !import_node_buffer.Buffer.isBuffer(chunk)) {
-    throw new TypeError(`The \`${optionName}\` option's transform must use "objectMode: true" to receive as input: ${typeof chunk}.`);
-  }
-  yield chunk;
-};
-var getValidateTransformReturn = (readableObjectMode, optionName) => readableObjectMode ? validateObjectTransformReturn.bind(void 0, optionName) : validateStringTransformReturn.bind(void 0, optionName);
-var validateObjectTransformReturn = function* (optionName, chunk) {
-  validateEmptyReturn(optionName, chunk);
-  yield chunk;
-};
-var validateStringTransformReturn = function* (optionName, chunk) {
-  validateEmptyReturn(optionName, chunk);
-  if (typeof chunk !== "string" && !isUint8Array(chunk)) {
-    throw new TypeError(`The \`${optionName}\` option's function must yield a string or an Uint8Array, not ${typeof chunk}.`);
-  }
-  yield chunk;
-};
-var validateEmptyReturn = (optionName, chunk) => {
-  if (chunk === null || chunk === void 0) {
-    throw new TypeError(`The \`${optionName}\` option's function must not call \`yield ${chunk}\`.
-Instead, \`yield\` should either be called with a value, or not be called at all. For example:
-  if (condition) { yield value; }`);
-  }
-};
-
-// node_modules/execa/lib/transform/encoding-transform.js
-var import_node_buffer2 = require("node:buffer");
-var import_node_string_decoder3 = require("node:string_decoder");
-var getEncodingTransformGenerator = (binary, encoding, skipped) => {
-  if (skipped) {
-    return;
-  }
-  if (binary) {
-    return { transform: encodingUint8ArrayGenerator.bind(void 0, new TextEncoder()) };
-  }
-  const stringDecoder = new import_node_string_decoder3.StringDecoder(encoding);
-  return {
-    transform: encodingStringGenerator.bind(void 0, stringDecoder),
-    final: encodingStringFinal.bind(void 0, stringDecoder)
-  };
-};
-var encodingUint8ArrayGenerator = function* (textEncoder4, chunk) {
-  if (import_node_buffer2.Buffer.isBuffer(chunk)) {
-    yield bufferToUint8Array(chunk);
-  } else if (typeof chunk === "string") {
-    yield textEncoder4.encode(chunk);
-  } else {
-    yield chunk;
-  }
-};
-var encodingStringGenerator = function* (stringDecoder, chunk) {
-  yield isUint8Array(chunk) ? stringDecoder.write(chunk) : chunk;
-};
-var encodingStringFinal = function* (stringDecoder) {
-  const lastChunk = stringDecoder.end();
-  if (lastChunk !== "") {
-    yield lastChunk;
-  }
-};
-
-// node_modules/execa/lib/transform/run-async.js
-var import_node_util7 = require("node:util");
-var pushChunks = (0, import_node_util7.callbackify)(async (getChunks, state, getChunksArguments, transformStream) => {
-  state.currentIterable = getChunks(...getChunksArguments);
-  try {
-    for await (const chunk of state.currentIterable) {
-      transformStream.push(chunk);
-    }
-  } finally {
-    delete state.currentIterable;
-  }
-});
-var transformChunk = async function* (chunk, generators, index) {
-  if (index === generators.length) {
-    yield chunk;
-    return;
-  }
-  const { transform = identityGenerator } = generators[index];
-  for await (const transformedChunk of transform(chunk)) {
-    yield* transformChunk(transformedChunk, generators, index + 1);
-  }
-};
-var finalChunks = async function* (generators) {
-  for (const [index, { final }] of Object.entries(generators)) {
-    yield* generatorFinalChunks(final, Number(index), generators);
-  }
-};
-var generatorFinalChunks = async function* (final, index, generators) {
-  if (final === void 0) {
-    return;
-  }
-  for await (const finalChunk of final()) {
-    yield* transformChunk(finalChunk, generators, index + 1);
-  }
-};
-var destroyTransform = (0, import_node_util7.callbackify)(async ({ currentIterable }, error) => {
-  if (currentIterable !== void 0) {
-    await (error ? currentIterable.throw(error) : currentIterable.return());
-    return;
-  }
-  if (error) {
-    throw error;
-  }
-});
-var identityGenerator = function* (chunk) {
-  yield chunk;
-};
-
-// node_modules/execa/lib/transform/run-sync.js
-var pushChunksSync = (getChunksSync, getChunksArguments, transformStream, done) => {
-  try {
-    for (const chunk of getChunksSync(...getChunksArguments)) {
-      transformStream.push(chunk);
-    }
-    done();
-  } catch (error) {
-    done(error);
-  }
-};
-var runTransformSync = (generators, chunks) => [
-  ...chunks.flatMap((chunk) => [...transformChunkSync(chunk, generators, 0)]),
-  ...finalChunksSync(generators)
-];
-var transformChunkSync = function* (chunk, generators, index) {
-  if (index === generators.length) {
-    yield chunk;
-    return;
-  }
-  const { transform = identityGenerator2 } = generators[index];
-  for (const transformedChunk of transform(chunk)) {
-    yield* transformChunkSync(transformedChunk, generators, index + 1);
-  }
-};
-var finalChunksSync = function* (generators) {
-  for (const [index, { final }] of Object.entries(generators)) {
-    yield* generatorFinalChunksSync(final, Number(index), generators);
-  }
-};
-var generatorFinalChunksSync = function* (final, index, generators) {
-  if (final === void 0) {
-    return;
-  }
-  for (const finalChunk of final()) {
-    yield* transformChunkSync(finalChunk, generators, index + 1);
-  }
-};
-var identityGenerator2 = function* (chunk) {
-  yield chunk;
-};
-
-// node_modules/execa/lib/transform/generator.js
-var generatorToStream = ({
-  value,
-  value: { transform, final, writableObjectMode, readableObjectMode },
-  optionName
-}, { encoding }) => {
-  const state = {};
-  const generators = addInternalGenerators(value, encoding, optionName);
-  const transformAsync = isAsyncGenerator(transform);
-  const finalAsync = isAsyncGenerator(final);
-  const transformMethod = transformAsync ? pushChunks.bind(void 0, transformChunk, state) : pushChunksSync.bind(void 0, transformChunkSync);
-  const finalMethod = transformAsync || finalAsync ? pushChunks.bind(void 0, finalChunks, state) : pushChunksSync.bind(void 0, finalChunksSync);
-  const destroyMethod = transformAsync || finalAsync ? destroyTransform.bind(void 0, state) : void 0;
-  const stream5 = new import_node_stream2.Transform({
-    writableObjectMode,
-    writableHighWaterMark: (0, import_node_stream2.getDefaultHighWaterMark)(writableObjectMode),
-    readableObjectMode,
-    readableHighWaterMark: (0, import_node_stream2.getDefaultHighWaterMark)(readableObjectMode),
-    transform(chunk, encoding2, done) {
-      transformMethod([chunk, generators, 0], this, done);
-    },
-    flush(done) {
-      finalMethod([generators], this, done);
-    },
-    destroy: destroyMethod
-  });
-  return { stream: stream5 };
-};
-var runGeneratorsSync = (chunks, stdioItems, encoding, isInput) => {
-  const generators = stdioItems.filter(({ type }) => type === "generator");
-  const reversedGenerators = isInput ? generators.reverse() : generators;
-  for (const { value, optionName } of reversedGenerators) {
-    const generators2 = addInternalGenerators(value, encoding, optionName);
-    chunks = runTransformSync(generators2, chunks);
-  }
-  return chunks;
-};
-var addInternalGenerators = ({ transform, final, binary, writableObjectMode, readableObjectMode, preserveNewlines }, encoding, optionName) => {
-  const state = {};
-  return [
-    { transform: getValidateTransformInput(writableObjectMode, optionName) },
-    getEncodingTransformGenerator(binary, encoding, writableObjectMode),
-    getSplitLinesGenerator(binary, preserveNewlines, writableObjectMode, state),
-    { transform, final },
-    { transform: getValidateTransformReturn(readableObjectMode, optionName) },
-    getAppendNewlineGenerator({
-      binary,
-      preserveNewlines,
-      readableObjectMode,
-      state
-    })
-  ].filter(Boolean);
-};
-
-// node_modules/execa/lib/io/input-sync.js
-var addInputOptionsSync = (fileDescriptors, options) => {
-  for (const fdNumber of getInputFdNumbers(fileDescriptors)) {
-    addInputOptionSync(fileDescriptors, fdNumber, options);
-  }
-};
-var getInputFdNumbers = (fileDescriptors) => new Set(Object.entries(fileDescriptors).filter(([, { direction }]) => direction === "input").map(([fdNumber]) => Number(fdNumber)));
-var addInputOptionSync = (fileDescriptors, fdNumber, options) => {
-  const { stdioItems } = fileDescriptors[fdNumber];
-  const allStdioItems = stdioItems.filter(({ contents }) => contents !== void 0);
-  if (allStdioItems.length === 0) {
-    return;
-  }
-  if (fdNumber !== 0) {
-    const [{ type, optionName }] = allStdioItems;
-    throw new TypeError(`Only the \`stdin\` option, not \`${optionName}\`, can be ${TYPE_TO_MESSAGE[type]} with synchronous methods.`);
-  }
-  const allContents = allStdioItems.map(({ contents }) => contents);
-  const transformedContents = allContents.map((contents) => applySingleInputGeneratorsSync(contents, stdioItems));
-  options.input = joinToUint8Array(transformedContents);
-};
-var applySingleInputGeneratorsSync = (contents, stdioItems) => {
-  const newContents = runGeneratorsSync(contents, stdioItems, "utf8", true);
-  validateSerializable(newContents);
-  return joinToUint8Array(newContents);
-};
-var validateSerializable = (newContents) => {
-  const invalidItem = newContents.find((item) => typeof item !== "string" && !isUint8Array(item));
-  if (invalidItem !== void 0) {
-    throw new TypeError(`The \`stdin\` option is invalid: when passing objects as input, a transform must be used to serialize them to strings or Uint8Arrays: ${invalidItem}.`);
-  }
-};
-
-// node_modules/execa/lib/io/output-sync.js
-var import_node_fs4 = require("node:fs");
-
-// node_modules/execa/lib/verbose/output.js
-var shouldLogOutput = ({ stdioItems, encoding, verboseInfo, fdNumber }) => fdNumber !== "all" && isFullVerbose(verboseInfo, fdNumber) && !BINARY_ENCODINGS.has(encoding) && fdUsesVerbose(fdNumber) && (stdioItems.some(({ type, value }) => type === "native" && PIPED_STDIO_VALUES.has(value)) || stdioItems.every(({ type }) => TRANSFORM_TYPES.has(type)));
-var fdUsesVerbose = (fdNumber) => fdNumber === 1 || fdNumber === 2;
-var PIPED_STDIO_VALUES = /* @__PURE__ */ new Set(["pipe", "overlapped"]);
-var logLines = async (linesIterable, stream5, fdNumber, verboseInfo) => {
-  for await (const line of linesIterable) {
-    if (!isPipingStream(stream5)) {
-      logLine(line, fdNumber, verboseInfo);
-    }
-  }
-};
-var logLinesSync = (linesArray, fdNumber, verboseInfo) => {
-  for (const line of linesArray) {
-    logLine(line, fdNumber, verboseInfo);
-  }
-};
-var isPipingStream = (stream5) => stream5._readableState.pipes.length > 0;
-var logLine = (line, fdNumber, verboseInfo) => {
-  const verboseMessage = serializeVerboseMessage(line);
-  verboseLog({
-    type: "output",
-    verboseMessage,
-    fdNumber,
-    verboseInfo
-  });
-};
-
-// node_modules/execa/lib/io/output-sync.js
-var transformOutputSync = ({ fileDescriptors, syncResult: { output }, options, isMaxBuffer, verboseInfo }) => {
-  if (output === null) {
-    return { output: Array.from({ length: 3 }) };
-  }
-  const state = {};
-  const outputFiles = /* @__PURE__ */ new Set([]);
-  const transformedOutput = output.map((result, fdNumber) => transformOutputResultSync({
-    result,
-    fileDescriptors,
-    fdNumber,
-    state,
-    outputFiles,
-    isMaxBuffer,
-    verboseInfo
-  }, options));
-  return { output: transformedOutput, ...state };
-};
-var transformOutputResultSync = ({ result, fileDescriptors, fdNumber, state, outputFiles, isMaxBuffer, verboseInfo }, { buffer, encoding, lines, stripFinalNewline: stripFinalNewline2, maxBuffer }) => {
-  if (result === null) {
-    return;
-  }
-  const truncatedResult = truncateMaxBufferSync(result, isMaxBuffer, maxBuffer);
-  const uint8ArrayResult = bufferToUint8Array(truncatedResult);
-  const { stdioItems, objectMode } = fileDescriptors[fdNumber];
-  const chunks = runOutputGeneratorsSync([uint8ArrayResult], stdioItems, encoding, state);
-  const { serializedResult, finalResult = serializedResult } = serializeChunks({
-    chunks,
-    objectMode,
-    encoding,
-    lines,
-    stripFinalNewline: stripFinalNewline2,
-    fdNumber
-  });
-  logOutputSync({
-    serializedResult,
-    fdNumber,
-    state,
-    verboseInfo,
-    encoding,
-    stdioItems,
-    objectMode
-  });
-  const returnedResult = buffer[fdNumber] ? finalResult : void 0;
-  try {
-    if (state.error === void 0) {
-      writeToFiles(serializedResult, stdioItems, outputFiles);
-    }
-    return returnedResult;
-  } catch (error) {
-    state.error = error;
-    return returnedResult;
-  }
-};
-var runOutputGeneratorsSync = (chunks, stdioItems, encoding, state) => {
-  try {
-    return runGeneratorsSync(chunks, stdioItems, encoding, false);
-  } catch (error) {
-    state.error = error;
-    return chunks;
-  }
-};
-var serializeChunks = ({ chunks, objectMode, encoding, lines, stripFinalNewline: stripFinalNewline2, fdNumber }) => {
-  if (objectMode) {
-    return { serializedResult: chunks };
-  }
-  if (encoding === "buffer") {
-    return { serializedResult: joinToUint8Array(chunks) };
-  }
-  const serializedResult = joinToString(chunks, encoding);
-  if (lines[fdNumber]) {
-    return { serializedResult, finalResult: splitLinesSync(serializedResult, !stripFinalNewline2[fdNumber], objectMode) };
-  }
-  return { serializedResult };
-};
-var logOutputSync = ({ serializedResult, fdNumber, state, verboseInfo, encoding, stdioItems, objectMode }) => {
-  if (!shouldLogOutput({
-    stdioItems,
-    encoding,
-    verboseInfo,
-    fdNumber
-  })) {
-    return;
-  }
-  const linesArray = splitLinesSync(serializedResult, false, objectMode);
-  try {
-    logLinesSync(linesArray, fdNumber, verboseInfo);
-  } catch (error) {
-    state.error ??= error;
-  }
-};
-var writeToFiles = (serializedResult, stdioItems, outputFiles) => {
-  for (const { path: path14, append: append2 } of stdioItems.filter(({ type }) => FILE_TYPES.has(type))) {
-    const pathString = typeof path14 === "string" ? path14 : path14.toString();
-    if (append2 || outputFiles.has(pathString)) {
-      (0, import_node_fs4.appendFileSync)(path14, serializedResult);
-    } else {
-      outputFiles.add(pathString);
-      (0, import_node_fs4.writeFileSync)(path14, serializedResult);
-    }
-  }
-};
-
-// node_modules/execa/lib/resolve/all-sync.js
-var getAllSync = ([, stdout, stderr], options) => {
-  if (!options.all) {
-    return;
-  }
-  if (stdout === void 0) {
-    return stderr;
-  }
-  if (stderr === void 0) {
-    return stdout;
-  }
-  if (Array.isArray(stdout)) {
-    return Array.isArray(stderr) ? [...stdout, ...stderr] : [...stdout, stripNewline(stderr, options, "all")];
-  }
-  if (Array.isArray(stderr)) {
-    return [stripNewline(stdout, options, "all"), ...stderr];
-  }
-  if (isUint8Array(stdout) && isUint8Array(stderr)) {
-    return concatUint8Arrays([stdout, stderr]);
-  }
-  return `${stdout}${stderr}`;
-};
-
-// node_modules/execa/lib/resolve/exit-async.js
-var import_node_events8 = require("node:events");
-var waitForExit = async (subprocess, context) => {
-  const [exitCode, signal] = await waitForExitOrError(subprocess);
-  context.isForcefullyTerminated ??= false;
-  return [exitCode, signal];
-};
-var waitForExitOrError = async (subprocess) => {
-  const [spawnPayload, exitPayload] = await Promise.allSettled([
-    (0, import_node_events8.once)(subprocess, "spawn"),
-    (0, import_node_events8.once)(subprocess, "exit")
-  ]);
-  if (spawnPayload.status === "rejected") {
-    return [];
-  }
-  return exitPayload.status === "rejected" ? waitForSubprocessExit(subprocess) : exitPayload.value;
-};
-var waitForSubprocessExit = async (subprocess) => {
-  try {
-    return await (0, import_node_events8.once)(subprocess, "exit");
-  } catch {
-    return waitForSubprocessExit(subprocess);
-  }
-};
-var waitForSuccessfulExit = async (exitPromise) => {
-  const [exitCode, signal] = await exitPromise;
-  if (!isSubprocessErrorExit(exitCode, signal) && isFailedExit(exitCode, signal)) {
-    throw new DiscardedError();
-  }
-  return [exitCode, signal];
-};
-var isSubprocessErrorExit = (exitCode, signal) => exitCode === void 0 && signal === void 0;
-var isFailedExit = (exitCode, signal) => exitCode !== 0 || signal !== null;
-
-// node_modules/execa/lib/resolve/exit-sync.js
-var getExitResultSync = ({ error, status: exitCode, signal, output }, { maxBuffer }) => {
-  const resultError = getResultError(error, exitCode, signal);
-  const timedOut = resultError?.code === "ETIMEDOUT";
-  const isMaxBuffer = isMaxBufferSync(resultError, output, maxBuffer);
-  return {
-    resultError,
-    exitCode,
-    signal,
-    timedOut,
-    isMaxBuffer
-  };
-};
-var getResultError = (error, exitCode, signal) => {
-  if (error !== void 0) {
-    return error;
-  }
-  return isFailedExit(exitCode, signal) ? new DiscardedError() : void 0;
-};
-
-// node_modules/execa/lib/methods/main-sync.js
-var execaCoreSync = (rawFile, rawArguments, rawOptions) => {
-  const { file, commandArguments, command, escapedCommand, startTime, verboseInfo, options, fileDescriptors } = handleSyncArguments(rawFile, rawArguments, rawOptions);
-  const result = spawnSubprocessSync({
-    file,
-    commandArguments,
-    options,
-    command,
-    escapedCommand,
-    verboseInfo,
-    fileDescriptors,
-    startTime
-  });
-  return handleResult(result, verboseInfo, options);
-};
-var handleSyncArguments = (rawFile, rawArguments, rawOptions) => {
-  const { command, escapedCommand, startTime, verboseInfo } = handleCommand(rawFile, rawArguments, rawOptions);
-  const syncOptions = normalizeSyncOptions(rawOptions);
-  const { file, commandArguments, options } = normalizeOptions(rawFile, rawArguments, syncOptions);
-  validateSyncOptions(options);
-  const fileDescriptors = handleStdioSync(options, verboseInfo);
-  return {
-    file,
-    commandArguments,
-    command,
-    escapedCommand,
-    startTime,
-    verboseInfo,
-    options,
-    fileDescriptors
-  };
-};
-var normalizeSyncOptions = (options) => options.node && !options.ipc ? { ...options, ipc: false } : options;
-var validateSyncOptions = ({ ipc, ipcInput, detached, cancelSignal }) => {
-  if (ipcInput) {
-    throwInvalidSyncOption("ipcInput");
-  }
-  if (ipc) {
-    throwInvalidSyncOption("ipc: true");
-  }
-  if (detached) {
-    throwInvalidSyncOption("detached: true");
-  }
-  if (cancelSignal) {
-    throwInvalidSyncOption("cancelSignal");
-  }
-};
-var throwInvalidSyncOption = (value) => {
-  throw new TypeError(`The "${value}" option cannot be used with synchronous methods.`);
-};
-var spawnSubprocessSync = ({ file, commandArguments, options, command, escapedCommand, verboseInfo, fileDescriptors, startTime }) => {
-  const syncResult = runSubprocessSync({
-    file,
-    commandArguments,
-    options,
-    command,
-    escapedCommand,
-    fileDescriptors,
-    startTime
-  });
-  if (syncResult.failed) {
-    return syncResult;
-  }
-  const { resultError, exitCode, signal, timedOut, isMaxBuffer } = getExitResultSync(syncResult, options);
-  const { output, error = resultError } = transformOutputSync({
-    fileDescriptors,
-    syncResult,
-    options,
-    isMaxBuffer,
-    verboseInfo
-  });
-  const stdio = output.map((stdioOutput, fdNumber) => stripNewline(stdioOutput, options, fdNumber));
-  const all3 = stripNewline(getAllSync(output, options), options, "all");
-  return getSyncResult({
-    error,
-    exitCode,
-    signal,
-    timedOut,
-    isMaxBuffer,
-    stdio,
-    all: all3,
-    options,
-    command,
-    escapedCommand,
-    startTime
-  });
-};
-var runSubprocessSync = ({ file, commandArguments, options, command, escapedCommand, fileDescriptors, startTime }) => {
-  try {
-    addInputOptionsSync(fileDescriptors, options);
-    const normalizedOptions = normalizeSpawnSyncOptions(options);
-    return (0, import_node_child_process3.spawnSync)(...concatenateShell(file, commandArguments, normalizedOptions));
-  } catch (error) {
-    return makeEarlyError({
-      error,
-      command,
-      escapedCommand,
-      fileDescriptors,
-      options,
-      startTime,
-      isSync: true
-    });
-  }
-};
-var normalizeSpawnSyncOptions = ({ encoding, maxBuffer, ...options }) => ({ ...options, encoding: "buffer", maxBuffer: getMaxBufferSync(maxBuffer) });
-var getSyncResult = ({ error, exitCode, signal, timedOut, isMaxBuffer, stdio, all: all3, options, command, escapedCommand, startTime }) => error === void 0 ? makeSuccessResult({
-  command,
-  escapedCommand,
-  stdio,
-  all: all3,
-  ipcOutput: [],
-  options,
-  startTime
-}) : makeError({
-  error,
-  command,
-  escapedCommand,
-  timedOut,
-  isCanceled: false,
-  isGracefullyCanceled: false,
-  isMaxBuffer,
-  isForcefullyTerminated: false,
-  exitCode,
-  signal,
-  stdio,
-  all: all3,
-  ipcOutput: [],
-  options,
-  startTime,
-  isSync: true
-});
-
-// node_modules/execa/lib/methods/main-async.js
-var import_node_events15 = require("node:events");
-var import_node_child_process5 = require("node:child_process");
-
-// node_modules/execa/lib/ipc/methods.js
-var import_node_process10 = __toESM(require("node:process"), 1);
-
-// node_modules/execa/lib/ipc/get-one.js
-var import_node_events9 = require("node:events");
-var getOneMessage = ({ anyProcess, channel, isSubprocess, ipc }, { reference: reference2 = true, filter: filter3 } = {}) => {
-  validateIpcMethod({
-    methodName: "getOneMessage",
-    isSubprocess,
-    ipc,
-    isConnected: isConnected(anyProcess)
-  });
-  return getOneMessageAsync({
-    anyProcess,
-    channel,
-    isSubprocess,
-    filter: filter3,
-    reference: reference2
-  });
-};
-var getOneMessageAsync = async ({ anyProcess, channel, isSubprocess, filter: filter3, reference: reference2 }) => {
-  addReference(channel, reference2);
-  const ipcEmitter = getIpcEmitter(anyProcess, channel, isSubprocess);
-  const controller = new AbortController();
-  try {
-    return await Promise.race([
-      getMessage(ipcEmitter, filter3, controller),
-      throwOnDisconnect2(ipcEmitter, isSubprocess, controller),
-      throwOnStrictError(ipcEmitter, isSubprocess, controller)
-    ]);
-  } catch (error) {
-    disconnect(anyProcess);
-    throw error;
-  } finally {
-    controller.abort();
-    removeReference(channel, reference2);
-  }
-};
-var getMessage = async (ipcEmitter, filter3, { signal }) => {
-  if (filter3 === void 0) {
-    const [message] = await (0, import_node_events9.once)(ipcEmitter, "message", { signal });
-    return message;
-  }
-  for await (const [message] of (0, import_node_events9.on)(ipcEmitter, "message", { signal })) {
-    if (filter3(message)) {
-      return message;
-    }
-  }
-};
-var throwOnDisconnect2 = async (ipcEmitter, isSubprocess, { signal }) => {
-  await (0, import_node_events9.once)(ipcEmitter, "disconnect", { signal });
-  throwOnEarlyDisconnect(isSubprocess);
-};
-var throwOnStrictError = async (ipcEmitter, isSubprocess, { signal }) => {
-  const [error] = await (0, import_node_events9.once)(ipcEmitter, "strict:error", { signal });
-  throw getStrictResponseError(error, isSubprocess);
-};
-
-// node_modules/execa/lib/ipc/get-each.js
-var import_node_events10 = require("node:events");
-var getEachMessage = ({ anyProcess, channel, isSubprocess, ipc }, { reference: reference2 = true } = {}) => loopOnMessages({
-  anyProcess,
-  channel,
-  isSubprocess,
-  ipc,
-  shouldAwait: !isSubprocess,
-  reference: reference2
-});
-var loopOnMessages = ({ anyProcess, channel, isSubprocess, ipc, shouldAwait, reference: reference2 }) => {
-  validateIpcMethod({
-    methodName: "getEachMessage",
-    isSubprocess,
-    ipc,
-    isConnected: isConnected(anyProcess)
-  });
-  addReference(channel, reference2);
-  const ipcEmitter = getIpcEmitter(anyProcess, channel, isSubprocess);
-  const controller = new AbortController();
-  const state = {};
-  stopOnDisconnect(anyProcess, ipcEmitter, controller);
-  abortOnStrictError({
-    ipcEmitter,
-    isSubprocess,
-    controller,
-    state
-  });
-  return iterateOnMessages({
-    anyProcess,
-    channel,
-    ipcEmitter,
-    isSubprocess,
-    shouldAwait,
-    controller,
-    state,
-    reference: reference2
-  });
-};
-var stopOnDisconnect = async (anyProcess, ipcEmitter, controller) => {
-  try {
-    await (0, import_node_events10.once)(ipcEmitter, "disconnect", { signal: controller.signal });
-    controller.abort();
-  } catch {
-  }
-};
-var abortOnStrictError = async ({ ipcEmitter, isSubprocess, controller, state }) => {
-  try {
-    const [error] = await (0, import_node_events10.once)(ipcEmitter, "strict:error", { signal: controller.signal });
-    state.error = getStrictResponseError(error, isSubprocess);
-    controller.abort();
-  } catch {
-  }
-};
-var iterateOnMessages = async function* ({ anyProcess, channel, ipcEmitter, isSubprocess, shouldAwait, controller, state, reference: reference2 }) {
-  try {
-    for await (const [message] of (0, import_node_events10.on)(ipcEmitter, "message", { signal: controller.signal })) {
-      throwIfStrictError(state);
-      yield message;
-    }
-  } catch {
-    throwIfStrictError(state);
-  } finally {
-    controller.abort();
-    removeReference(channel, reference2);
-    if (!isSubprocess) {
-      disconnect(anyProcess);
-    }
-    if (shouldAwait) {
-      await anyProcess;
-    }
-  }
-};
-var throwIfStrictError = ({ error }) => {
-  if (error) {
-    throw error;
-  }
-};
-
-// node_modules/execa/lib/ipc/methods.js
-var addIpcMethods = (subprocess, { ipc }) => {
-  Object.assign(subprocess, getIpcMethods(subprocess, false, ipc));
-};
-var getIpcExport = () => {
-  const anyProcess = import_node_process10.default;
-  const isSubprocess = true;
-  const ipc = import_node_process10.default.channel !== void 0;
-  return {
-    ...getIpcMethods(anyProcess, isSubprocess, ipc),
-    getCancelSignal: getCancelSignal.bind(void 0, {
-      anyProcess,
-      channel: anyProcess.channel,
-      isSubprocess,
-      ipc
-    })
-  };
-};
-var getIpcMethods = (anyProcess, isSubprocess, ipc) => ({
-  sendMessage: sendMessage.bind(void 0, {
-    anyProcess,
-    channel: anyProcess.channel,
-    isSubprocess,
-    ipc
-  }),
-  getOneMessage: getOneMessage.bind(void 0, {
-    anyProcess,
-    channel: anyProcess.channel,
-    isSubprocess,
-    ipc
-  }),
-  getEachMessage: getEachMessage.bind(void 0, {
-    anyProcess,
-    channel: anyProcess.channel,
-    isSubprocess,
-    ipc
-  })
-});
-
-// node_modules/execa/lib/return/early-error.js
-var import_node_child_process4 = require("node:child_process");
-var import_node_stream3 = require("node:stream");
-var handleEarlyError = ({ error, command, escapedCommand, fileDescriptors, options, startTime, verboseInfo }) => {
-  cleanupCustomStreams(fileDescriptors);
-  const subprocess = new import_node_child_process4.ChildProcess();
-  createDummyStreams(subprocess, fileDescriptors);
-  Object.assign(subprocess, { readable, writable, duplex });
-  const earlyError = makeEarlyError({
-    error,
-    command,
-    escapedCommand,
-    fileDescriptors,
-    options,
-    startTime,
-    isSync: false
-  });
-  const promise = handleDummyPromise(earlyError, verboseInfo, options);
-  return { subprocess, promise };
-};
-var createDummyStreams = (subprocess, fileDescriptors) => {
-  const stdin = createDummyStream();
-  const stdout = createDummyStream();
-  const stderr = createDummyStream();
-  const extraStdio = Array.from({ length: fileDescriptors.length - 3 }, createDummyStream);
-  const all3 = createDummyStream();
-  const stdio = [stdin, stdout, stderr, ...extraStdio];
-  Object.assign(subprocess, {
-    stdin,
-    stdout,
-    stderr,
-    all: all3,
-    stdio
-  });
-};
-var createDummyStream = () => {
-  const stream5 = new import_node_stream3.PassThrough();
-  stream5.end();
-  return stream5;
-};
-var readable = () => new import_node_stream3.Readable({ read() {
-} });
-var writable = () => new import_node_stream3.Writable({ write() {
-} });
-var duplex = () => new import_node_stream3.Duplex({ read() {
-}, write() {
-} });
-var handleDummyPromise = async (error, verboseInfo, options) => handleResult(error, verboseInfo, options);
-
-// node_modules/execa/lib/stdio/handle-async.js
-var import_node_fs5 = require("node:fs");
-var import_node_buffer3 = require("node:buffer");
-var import_node_stream4 = require("node:stream");
-var handleStdioAsync = (options, verboseInfo) => handleStdio(addPropertiesAsync, options, verboseInfo, false);
-var forbiddenIfAsync = ({ type, optionName }) => {
-  throw new TypeError(`The \`${optionName}\` option cannot be ${TYPE_TO_MESSAGE[type]}.`);
-};
-var addProperties2 = {
-  fileNumber: forbiddenIfAsync,
-  generator: generatorToStream,
-  asyncGenerator: generatorToStream,
-  nodeStream: ({ value }) => ({ stream: value }),
-  webTransform({ value: { transform, writableObjectMode, readableObjectMode } }) {
-    const objectMode = writableObjectMode || readableObjectMode;
-    const stream5 = import_node_stream4.Duplex.fromWeb(transform, { objectMode });
-    return { stream: stream5 };
-  },
-  duplex: ({ value: { transform } }) => ({ stream: transform }),
-  native() {
-  }
-};
-var addPropertiesAsync = {
-  input: {
-    ...addProperties2,
-    fileUrl: ({ value }) => ({ stream: (0, import_node_fs5.createReadStream)(value) }),
-    filePath: ({ value: { file } }) => ({ stream: (0, import_node_fs5.createReadStream)(file) }),
-    webStream: ({ value }) => ({ stream: import_node_stream4.Readable.fromWeb(value) }),
-    iterable: ({ value }) => ({ stream: import_node_stream4.Readable.from(value) }),
-    asyncIterable: ({ value }) => ({ stream: import_node_stream4.Readable.from(value) }),
-    string: ({ value }) => ({ stream: import_node_stream4.Readable.from(value) }),
-    uint8Array: ({ value }) => ({ stream: import_node_stream4.Readable.from(import_node_buffer3.Buffer.from(value)) })
-  },
-  output: {
-    ...addProperties2,
-    fileUrl: ({ value }) => ({ stream: (0, import_node_fs5.createWriteStream)(value) }),
-    filePath: ({ value: { file, append: append2 } }) => ({ stream: (0, import_node_fs5.createWriteStream)(file, append2 ? { flags: "a" } : {}) }),
-    webStream: ({ value }) => ({ stream: import_node_stream4.Writable.fromWeb(value) }),
-    iterable: forbiddenIfAsync,
-    asyncIterable: forbiddenIfAsync,
-    string: forbiddenIfAsync,
-    uint8Array: forbiddenIfAsync
-  }
-};
-
-// node_modules/@sindresorhus/merge-streams/index.js
-var import_node_events11 = require("node:events");
-var import_node_stream5 = require("node:stream");
-var import_promises7 = require("node:stream/promises");
-function mergeStreams(streams) {
-  if (!Array.isArray(streams)) {
-    throw new TypeError(`Expected an array, got \`${typeof streams}\`.`);
-  }
-  for (const stream5 of streams) {
-    validateStream(stream5);
-  }
-  const objectMode = streams.some(({ readableObjectMode }) => readableObjectMode);
-  const highWaterMark = getHighWaterMark(streams, objectMode);
-  const passThroughStream = new MergedStream({
-    objectMode,
-    writableHighWaterMark: highWaterMark,
-    readableHighWaterMark: highWaterMark
-  });
-  for (const stream5 of streams) {
-    passThroughStream.add(stream5);
-  }
-  return passThroughStream;
-}
-var getHighWaterMark = (streams, objectMode) => {
-  if (streams.length === 0) {
-    return (0, import_node_stream5.getDefaultHighWaterMark)(objectMode);
-  }
-  const highWaterMarks = streams.filter(({ readableObjectMode }) => readableObjectMode === objectMode).map(({ readableHighWaterMark }) => readableHighWaterMark);
-  return Math.max(...highWaterMarks);
-};
-var MergedStream = class extends import_node_stream5.PassThrough {
-  #streams = /* @__PURE__ */ new Set([]);
-  #ended = /* @__PURE__ */ new Set([]);
-  #aborted = /* @__PURE__ */ new Set([]);
-  #onFinished;
-  #unpipeEvent = Symbol("unpipe");
-  #streamPromises = /* @__PURE__ */ new WeakMap();
-  add(stream5) {
-    validateStream(stream5);
-    if (this.#streams.has(stream5)) {
-      return;
-    }
-    this.#streams.add(stream5);
-    this.#onFinished ??= onMergedStreamFinished(this, this.#streams, this.#unpipeEvent);
-    const streamPromise = endWhenStreamsDone({
-      passThroughStream: this,
-      stream: stream5,
-      streams: this.#streams,
-      ended: this.#ended,
-      aborted: this.#aborted,
-      onFinished: this.#onFinished,
-      unpipeEvent: this.#unpipeEvent
-    });
-    this.#streamPromises.set(stream5, streamPromise);
-    stream5.pipe(this, { end: false });
-  }
-  async remove(stream5) {
-    validateStream(stream5);
-    if (!this.#streams.has(stream5)) {
-      return false;
-    }
-    const streamPromise = this.#streamPromises.get(stream5);
-    if (streamPromise === void 0) {
-      return false;
-    }
-    this.#streamPromises.delete(stream5);
-    stream5.unpipe(this);
-    await streamPromise;
-    return true;
-  }
-};
-var onMergedStreamFinished = async (passThroughStream, streams, unpipeEvent) => {
-  updateMaxListeners(passThroughStream, PASSTHROUGH_LISTENERS_COUNT);
-  const controller = new AbortController();
-  try {
-    await Promise.race([
-      onMergedStreamEnd(passThroughStream, controller),
-      onInputStreamsUnpipe(passThroughStream, streams, unpipeEvent, controller)
-    ]);
-  } finally {
-    controller.abort();
-    updateMaxListeners(passThroughStream, -PASSTHROUGH_LISTENERS_COUNT);
-  }
-};
-var onMergedStreamEnd = async (passThroughStream, { signal }) => {
-  try {
-    await (0, import_promises7.finished)(passThroughStream, { signal, cleanup: true });
-  } catch (error) {
-    errorOrAbortStream(passThroughStream, error);
-    throw error;
-  }
-};
-var onInputStreamsUnpipe = async (passThroughStream, streams, unpipeEvent, { signal }) => {
-  for await (const [unpipedStream] of (0, import_node_events11.on)(passThroughStream, "unpipe", { signal })) {
-    if (streams.has(unpipedStream)) {
-      unpipedStream.emit(unpipeEvent);
-    }
-  }
-};
-var validateStream = (stream5) => {
-  if (typeof stream5?.pipe !== "function") {
-    throw new TypeError(`Expected a readable stream, got: \`${typeof stream5}\`.`);
-  }
-};
-var endWhenStreamsDone = async ({ passThroughStream, stream: stream5, streams, ended, aborted: aborted2, onFinished, unpipeEvent }) => {
-  updateMaxListeners(passThroughStream, PASSTHROUGH_LISTENERS_PER_STREAM);
-  const controller = new AbortController();
-  try {
-    await Promise.race([
-      afterMergedStreamFinished(onFinished, stream5, controller),
-      onInputStreamEnd({
-        passThroughStream,
-        stream: stream5,
-        streams,
-        ended,
-        aborted: aborted2,
-        controller
-      }),
-      onInputStreamUnpipe({
-        stream: stream5,
-        streams,
-        ended,
-        aborted: aborted2,
-        unpipeEvent,
-        controller
-      })
-    ]);
-  } finally {
-    controller.abort();
-    updateMaxListeners(passThroughStream, -PASSTHROUGH_LISTENERS_PER_STREAM);
-  }
-  if (streams.size > 0 && streams.size === ended.size + aborted2.size) {
-    if (ended.size === 0 && aborted2.size > 0) {
-      abortStream(passThroughStream);
-    } else {
-      endStream(passThroughStream);
-    }
-  }
-};
-var afterMergedStreamFinished = async (onFinished, stream5, { signal }) => {
-  try {
-    await onFinished;
-    if (!signal.aborted) {
-      abortStream(stream5);
-    }
-  } catch (error) {
-    if (!signal.aborted) {
-      errorOrAbortStream(stream5, error);
-    }
-  }
-};
-var onInputStreamEnd = async ({ passThroughStream, stream: stream5, streams, ended, aborted: aborted2, controller: { signal } }) => {
-  try {
-    await (0, import_promises7.finished)(stream5, {
-      signal,
-      cleanup: true,
-      readable: true,
-      writable: false
-    });
-    if (streams.has(stream5)) {
-      ended.add(stream5);
-    }
-  } catch (error) {
-    if (signal.aborted || !streams.has(stream5)) {
-      return;
-    }
-    if (isAbortError(error)) {
-      aborted2.add(stream5);
-    } else {
-      errorStream(passThroughStream, error);
-    }
-  }
-};
-var onInputStreamUnpipe = async ({ stream: stream5, streams, ended, aborted: aborted2, unpipeEvent, controller: { signal } }) => {
-  await (0, import_node_events11.once)(stream5, unpipeEvent, { signal });
-  if (!stream5.readable) {
-    return (0, import_node_events11.once)(signal, "abort", { signal });
-  }
-  streams.delete(stream5);
-  ended.delete(stream5);
-  aborted2.delete(stream5);
-};
-var endStream = (stream5) => {
-  if (stream5.writable) {
-    stream5.end();
-  }
-};
-var errorOrAbortStream = (stream5, error) => {
-  if (isAbortError(error)) {
-    abortStream(stream5);
-  } else {
-    errorStream(stream5, error);
-  }
-};
-var isAbortError = (error) => error?.code === "ERR_STREAM_PREMATURE_CLOSE";
-var abortStream = (stream5) => {
-  if (stream5.readable || stream5.writable) {
-    stream5.destroy();
-  }
-};
-var errorStream = (stream5, error) => {
-  if (!stream5.destroyed) {
-    stream5.once("error", noop2);
-    stream5.destroy(error);
-  }
-};
-var noop2 = () => {
-};
-var updateMaxListeners = (passThroughStream, increment2) => {
-  const maxListeners = passThroughStream.getMaxListeners();
-  if (maxListeners !== 0 && maxListeners !== Number.POSITIVE_INFINITY) {
-    passThroughStream.setMaxListeners(maxListeners + increment2);
-  }
-};
-var PASSTHROUGH_LISTENERS_COUNT = 2;
-var PASSTHROUGH_LISTENERS_PER_STREAM = 1;
-
-// node_modules/execa/lib/io/pipeline.js
-var import_promises8 = require("node:stream/promises");
-var pipeStreams = (source, destination) => {
-  source.pipe(destination);
-  onSourceFinish(source, destination);
-  onDestinationFinish(source, destination);
-};
-var onSourceFinish = async (source, destination) => {
-  if (isStandardStream(source) || isStandardStream(destination)) {
-    return;
-  }
-  try {
-    await (0, import_promises8.finished)(source, { cleanup: true, readable: true, writable: false });
-  } catch {
-  }
-  endDestinationStream(destination);
-};
-var endDestinationStream = (destination) => {
-  if (destination.writable) {
-    destination.end();
-  }
-};
-var onDestinationFinish = async (source, destination) => {
-  if (isStandardStream(source) || isStandardStream(destination)) {
-    return;
-  }
-  try {
-    await (0, import_promises8.finished)(destination, { cleanup: true, readable: false, writable: true });
-  } catch {
-  }
-  abortSourceStream(source);
-};
-var abortSourceStream = (source) => {
-  if (source.readable) {
-    source.destroy();
-  }
-};
-
-// node_modules/execa/lib/io/output-async.js
-var pipeOutputAsync = (subprocess, fileDescriptors, controller) => {
-  const pipeGroups = /* @__PURE__ */ new Map();
-  for (const [fdNumber, { stdioItems, direction }] of Object.entries(fileDescriptors)) {
-    for (const { stream: stream5 } of stdioItems.filter(({ type }) => TRANSFORM_TYPES.has(type))) {
-      pipeTransform(subprocess, stream5, direction, fdNumber);
-    }
-    for (const { stream: stream5 } of stdioItems.filter(({ type }) => !TRANSFORM_TYPES.has(type))) {
-      pipeStdioItem({
-        subprocess,
-        stream: stream5,
-        direction,
-        fdNumber,
-        pipeGroups,
-        controller
-      });
-    }
-  }
-  for (const [outputStream, inputStreams] of pipeGroups.entries()) {
-    const inputStream = inputStreams.length === 1 ? inputStreams[0] : mergeStreams(inputStreams);
-    pipeStreams(inputStream, outputStream);
-  }
-};
-var pipeTransform = (subprocess, stream5, direction, fdNumber) => {
-  if (direction === "output") {
-    pipeStreams(subprocess.stdio[fdNumber], stream5);
-  } else {
-    pipeStreams(stream5, subprocess.stdio[fdNumber]);
-  }
-  const streamProperty = SUBPROCESS_STREAM_PROPERTIES[fdNumber];
-  if (streamProperty !== void 0) {
-    subprocess[streamProperty] = stream5;
-  }
-  subprocess.stdio[fdNumber] = stream5;
-};
-var SUBPROCESS_STREAM_PROPERTIES = ["stdin", "stdout", "stderr"];
-var pipeStdioItem = ({ subprocess, stream: stream5, direction, fdNumber, pipeGroups, controller }) => {
-  if (stream5 === void 0) {
-    return;
-  }
-  setStandardStreamMaxListeners(stream5, controller);
-  const [inputStream, outputStream] = direction === "output" ? [stream5, subprocess.stdio[fdNumber]] : [subprocess.stdio[fdNumber], stream5];
-  const outputStreams = pipeGroups.get(inputStream) ?? [];
-  pipeGroups.set(inputStream, [...outputStreams, outputStream]);
-};
-var setStandardStreamMaxListeners = (stream5, { signal }) => {
-  if (isStandardStream(stream5)) {
-    incrementMaxListeners(stream5, MAX_LISTENERS_INCREMENT, signal);
-  }
-};
-var MAX_LISTENERS_INCREMENT = 2;
-
-// node_modules/execa/lib/terminate/cleanup.js
-var import_node_events12 = require("node:events");
-
-// node_modules/signal-exit/dist/mjs/signals.js
-var signals = [];
-signals.push("SIGHUP", "SIGINT", "SIGTERM");
-if (process.platform !== "win32") {
-  signals.push(
-    "SIGALRM",
-    "SIGABRT",
-    "SIGVTALRM",
-    "SIGXCPU",
-    "SIGXFSZ",
-    "SIGUSR2",
-    "SIGTRAP",
-    "SIGSYS",
-    "SIGQUIT",
-    "SIGIOT"
-    // should detect profiler and enable/disable accordingly.
-    // see #21
-    // 'SIGPROF'
-  );
-}
-if (process.platform === "linux") {
-  signals.push("SIGIO", "SIGPOLL", "SIGPWR", "SIGSTKFLT");
-}
-
-// node_modules/signal-exit/dist/mjs/index.js
-var processOk = (process10) => !!process10 && typeof process10 === "object" && typeof process10.removeListener === "function" && typeof process10.emit === "function" && typeof process10.reallyExit === "function" && typeof process10.listeners === "function" && typeof process10.kill === "function" && typeof process10.pid === "number" && typeof process10.on === "function";
-var kExitEmitter = Symbol.for("signal-exit emitter");
-var global2 = globalThis;
-var ObjectDefineProperty = Object.defineProperty.bind(Object);
-var Emitter = class {
-  emitted = {
-    afterExit: false,
-    exit: false
-  };
-  listeners = {
-    afterExit: [],
-    exit: []
-  };
-  count = 0;
-  id = Math.random();
-  constructor() {
-    if (global2[kExitEmitter]) {
-      return global2[kExitEmitter];
-    }
-    ObjectDefineProperty(global2, kExitEmitter, {
-      value: this,
-      writable: false,
-      enumerable: false,
-      configurable: false
-    });
-  }
-  on(ev, fn) {
-    this.listeners[ev].push(fn);
-  }
-  removeListener(ev, fn) {
-    const list2 = this.listeners[ev];
-    const i2 = list2.indexOf(fn);
-    if (i2 === -1) {
-      return;
-    }
-    if (i2 === 0 && list2.length === 1) {
-      list2.length = 0;
-    } else {
-      list2.splice(i2, 1);
-    }
-  }
-  emit(ev, code2, signal) {
-    if (this.emitted[ev]) {
-      return false;
-    }
-    this.emitted[ev] = true;
-    let ret = false;
-    for (const fn of this.listeners[ev]) {
-      ret = fn(code2, signal) === true || ret;
-    }
-    if (ev === "exit") {
-      ret = this.emit("afterExit", code2, signal) || ret;
-    }
-    return ret;
-  }
-};
-var SignalExitBase = class {
-};
-var signalExitWrap = (handler) => {
-  return {
-    onExit(cb, opts) {
-      return handler.onExit(cb, opts);
-    },
-    load() {
-      return handler.load();
-    },
-    unload() {
-      return handler.unload();
-    }
-  };
-};
-var SignalExitFallback = class extends SignalExitBase {
-  onExit() {
-    return () => {
-    };
-  }
-  load() {
-  }
-  unload() {
-  }
-};
-var SignalExit = class extends SignalExitBase {
-  // "SIGHUP" throws an `ENOSYS` error on Windows,
-  // so use a supported signal instead
-  /* c8 ignore start */
-  #hupSig = process9.platform === "win32" ? "SIGINT" : "SIGHUP";
-  /* c8 ignore stop */
-  #emitter = new Emitter();
-  #process;
-  #originalProcessEmit;
-  #originalProcessReallyExit;
-  #sigListeners = {};
-  #loaded = false;
-  constructor(process10) {
-    super();
-    this.#process = process10;
-    this.#sigListeners = {};
-    for (const sig of signals) {
-      this.#sigListeners[sig] = () => {
-        const listeners = this.#process.listeners(sig);
-        let { count: count2 } = this.#emitter;
-        const p = process10;
-        if (typeof p.__signal_exit_emitter__ === "object" && typeof p.__signal_exit_emitter__.count === "number") {
-          count2 += p.__signal_exit_emitter__.count;
-        }
-        if (listeners.length === count2) {
-          this.unload();
-          const ret = this.#emitter.emit("exit", null, sig);
-          const s = sig === "SIGHUP" ? this.#hupSig : sig;
-          if (!ret)
-            process10.kill(process10.pid, s);
-        }
-      };
-    }
-    this.#originalProcessReallyExit = process10.reallyExit;
-    this.#originalProcessEmit = process10.emit;
-  }
-  onExit(cb, opts) {
-    if (!processOk(this.#process)) {
-      return () => {
-      };
-    }
-    if (this.#loaded === false) {
-      this.load();
-    }
-    const ev = opts?.alwaysLast ? "afterExit" : "exit";
-    this.#emitter.on(ev, cb);
-    return () => {
-      this.#emitter.removeListener(ev, cb);
-      if (this.#emitter.listeners["exit"].length === 0 && this.#emitter.listeners["afterExit"].length === 0) {
-        this.unload();
-      }
-    };
-  }
-  load() {
-    if (this.#loaded) {
-      return;
-    }
-    this.#loaded = true;
-    this.#emitter.count += 1;
-    for (const sig of signals) {
-      try {
-        const fn = this.#sigListeners[sig];
-        if (fn)
-          this.#process.on(sig, fn);
-      } catch (_) {
-      }
-    }
-    this.#process.emit = (ev, ...a2) => {
-      return this.#processEmit(ev, ...a2);
-    };
-    this.#process.reallyExit = (code2) => {
-      return this.#processReallyExit(code2);
-    };
-  }
-  unload() {
-    if (!this.#loaded) {
-      return;
-    }
-    this.#loaded = false;
-    signals.forEach((sig) => {
-      const listener = this.#sigListeners[sig];
-      if (!listener) {
-        throw new Error("Listener not defined for signal: " + sig);
-      }
-      try {
-        this.#process.removeListener(sig, listener);
-      } catch (_) {
-      }
-    });
-    this.#process.emit = this.#originalProcessEmit;
-    this.#process.reallyExit = this.#originalProcessReallyExit;
-    this.#emitter.count -= 1;
-  }
-  #processReallyExit(code2) {
-    if (!processOk(this.#process)) {
-      return 0;
-    }
-    this.#process.exitCode = code2 || 0;
-    this.#emitter.emit("exit", this.#process.exitCode, null);
-    return this.#originalProcessReallyExit.call(this.#process, this.#process.exitCode);
-  }
-  #processEmit(ev, ...args) {
-    const og = this.#originalProcessEmit;
-    if (ev === "exit" && processOk(this.#process)) {
-      if (typeof args[0] === "number") {
-        this.#process.exitCode = args[0];
-      }
-      const ret = og.call(this.#process, ev, ...args);
-      this.#emitter.emit("exit", this.#process.exitCode, null);
-      return ret;
-    } else {
-      return og.call(this.#process, ev, ...args);
-    }
-  }
-};
-var process9 = globalThis.process;
-var {
-  /**
-   * Called when the process is exiting, whether via signal, explicit
-   * exit, or running out of stuff to do.
-   *
-   * If the global process object is not suitable for instrumentation,
-   * then this will be a no-op.
-   *
-   * Returns a function that may be used to unload signal-exit.
-   */
-  onExit,
-  /**
-   * Load the listeners.  Likely you never need to call this, unless
-   * doing a rather deep integration with signal-exit functionality.
-   * Mostly exposed for the benefit of testing.
-   *
-   * @internal
-   */
-  load,
-  /**
-   * Unload the listeners.  Likely you never need to call this, unless
-   * doing a rather deep integration with signal-exit functionality.
-   * Mostly exposed for the benefit of testing.
-   *
-   * @internal
-   */
-  unload
-} = signalExitWrap(processOk(process9) ? new SignalExit(process9) : new SignalExitFallback());
-
-// node_modules/execa/lib/terminate/cleanup.js
-var cleanupOnExit = (subprocess, { cleanup, detached }, { signal }) => {
-  if (!cleanup || detached) {
-    return;
-  }
-  const removeExitHandler = onExit(() => {
-    subprocess.kill();
-  });
-  (0, import_node_events12.addAbortListener)(signal, () => {
-    removeExitHandler();
-  });
-};
-
-// node_modules/execa/lib/pipe/pipe-arguments.js
-var normalizePipeArguments = ({ source, sourcePromise, boundOptions, createNested }, ...pipeArguments) => {
-  const startTime = getStartTime();
-  const {
-    destination,
-    destinationStream,
-    destinationError,
-    from,
-    unpipeSignal
-  } = getDestinationStream(boundOptions, createNested, pipeArguments);
-  const { sourceStream, sourceError } = getSourceStream(source, from);
-  const { options: sourceOptions, fileDescriptors } = SUBPROCESS_OPTIONS.get(source);
-  return {
-    sourcePromise,
-    sourceStream,
-    sourceOptions,
-    sourceError,
-    destination,
-    destinationStream,
-    destinationError,
-    unpipeSignal,
-    fileDescriptors,
-    startTime
-  };
-};
-var getDestinationStream = (boundOptions, createNested, pipeArguments) => {
-  try {
-    const {
-      destination,
-      pipeOptions: { from, to, unpipeSignal } = {}
-    } = getDestination(boundOptions, createNested, ...pipeArguments);
-    const destinationStream = getToStream(destination, to);
-    return {
-      destination,
-      destinationStream,
-      from,
-      unpipeSignal
-    };
-  } catch (error) {
-    return { destinationError: error };
-  }
-};
-var getDestination = (boundOptions, createNested, firstArgument, ...pipeArguments) => {
-  if (Array.isArray(firstArgument)) {
-    const destination = createNested(mapDestinationArguments, boundOptions)(firstArgument, ...pipeArguments);
-    return { destination, pipeOptions: boundOptions };
-  }
-  if (typeof firstArgument === "string" || firstArgument instanceof URL || isDenoExecPath(firstArgument)) {
-    if (Object.keys(boundOptions).length > 0) {
-      throw new TypeError('Please use .pipe("file", ..., options) or .pipe(execa("file", ..., options)) instead of .pipe(options)("file", ...).');
-    }
-    const [rawFile, rawArguments, rawOptions] = normalizeParameters(firstArgument, ...pipeArguments);
-    const destination = createNested(mapDestinationArguments)(rawFile, rawArguments, rawOptions);
-    return { destination, pipeOptions: rawOptions };
-  }
-  if (SUBPROCESS_OPTIONS.has(firstArgument)) {
-    if (Object.keys(boundOptions).length > 0) {
-      throw new TypeError("Please use .pipe(options)`command` or .pipe($(options)`command`) instead of .pipe(options)($`command`).");
-    }
-    return { destination: firstArgument, pipeOptions: pipeArguments[0] };
-  }
-  throw new TypeError(`The first argument must be a template string, an options object, or an Execa subprocess: ${firstArgument}`);
-};
-var mapDestinationArguments = ({ options }) => ({ options: { ...options, stdin: "pipe", piped: true } });
-var getSourceStream = (source, from) => {
-  try {
-    const sourceStream = getFromStream(source, from);
-    return { sourceStream };
-  } catch (error) {
-    return { sourceError: error };
-  }
-};
-
-// node_modules/execa/lib/pipe/throw.js
-var handlePipeArgumentsError = ({
-  sourceStream,
-  sourceError,
-  destinationStream,
-  destinationError,
-  fileDescriptors,
-  sourceOptions,
-  startTime
-}) => {
-  const error = getPipeArgumentsError({
-    sourceStream,
-    sourceError,
-    destinationStream,
-    destinationError
-  });
-  if (error !== void 0) {
-    throw createNonCommandError({
-      error,
-      fileDescriptors,
-      sourceOptions,
-      startTime
-    });
-  }
-};
-var getPipeArgumentsError = ({ sourceStream, sourceError, destinationStream, destinationError }) => {
-  if (sourceError !== void 0 && destinationError !== void 0) {
-    return destinationError;
-  }
-  if (destinationError !== void 0) {
-    abortSourceStream(sourceStream);
-    return destinationError;
-  }
-  if (sourceError !== void 0) {
-    endDestinationStream(destinationStream);
-    return sourceError;
-  }
-};
-var createNonCommandError = ({ error, fileDescriptors, sourceOptions, startTime }) => makeEarlyError({
-  error,
-  command: PIPE_COMMAND_MESSAGE,
-  escapedCommand: PIPE_COMMAND_MESSAGE,
-  fileDescriptors,
-  options: sourceOptions,
-  startTime,
-  isSync: false
-});
-var PIPE_COMMAND_MESSAGE = "source.pipe(destination)";
-
-// node_modules/execa/lib/pipe/sequence.js
-var waitForBothSubprocesses = async (subprocessPromises) => {
-  const [
-    { status: sourceStatus, reason: sourceReason, value: sourceResult = sourceReason },
-    { status: destinationStatus, reason: destinationReason, value: destinationResult = destinationReason }
-  ] = await subprocessPromises;
-  if (!destinationResult.pipedFrom.includes(sourceResult)) {
-    destinationResult.pipedFrom.push(sourceResult);
-  }
-  if (destinationStatus === "rejected") {
-    throw destinationResult;
-  }
-  if (sourceStatus === "rejected") {
-    throw sourceResult;
-  }
-  return destinationResult;
-};
-
-// node_modules/execa/lib/pipe/streaming.js
-var import_promises9 = require("node:stream/promises");
-var pipeSubprocessStream = (sourceStream, destinationStream, maxListenersController) => {
-  const mergedStream = MERGED_STREAMS.has(destinationStream) ? pipeMoreSubprocessStream(sourceStream, destinationStream) : pipeFirstSubprocessStream(sourceStream, destinationStream);
-  incrementMaxListeners(sourceStream, SOURCE_LISTENERS_PER_PIPE, maxListenersController.signal);
-  incrementMaxListeners(destinationStream, DESTINATION_LISTENERS_PER_PIPE, maxListenersController.signal);
-  cleanupMergedStreamsMap(destinationStream);
-  return mergedStream;
-};
-var pipeFirstSubprocessStream = (sourceStream, destinationStream) => {
-  const mergedStream = mergeStreams([sourceStream]);
-  pipeStreams(mergedStream, destinationStream);
-  MERGED_STREAMS.set(destinationStream, mergedStream);
-  return mergedStream;
-};
-var pipeMoreSubprocessStream = (sourceStream, destinationStream) => {
-  const mergedStream = MERGED_STREAMS.get(destinationStream);
-  mergedStream.add(sourceStream);
-  return mergedStream;
-};
-var cleanupMergedStreamsMap = async (destinationStream) => {
-  try {
-    await (0, import_promises9.finished)(destinationStream, { cleanup: true, readable: false, writable: true });
-  } catch {
-  }
-  MERGED_STREAMS.delete(destinationStream);
-};
-var MERGED_STREAMS = /* @__PURE__ */ new WeakMap();
-var SOURCE_LISTENERS_PER_PIPE = 2;
-var DESTINATION_LISTENERS_PER_PIPE = 1;
-
-// node_modules/execa/lib/pipe/abort.js
-var import_node_util8 = require("node:util");
-var unpipeOnAbort = (unpipeSignal, unpipeContext) => unpipeSignal === void 0 ? [] : [unpipeOnSignalAbort(unpipeSignal, unpipeContext)];
-var unpipeOnSignalAbort = async (unpipeSignal, { sourceStream, mergedStream, fileDescriptors, sourceOptions, startTime }) => {
-  await (0, import_node_util8.aborted)(unpipeSignal, sourceStream);
-  await mergedStream.remove(sourceStream);
-  const error = new Error("Pipe canceled by `unpipeSignal` option.");
-  throw createNonCommandError({
-    error,
-    fileDescriptors,
-    sourceOptions,
-    startTime
-  });
-};
-
-// node_modules/execa/lib/pipe/setup.js
-var pipeToSubprocess = (sourceInfo, ...pipeArguments) => {
-  if (isPlainObject(pipeArguments[0])) {
-    return pipeToSubprocess.bind(void 0, {
-      ...sourceInfo,
-      boundOptions: { ...sourceInfo.boundOptions, ...pipeArguments[0] }
-    });
-  }
-  const { destination, ...normalizedInfo } = normalizePipeArguments(sourceInfo, ...pipeArguments);
-  const promise = handlePipePromise({ ...normalizedInfo, destination });
-  promise.pipe = pipeToSubprocess.bind(void 0, {
-    ...sourceInfo,
-    source: destination,
-    sourcePromise: promise,
-    boundOptions: {}
-  });
-  return promise;
-};
-var handlePipePromise = async ({
-  sourcePromise,
-  sourceStream,
-  sourceOptions,
-  sourceError,
-  destination,
-  destinationStream,
-  destinationError,
-  unpipeSignal,
-  fileDescriptors,
-  startTime
-}) => {
-  const subprocessPromises = getSubprocessPromises(sourcePromise, destination);
-  handlePipeArgumentsError({
-    sourceStream,
-    sourceError,
-    destinationStream,
-    destinationError,
-    fileDescriptors,
-    sourceOptions,
-    startTime
-  });
-  const maxListenersController = new AbortController();
-  try {
-    const mergedStream = pipeSubprocessStream(sourceStream, destinationStream, maxListenersController);
-    return await Promise.race([
-      waitForBothSubprocesses(subprocessPromises),
-      ...unpipeOnAbort(unpipeSignal, {
-        sourceStream,
-        mergedStream,
-        sourceOptions,
-        fileDescriptors,
-        startTime
-      })
-    ]);
-  } finally {
-    maxListenersController.abort();
-  }
-};
-var getSubprocessPromises = (sourcePromise, destination) => Promise.allSettled([sourcePromise, destination]);
-
-// node_modules/execa/lib/io/contents.js
-var import_promises10 = require("node:timers/promises");
-
-// node_modules/execa/lib/io/iterate.js
-var import_node_events13 = require("node:events");
-var import_node_stream6 = require("node:stream");
-var iterateOnSubprocessStream = ({ subprocessStdout, subprocess, binary, shouldEncode, encoding, preserveNewlines }) => {
-  const controller = new AbortController();
-  stopReadingOnExit(subprocess, controller);
-  return iterateOnStream({
-    stream: subprocessStdout,
-    controller,
-    binary,
-    shouldEncode: !subprocessStdout.readableObjectMode && shouldEncode,
-    encoding,
-    shouldSplit: !subprocessStdout.readableObjectMode,
-    preserveNewlines
-  });
-};
-var stopReadingOnExit = async (subprocess, controller) => {
-  try {
-    await subprocess;
-  } catch {
-  } finally {
-    controller.abort();
-  }
-};
-var iterateForResult = ({ stream: stream5, onStreamEnd, lines, encoding, stripFinalNewline: stripFinalNewline2, allMixed }) => {
-  const controller = new AbortController();
-  stopReadingOnStreamEnd(onStreamEnd, controller, stream5);
-  const objectMode = stream5.readableObjectMode && !allMixed;
-  return iterateOnStream({
-    stream: stream5,
-    controller,
-    binary: encoding === "buffer",
-    shouldEncode: !objectMode,
-    encoding,
-    shouldSplit: !objectMode && lines,
-    preserveNewlines: !stripFinalNewline2
-  });
-};
-var stopReadingOnStreamEnd = async (onStreamEnd, controller, stream5) => {
-  try {
-    await onStreamEnd;
-  } catch {
-    stream5.destroy();
-  } finally {
-    controller.abort();
-  }
-};
-var iterateOnStream = ({ stream: stream5, controller, binary, shouldEncode, encoding, shouldSplit, preserveNewlines }) => {
-  const onStdoutChunk = (0, import_node_events13.on)(stream5, "data", {
-    signal: controller.signal,
-    highWaterMark: HIGH_WATER_MARK,
-    // Backward compatibility with older name for this option
-    // See https://github.com/nodejs/node/pull/52080#discussion_r1525227861
-    // @todo Remove after removing support for Node 21
-    highWatermark: HIGH_WATER_MARK
-  });
-  return iterateOnData({
-    onStdoutChunk,
-    controller,
-    binary,
-    shouldEncode,
-    encoding,
-    shouldSplit,
-    preserveNewlines
-  });
-};
-var DEFAULT_OBJECT_HIGH_WATER_MARK = (0, import_node_stream6.getDefaultHighWaterMark)(true);
-var HIGH_WATER_MARK = DEFAULT_OBJECT_HIGH_WATER_MARK;
-var iterateOnData = async function* ({ onStdoutChunk, controller, binary, shouldEncode, encoding, shouldSplit, preserveNewlines }) {
-  const generators = getGenerators({
-    binary,
-    shouldEncode,
-    encoding,
-    shouldSplit,
-    preserveNewlines
-  });
-  try {
-    for await (const [chunk] of onStdoutChunk) {
-      yield* transformChunkSync(chunk, generators, 0);
-    }
-  } catch (error) {
-    if (!controller.signal.aborted) {
-      throw error;
-    }
-  } finally {
-    yield* finalChunksSync(generators);
-  }
-};
-var getGenerators = ({ binary, shouldEncode, encoding, shouldSplit, preserveNewlines }) => [
-  getEncodingTransformGenerator(binary, encoding, !shouldEncode),
-  getSplitLinesGenerator(binary, preserveNewlines, !shouldSplit, {})
-].filter(Boolean);
-
-// node_modules/execa/lib/io/contents.js
-var getStreamOutput = async ({ stream: stream5, onStreamEnd, fdNumber, encoding, buffer, maxBuffer, lines, allMixed, stripFinalNewline: stripFinalNewline2, verboseInfo, streamInfo }) => {
-  const logPromise = logOutputAsync({
-    stream: stream5,
-    onStreamEnd,
-    fdNumber,
-    encoding,
-    allMixed,
-    verboseInfo,
-    streamInfo
-  });
-  if (!buffer) {
-    await Promise.all([resumeStream(stream5), logPromise]);
-    return;
-  }
-  const stripFinalNewlineValue = getStripFinalNewline(stripFinalNewline2, fdNumber);
-  const iterable = iterateForResult({
-    stream: stream5,
-    onStreamEnd,
-    lines,
-    encoding,
-    stripFinalNewline: stripFinalNewlineValue,
-    allMixed
-  });
-  const [output] = await Promise.all([
-    getStreamContents2({
-      stream: stream5,
-      iterable,
-      fdNumber,
-      encoding,
-      maxBuffer,
-      lines
-    }),
-    logPromise
-  ]);
-  return output;
-};
-var logOutputAsync = async ({ stream: stream5, onStreamEnd, fdNumber, encoding, allMixed, verboseInfo, streamInfo: { fileDescriptors } }) => {
-  if (!shouldLogOutput({
-    stdioItems: fileDescriptors[fdNumber]?.stdioItems,
-    encoding,
-    verboseInfo,
-    fdNumber
-  })) {
-    return;
-  }
-  const linesIterable = iterateForResult({
-    stream: stream5,
-    onStreamEnd,
-    lines: true,
-    encoding,
-    stripFinalNewline: true,
-    allMixed
-  });
-  await logLines(linesIterable, stream5, fdNumber, verboseInfo);
-};
-var resumeStream = async (stream5) => {
-  await (0, import_promises10.setImmediate)();
-  if (stream5.readableFlowing === null) {
-    stream5.resume();
-  }
-};
-var getStreamContents2 = async ({ stream: stream5, stream: { readableObjectMode }, iterable, fdNumber, encoding, maxBuffer, lines }) => {
-  try {
-    if (readableObjectMode || lines) {
-      return await getStreamAsArray(iterable, { maxBuffer });
-    }
-    if (encoding === "buffer") {
-      return new Uint8Array(await getStreamAsArrayBuffer(iterable, { maxBuffer }));
-    }
-    return await getStreamAsString(iterable, { maxBuffer });
-  } catch (error) {
-    return handleBufferedData(handleMaxBuffer({
-      error,
-      stream: stream5,
-      readableObjectMode,
-      lines,
-      encoding,
-      fdNumber
-    }));
-  }
-};
-var getBufferedData = async (streamPromise) => {
-  try {
-    return await streamPromise;
-  } catch (error) {
-    return handleBufferedData(error);
-  }
-};
-var handleBufferedData = ({ bufferedData }) => isArrayBuffer(bufferedData) ? new Uint8Array(bufferedData) : bufferedData;
-
-// node_modules/execa/lib/resolve/wait-stream.js
-var import_promises11 = require("node:stream/promises");
-var waitForStream = async (stream5, fdNumber, streamInfo, { isSameDirection, stopOnExit = false } = {}) => {
-  const state = handleStdinDestroy(stream5, streamInfo);
-  const abortController = new AbortController();
-  try {
-    await Promise.race([
-      ...stopOnExit ? [streamInfo.exitPromise] : [],
-      (0, import_promises11.finished)(stream5, { cleanup: true, signal: abortController.signal })
-    ]);
-  } catch (error) {
-    if (!state.stdinCleanedUp) {
-      handleStreamError(error, fdNumber, streamInfo, isSameDirection);
-    }
-  } finally {
-    abortController.abort();
-  }
-};
-var handleStdinDestroy = (stream5, { originalStreams: [originalStdin], subprocess }) => {
-  const state = { stdinCleanedUp: false };
-  if (stream5 === originalStdin) {
-    spyOnStdinDestroy(stream5, subprocess, state);
-  }
-  return state;
-};
-var spyOnStdinDestroy = (subprocessStdin, subprocess, state) => {
-  const { _destroy } = subprocessStdin;
-  subprocessStdin._destroy = (...destroyArguments) => {
-    setStdinCleanedUp(subprocess, state);
-    _destroy.call(subprocessStdin, ...destroyArguments);
-  };
-};
-var setStdinCleanedUp = ({ exitCode, signalCode }, state) => {
-  if (exitCode !== null || signalCode !== null) {
-    state.stdinCleanedUp = true;
-  }
-};
-var handleStreamError = (error, fdNumber, streamInfo, isSameDirection) => {
-  if (!shouldIgnoreStreamError(error, fdNumber, streamInfo, isSameDirection)) {
-    throw error;
-  }
-};
-var shouldIgnoreStreamError = (error, fdNumber, streamInfo, isSameDirection = true) => {
-  if (streamInfo.propagating) {
-    return isStreamEpipe(error) || isStreamAbort(error);
-  }
-  streamInfo.propagating = true;
-  return isInputFileDescriptor(streamInfo, fdNumber) === isSameDirection ? isStreamEpipe(error) : isStreamAbort(error);
-};
-var isInputFileDescriptor = ({ fileDescriptors }, fdNumber) => fdNumber !== "all" && fileDescriptors[fdNumber].direction === "input";
-var isStreamAbort = (error) => error?.code === "ERR_STREAM_PREMATURE_CLOSE";
-var isStreamEpipe = (error) => error?.code === "EPIPE";
-
-// node_modules/execa/lib/resolve/stdio.js
-var waitForStdioStreams = ({ subprocess, encoding, buffer, maxBuffer, lines, stripFinalNewline: stripFinalNewline2, verboseInfo, streamInfo }) => subprocess.stdio.map((stream5, fdNumber) => waitForSubprocessStream({
-  stream: stream5,
-  fdNumber,
-  encoding,
-  buffer: buffer[fdNumber],
-  maxBuffer: maxBuffer[fdNumber],
-  lines: lines[fdNumber],
-  allMixed: false,
-  stripFinalNewline: stripFinalNewline2,
-  verboseInfo,
-  streamInfo
-}));
-var waitForSubprocessStream = async ({ stream: stream5, fdNumber, encoding, buffer, maxBuffer, lines, allMixed, stripFinalNewline: stripFinalNewline2, verboseInfo, streamInfo }) => {
-  if (!stream5) {
-    return;
-  }
-  const onStreamEnd = waitForStream(stream5, fdNumber, streamInfo);
-  if (isInputFileDescriptor(streamInfo, fdNumber)) {
-    await onStreamEnd;
-    return;
-  }
-  const [output] = await Promise.all([
-    getStreamOutput({
-      stream: stream5,
-      onStreamEnd,
-      fdNumber,
-      encoding,
-      buffer,
-      maxBuffer,
-      lines,
-      allMixed,
-      stripFinalNewline: stripFinalNewline2,
-      verboseInfo,
-      streamInfo
-    }),
-    onStreamEnd
-  ]);
-  return output;
-};
-
-// node_modules/execa/lib/resolve/all-async.js
-var makeAllStream = ({ stdout, stderr }, { all: all3 }) => all3 && (stdout || stderr) ? mergeStreams([stdout, stderr].filter(Boolean)) : void 0;
-var waitForAllStream = ({ subprocess, encoding, buffer, maxBuffer, lines, stripFinalNewline: stripFinalNewline2, verboseInfo, streamInfo }) => waitForSubprocessStream({
-  ...getAllStream(subprocess, buffer),
-  fdNumber: "all",
-  encoding,
-  maxBuffer: maxBuffer[1] + maxBuffer[2],
-  lines: lines[1] || lines[2],
-  allMixed: getAllMixed(subprocess),
-  stripFinalNewline: stripFinalNewline2,
-  verboseInfo,
-  streamInfo
-});
-var getAllStream = ({ stdout, stderr, all: all3 }, [, bufferStdout, bufferStderr]) => {
-  const buffer = bufferStdout || bufferStderr;
-  if (!buffer) {
-    return { stream: all3, buffer };
-  }
-  if (!bufferStdout) {
-    return { stream: stderr, buffer };
-  }
-  if (!bufferStderr) {
-    return { stream: stdout, buffer };
-  }
-  return { stream: all3, buffer };
-};
-var getAllMixed = ({ all: all3, stdout, stderr }) => all3 && stdout && stderr && stdout.readableObjectMode !== stderr.readableObjectMode;
-
-// node_modules/execa/lib/resolve/wait-subprocess.js
-var import_node_events14 = require("node:events");
-
-// node_modules/execa/lib/verbose/ipc.js
-var shouldLogIpc = (verboseInfo) => isFullVerbose(verboseInfo, "ipc");
-var logIpcOutput = (message, verboseInfo) => {
-  const verboseMessage = serializeVerboseMessage(message);
-  verboseLog({
-    type: "ipc",
-    verboseMessage,
-    fdNumber: "ipc",
-    verboseInfo
-  });
-};
-
-// node_modules/execa/lib/ipc/buffer-messages.js
-var waitForIpcOutput = async ({
-  subprocess,
-  buffer: bufferArray,
-  maxBuffer: maxBufferArray,
-  ipc,
-  ipcOutput,
-  verboseInfo
-}) => {
-  if (!ipc) {
-    return ipcOutput;
-  }
-  const isVerbose2 = shouldLogIpc(verboseInfo);
-  const buffer = getFdSpecificValue(bufferArray, "ipc");
-  const maxBuffer = getFdSpecificValue(maxBufferArray, "ipc");
-  for await (const message of loopOnMessages({
-    anyProcess: subprocess,
-    channel: subprocess.channel,
-    isSubprocess: false,
-    ipc,
-    shouldAwait: false,
-    reference: true
-  })) {
-    if (buffer) {
-      checkIpcMaxBuffer(subprocess, ipcOutput, maxBuffer);
-      ipcOutput.push(message);
-    }
-    if (isVerbose2) {
-      logIpcOutput(message, verboseInfo);
-    }
-  }
-  return ipcOutput;
-};
-var getBufferedIpcOutput = async (ipcOutputPromise, ipcOutput) => {
-  await Promise.allSettled([ipcOutputPromise]);
-  return ipcOutput;
-};
-
-// node_modules/execa/lib/resolve/wait-subprocess.js
-var waitForSubprocessResult = async ({
-  subprocess,
-  options: {
-    encoding,
-    buffer,
-    maxBuffer,
-    lines,
-    timeoutDuration: timeout,
-    cancelSignal,
-    gracefulCancel,
-    forceKillAfterDelay,
-    stripFinalNewline: stripFinalNewline2,
-    ipc,
-    ipcInput
-  },
-  context,
-  verboseInfo,
-  fileDescriptors,
-  originalStreams,
-  onInternalError,
-  controller
-}) => {
-  const exitPromise = waitForExit(subprocess, context);
-  const streamInfo = {
-    originalStreams,
-    fileDescriptors,
-    subprocess,
-    exitPromise,
-    propagating: false
-  };
-  const stdioPromises = waitForStdioStreams({
-    subprocess,
-    encoding,
-    buffer,
-    maxBuffer,
-    lines,
-    stripFinalNewline: stripFinalNewline2,
-    verboseInfo,
-    streamInfo
-  });
-  const allPromise = waitForAllStream({
-    subprocess,
-    encoding,
-    buffer,
-    maxBuffer,
-    lines,
-    stripFinalNewline: stripFinalNewline2,
-    verboseInfo,
-    streamInfo
-  });
-  const ipcOutput = [];
-  const ipcOutputPromise = waitForIpcOutput({
-    subprocess,
-    buffer,
-    maxBuffer,
-    ipc,
-    ipcOutput,
-    verboseInfo
-  });
-  const originalPromises = waitForOriginalStreams(originalStreams, subprocess, streamInfo);
-  const customStreamsEndPromises = waitForCustomStreamsEnd(fileDescriptors, streamInfo);
-  try {
-    return await Promise.race([
-      Promise.all([
-        {},
-        waitForSuccessfulExit(exitPromise),
-        Promise.all(stdioPromises),
-        allPromise,
-        ipcOutputPromise,
-        sendIpcInput(subprocess, ipcInput),
-        ...originalPromises,
-        ...customStreamsEndPromises
-      ]),
-      onInternalError,
-      throwOnSubprocessError(subprocess, controller),
-      ...throwOnTimeout(subprocess, timeout, context, controller),
-      ...throwOnCancel({
-        subprocess,
-        cancelSignal,
-        gracefulCancel,
-        context,
-        controller
-      }),
-      ...throwOnGracefulCancel({
-        subprocess,
-        cancelSignal,
-        gracefulCancel,
-        forceKillAfterDelay,
-        context,
-        controller
-      })
-    ]);
-  } catch (error) {
-    context.terminationReason ??= "other";
-    return Promise.all([
-      { error },
-      exitPromise,
-      Promise.all(stdioPromises.map((stdioPromise) => getBufferedData(stdioPromise))),
-      getBufferedData(allPromise),
-      getBufferedIpcOutput(ipcOutputPromise, ipcOutput),
-      Promise.allSettled(originalPromises),
-      Promise.allSettled(customStreamsEndPromises)
-    ]);
-  }
-};
-var waitForOriginalStreams = (originalStreams, subprocess, streamInfo) => originalStreams.map((stream5, fdNumber) => stream5 === subprocess.stdio[fdNumber] ? void 0 : waitForStream(stream5, fdNumber, streamInfo));
-var waitForCustomStreamsEnd = (fileDescriptors, streamInfo) => fileDescriptors.flatMap(({ stdioItems }, fdNumber) => stdioItems.filter(({ value, stream: stream5 = value }) => isStream2(stream5, { checkOpen: false }) && !isStandardStream(stream5)).map(({ type, value, stream: stream5 = value }) => waitForStream(stream5, fdNumber, streamInfo, {
-  isSameDirection: TRANSFORM_TYPES.has(type),
-  stopOnExit: type === "native"
-})));
-var throwOnSubprocessError = async (subprocess, { signal }) => {
-  const [error] = await (0, import_node_events14.once)(subprocess, "error", { signal });
-  throw error;
-};
-
-// node_modules/execa/lib/convert/concurrent.js
-var initializeConcurrentStreams = () => ({
-  readableDestroy: /* @__PURE__ */ new WeakMap(),
-  writableFinal: /* @__PURE__ */ new WeakMap(),
-  writableDestroy: /* @__PURE__ */ new WeakMap()
-});
-var addConcurrentStream = (concurrentStreams, stream5, waitName) => {
-  const weakMap = concurrentStreams[waitName];
-  if (!weakMap.has(stream5)) {
-    weakMap.set(stream5, []);
-  }
-  const promises = weakMap.get(stream5);
-  const promise = createDeferred();
-  promises.push(promise);
-  const resolve4 = promise.resolve.bind(promise);
-  return { resolve: resolve4, promises };
-};
-var waitForConcurrentStreams = async ({ resolve: resolve4, promises }, subprocess) => {
-  resolve4();
-  const [isSubprocessExit] = await Promise.race([
-    Promise.allSettled([true, subprocess]),
-    Promise.all([false, ...promises])
-  ]);
-  return !isSubprocessExit;
-};
-
-// node_modules/execa/lib/convert/readable.js
-var import_node_stream7 = require("node:stream");
-var import_node_util9 = require("node:util");
-
-// node_modules/execa/lib/convert/shared.js
-var import_promises12 = require("node:stream/promises");
-var safeWaitForSubprocessStdin = async (subprocessStdin) => {
-  if (subprocessStdin === void 0) {
-    return;
-  }
-  try {
-    await waitForSubprocessStdin(subprocessStdin);
-  } catch {
-  }
-};
-var safeWaitForSubprocessStdout = async (subprocessStdout) => {
-  if (subprocessStdout === void 0) {
-    return;
-  }
-  try {
-    await waitForSubprocessStdout(subprocessStdout);
-  } catch {
-  }
-};
-var waitForSubprocessStdin = async (subprocessStdin) => {
-  await (0, import_promises12.finished)(subprocessStdin, { cleanup: true, readable: false, writable: true });
-};
-var waitForSubprocessStdout = async (subprocessStdout) => {
-  await (0, import_promises12.finished)(subprocessStdout, { cleanup: true, readable: true, writable: false });
-};
-var waitForSubprocess = async (subprocess, error) => {
-  await subprocess;
-  if (error) {
-    throw error;
-  }
-};
-var destroyOtherStream = (stream5, isOpen, error) => {
-  if (error && !isStreamAbort(error)) {
-    stream5.destroy(error);
-  } else if (isOpen) {
-    stream5.destroy();
-  }
-};
-
-// node_modules/execa/lib/convert/readable.js
-var createReadable = ({ subprocess, concurrentStreams, encoding }, { from, binary: binaryOption = true, preserveNewlines = true } = {}) => {
-  const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
-  const { subprocessStdout, waitReadableDestroy } = getSubprocessStdout(subprocess, from, concurrentStreams);
-  const { readableEncoding, readableObjectMode, readableHighWaterMark } = getReadableOptions(subprocessStdout, binary);
-  const { read, onStdoutDataDone } = getReadableMethods({
-    subprocessStdout,
-    subprocess,
-    binary,
-    encoding,
-    preserveNewlines
-  });
-  const readable2 = new import_node_stream7.Readable({
-    read,
-    destroy: (0, import_node_util9.callbackify)(onReadableDestroy.bind(void 0, { subprocessStdout, subprocess, waitReadableDestroy })),
-    highWaterMark: readableHighWaterMark,
-    objectMode: readableObjectMode,
-    encoding: readableEncoding
-  });
-  onStdoutFinished({
-    subprocessStdout,
-    onStdoutDataDone,
-    readable: readable2,
-    subprocess
-  });
-  return readable2;
-};
-var getSubprocessStdout = (subprocess, from, concurrentStreams) => {
-  const subprocessStdout = getFromStream(subprocess, from);
-  const waitReadableDestroy = addConcurrentStream(concurrentStreams, subprocessStdout, "readableDestroy");
-  return { subprocessStdout, waitReadableDestroy };
-};
-var getReadableOptions = ({ readableEncoding, readableObjectMode, readableHighWaterMark }, binary) => binary ? { readableEncoding, readableObjectMode, readableHighWaterMark } : { readableEncoding, readableObjectMode: true, readableHighWaterMark: DEFAULT_OBJECT_HIGH_WATER_MARK };
-var getReadableMethods = ({ subprocessStdout, subprocess, binary, encoding, preserveNewlines }) => {
-  const onStdoutDataDone = createDeferred();
-  const onStdoutData = iterateOnSubprocessStream({
-    subprocessStdout,
-    subprocess,
-    binary,
-    shouldEncode: !binary,
-    encoding,
-    preserveNewlines
-  });
-  return {
-    read() {
-      onRead(this, onStdoutData, onStdoutDataDone);
-    },
-    onStdoutDataDone
-  };
-};
-var onRead = async (readable2, onStdoutData, onStdoutDataDone) => {
-  try {
-    const { value, done } = await onStdoutData.next();
-    if (done) {
-      onStdoutDataDone.resolve();
-    } else {
-      readable2.push(value);
-    }
-  } catch {
-  }
-};
-var onStdoutFinished = async ({ subprocessStdout, onStdoutDataDone, readable: readable2, subprocess, subprocessStdin }) => {
-  try {
-    await waitForSubprocessStdout(subprocessStdout);
-    await subprocess;
-    await safeWaitForSubprocessStdin(subprocessStdin);
-    await onStdoutDataDone;
-    if (readable2.readable) {
-      readable2.push(null);
-    }
-  } catch (error) {
-    await safeWaitForSubprocessStdin(subprocessStdin);
-    destroyOtherReadable(readable2, error);
-  }
-};
-var onReadableDestroy = async ({ subprocessStdout, subprocess, waitReadableDestroy }, error) => {
-  if (await waitForConcurrentStreams(waitReadableDestroy, subprocess)) {
-    destroyOtherReadable(subprocessStdout, error);
-    await waitForSubprocess(subprocess, error);
-  }
-};
-var destroyOtherReadable = (stream5, error) => {
-  destroyOtherStream(stream5, stream5.readable, error);
-};
-
-// node_modules/execa/lib/convert/writable.js
-var import_node_stream8 = require("node:stream");
-var import_node_util10 = require("node:util");
-var createWritable = ({ subprocess, concurrentStreams }, { to } = {}) => {
-  const { subprocessStdin, waitWritableFinal, waitWritableDestroy } = getSubprocessStdin(subprocess, to, concurrentStreams);
-  const writable2 = new import_node_stream8.Writable({
-    ...getWritableMethods(subprocessStdin, subprocess, waitWritableFinal),
-    destroy: (0, import_node_util10.callbackify)(onWritableDestroy.bind(void 0, {
-      subprocessStdin,
-      subprocess,
-      waitWritableFinal,
-      waitWritableDestroy
-    })),
-    highWaterMark: subprocessStdin.writableHighWaterMark,
-    objectMode: subprocessStdin.writableObjectMode
-  });
-  onStdinFinished(subprocessStdin, writable2);
-  return writable2;
-};
-var getSubprocessStdin = (subprocess, to, concurrentStreams) => {
-  const subprocessStdin = getToStream(subprocess, to);
-  const waitWritableFinal = addConcurrentStream(concurrentStreams, subprocessStdin, "writableFinal");
-  const waitWritableDestroy = addConcurrentStream(concurrentStreams, subprocessStdin, "writableDestroy");
-  return { subprocessStdin, waitWritableFinal, waitWritableDestroy };
-};
-var getWritableMethods = (subprocessStdin, subprocess, waitWritableFinal) => ({
-  write: onWrite.bind(void 0, subprocessStdin),
-  final: (0, import_node_util10.callbackify)(onWritableFinal.bind(void 0, subprocessStdin, subprocess, waitWritableFinal))
-});
-var onWrite = (subprocessStdin, chunk, encoding, done) => {
-  if (subprocessStdin.write(chunk, encoding)) {
-    done();
-  } else {
-    subprocessStdin.once("drain", done);
-  }
-};
-var onWritableFinal = async (subprocessStdin, subprocess, waitWritableFinal) => {
-  if (await waitForConcurrentStreams(waitWritableFinal, subprocess)) {
-    if (subprocessStdin.writable) {
-      subprocessStdin.end();
-    }
-    await subprocess;
-  }
-};
-var onStdinFinished = async (subprocessStdin, writable2, subprocessStdout) => {
-  try {
-    await waitForSubprocessStdin(subprocessStdin);
-    if (writable2.writable) {
-      writable2.end();
-    }
-  } catch (error) {
-    await safeWaitForSubprocessStdout(subprocessStdout);
-    destroyOtherWritable(writable2, error);
-  }
-};
-var onWritableDestroy = async ({ subprocessStdin, subprocess, waitWritableFinal, waitWritableDestroy }, error) => {
-  await waitForConcurrentStreams(waitWritableFinal, subprocess);
-  if (await waitForConcurrentStreams(waitWritableDestroy, subprocess)) {
-    destroyOtherWritable(subprocessStdin, error);
-    await waitForSubprocess(subprocess, error);
-  }
-};
-var destroyOtherWritable = (stream5, error) => {
-  destroyOtherStream(stream5, stream5.writable, error);
-};
-
-// node_modules/execa/lib/convert/duplex.js
-var import_node_stream9 = require("node:stream");
-var import_node_util11 = require("node:util");
-var createDuplex = ({ subprocess, concurrentStreams, encoding }, { from, to, binary: binaryOption = true, preserveNewlines = true } = {}) => {
-  const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
-  const { subprocessStdout, waitReadableDestroy } = getSubprocessStdout(subprocess, from, concurrentStreams);
-  const { subprocessStdin, waitWritableFinal, waitWritableDestroy } = getSubprocessStdin(subprocess, to, concurrentStreams);
-  const { readableEncoding, readableObjectMode, readableHighWaterMark } = getReadableOptions(subprocessStdout, binary);
-  const { read, onStdoutDataDone } = getReadableMethods({
-    subprocessStdout,
-    subprocess,
-    binary,
-    encoding,
-    preserveNewlines
-  });
-  const duplex2 = new import_node_stream9.Duplex({
-    read,
-    ...getWritableMethods(subprocessStdin, subprocess, waitWritableFinal),
-    destroy: (0, import_node_util11.callbackify)(onDuplexDestroy.bind(void 0, {
-      subprocessStdout,
-      subprocessStdin,
-      subprocess,
-      waitReadableDestroy,
-      waitWritableFinal,
-      waitWritableDestroy
-    })),
-    readableHighWaterMark,
-    writableHighWaterMark: subprocessStdin.writableHighWaterMark,
-    readableObjectMode,
-    writableObjectMode: subprocessStdin.writableObjectMode,
-    encoding: readableEncoding
-  });
-  onStdoutFinished({
-    subprocessStdout,
-    onStdoutDataDone,
-    readable: duplex2,
-    subprocess,
-    subprocessStdin
-  });
-  onStdinFinished(subprocessStdin, duplex2, subprocessStdout);
-  return duplex2;
-};
-var onDuplexDestroy = async ({ subprocessStdout, subprocessStdin, subprocess, waitReadableDestroy, waitWritableFinal, waitWritableDestroy }, error) => {
-  await Promise.all([
-    onReadableDestroy({ subprocessStdout, subprocess, waitReadableDestroy }, error),
-    onWritableDestroy({
-      subprocessStdin,
-      subprocess,
-      waitWritableFinal,
-      waitWritableDestroy
-    }, error)
-  ]);
-};
-
-// node_modules/execa/lib/convert/iterable.js
-var createIterable = (subprocess, encoding, {
-  from,
-  binary: binaryOption = false,
-  preserveNewlines = false
-} = {}) => {
-  const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
-  const subprocessStdout = getFromStream(subprocess, from);
-  const onStdoutData = iterateOnSubprocessStream({
-    subprocessStdout,
-    subprocess,
-    binary,
-    shouldEncode: true,
-    encoding,
-    preserveNewlines
-  });
-  return iterateOnStdoutData(onStdoutData, subprocessStdout, subprocess);
-};
-var iterateOnStdoutData = async function* (onStdoutData, subprocessStdout, subprocess) {
-  try {
-    yield* onStdoutData;
-  } finally {
-    if (subprocessStdout.readable) {
-      subprocessStdout.destroy();
-    }
-    await subprocess;
-  }
-};
-
-// node_modules/execa/lib/convert/add.js
-var addConvertedStreams = (subprocess, { encoding }) => {
-  const concurrentStreams = initializeConcurrentStreams();
-  subprocess.readable = createReadable.bind(void 0, { subprocess, concurrentStreams, encoding });
-  subprocess.writable = createWritable.bind(void 0, { subprocess, concurrentStreams });
-  subprocess.duplex = createDuplex.bind(void 0, { subprocess, concurrentStreams, encoding });
-  subprocess.iterable = createIterable.bind(void 0, subprocess, encoding);
-  subprocess[Symbol.asyncIterator] = createIterable.bind(void 0, subprocess, encoding, {});
-};
-
-// node_modules/execa/lib/methods/promise.js
-var mergePromise = (subprocess, promise) => {
-  for (const [property, descriptor] of descriptors) {
-    const value = descriptor.value.bind(promise);
-    Reflect.defineProperty(subprocess, property, { ...descriptor, value });
-  }
-};
-var nativePromisePrototype = (async () => {
-})().constructor.prototype;
-var descriptors = ["then", "catch", "finally"].map((property) => [
-  property,
-  Reflect.getOwnPropertyDescriptor(nativePromisePrototype, property)
-]);
-
-// node_modules/execa/lib/methods/main-async.js
-var execaCoreAsync = (rawFile, rawArguments, rawOptions, createNested) => {
-  const { file, commandArguments, command, escapedCommand, startTime, verboseInfo, options, fileDescriptors } = handleAsyncArguments(rawFile, rawArguments, rawOptions);
-  const { subprocess, promise } = spawnSubprocessAsync({
-    file,
-    commandArguments,
-    options,
-    startTime,
-    verboseInfo,
-    command,
-    escapedCommand,
-    fileDescriptors
-  });
-  subprocess.pipe = pipeToSubprocess.bind(void 0, {
-    source: subprocess,
-    sourcePromise: promise,
-    boundOptions: {},
-    createNested
-  });
-  mergePromise(subprocess, promise);
-  SUBPROCESS_OPTIONS.set(subprocess, { options, fileDescriptors });
-  return subprocess;
-};
-var handleAsyncArguments = (rawFile, rawArguments, rawOptions) => {
-  const { command, escapedCommand, startTime, verboseInfo } = handleCommand(rawFile, rawArguments, rawOptions);
-  const { file, commandArguments, options: normalizedOptions } = normalizeOptions(rawFile, rawArguments, rawOptions);
-  const options = handleAsyncOptions(normalizedOptions);
-  const fileDescriptors = handleStdioAsync(options, verboseInfo);
-  return {
-    file,
-    commandArguments,
-    command,
-    escapedCommand,
-    startTime,
-    verboseInfo,
-    options,
-    fileDescriptors
-  };
-};
-var handleAsyncOptions = ({ timeout, signal, ...options }) => {
-  if (signal !== void 0) {
-    throw new TypeError('The "signal" option has been renamed to "cancelSignal" instead.');
-  }
-  return { ...options, timeoutDuration: timeout };
-};
-var spawnSubprocessAsync = ({ file, commandArguments, options, startTime, verboseInfo, command, escapedCommand, fileDescriptors }) => {
-  let subprocess;
-  try {
-    subprocess = (0, import_node_child_process5.spawn)(...concatenateShell(file, commandArguments, options));
-  } catch (error) {
-    return handleEarlyError({
-      error,
-      command,
-      escapedCommand,
-      fileDescriptors,
-      options,
-      startTime,
-      verboseInfo
-    });
-  }
-  const controller = new AbortController();
-  (0, import_node_events15.setMaxListeners)(Number.POSITIVE_INFINITY, controller.signal);
-  const originalStreams = [...subprocess.stdio];
-  pipeOutputAsync(subprocess, fileDescriptors, controller);
-  cleanupOnExit(subprocess, options, controller);
-  const context = {};
-  const onInternalError = createDeferred();
-  subprocess.kill = subprocessKill.bind(void 0, {
-    kill: subprocess.kill.bind(subprocess),
-    options,
-    onInternalError,
-    context,
-    controller
-  });
-  subprocess.all = makeAllStream(subprocess, options);
-  addConvertedStreams(subprocess, options);
-  addIpcMethods(subprocess, options);
-  const promise = handlePromise({
-    subprocess,
-    options,
-    startTime,
-    verboseInfo,
-    fileDescriptors,
-    originalStreams,
-    command,
-    escapedCommand,
-    context,
-    onInternalError,
-    controller
-  });
-  return { subprocess, promise };
-};
-var handlePromise = async ({ subprocess, options, startTime, verboseInfo, fileDescriptors, originalStreams, command, escapedCommand, context, onInternalError, controller }) => {
-  const [
-    errorInfo,
-    [exitCode, signal],
-    stdioResults,
-    allResult,
-    ipcOutput
-  ] = await waitForSubprocessResult({
-    subprocess,
-    options,
-    context,
-    verboseInfo,
-    fileDescriptors,
-    originalStreams,
-    onInternalError,
-    controller
-  });
-  controller.abort();
-  onInternalError.resolve();
-  const stdio = stdioResults.map((stdioResult, fdNumber) => stripNewline(stdioResult, options, fdNumber));
-  const all3 = stripNewline(allResult, options, "all");
-  const result = getAsyncResult({
-    errorInfo,
-    exitCode,
-    signal,
-    stdio,
-    all: all3,
-    ipcOutput,
-    context,
-    options,
-    command,
-    escapedCommand,
-    startTime
-  });
-  return handleResult(result, verboseInfo, options);
-};
-var getAsyncResult = ({ errorInfo, exitCode, signal, stdio, all: all3, ipcOutput, context, options, command, escapedCommand, startTime }) => "error" in errorInfo ? makeError({
-  error: errorInfo.error,
-  command,
-  escapedCommand,
-  timedOut: context.terminationReason === "timeout",
-  isCanceled: context.terminationReason === "cancel" || context.terminationReason === "gracefulCancel",
-  isGracefullyCanceled: context.terminationReason === "gracefulCancel",
-  isMaxBuffer: errorInfo.error instanceof MaxBufferError,
-  isForcefullyTerminated: context.isForcefullyTerminated,
-  exitCode,
-  signal,
-  stdio,
-  all: all3,
-  ipcOutput,
-  options,
-  startTime,
-  isSync: false
-}) : makeSuccessResult({
-  command,
-  escapedCommand,
-  stdio,
-  all: all3,
-  ipcOutput,
-  options,
-  startTime
-});
-
-// node_modules/execa/lib/methods/bind.js
-var mergeOptions = (boundOptions, options) => {
-  const newOptions = Object.fromEntries(
-    Object.entries(options).map(([optionName, optionValue]) => [
-      optionName,
-      mergeOption(optionName, boundOptions[optionName], optionValue)
-    ])
-  );
-  return { ...boundOptions, ...newOptions };
-};
-var mergeOption = (optionName, boundOptionValue, optionValue) => {
-  if (DEEP_OPTIONS.has(optionName) && isPlainObject(boundOptionValue) && isPlainObject(optionValue)) {
-    return { ...boundOptionValue, ...optionValue };
-  }
-  return optionValue;
-};
-var DEEP_OPTIONS = /* @__PURE__ */ new Set(["env", ...FD_SPECIFIC_OPTIONS]);
-
-// node_modules/execa/lib/methods/create.js
-var createExeca = (mapArguments, boundOptions, deepOptions, setBoundExeca) => {
-  const createNested = (mapArguments2, boundOptions2, setBoundExeca2) => createExeca(mapArguments2, boundOptions2, deepOptions, setBoundExeca2);
-  const boundExeca = (...execaArguments) => callBoundExeca({
-    mapArguments,
-    deepOptions,
-    boundOptions,
-    setBoundExeca,
-    createNested
-  }, ...execaArguments);
-  if (setBoundExeca !== void 0) {
-    setBoundExeca(boundExeca, createNested, boundOptions);
-  }
-  return boundExeca;
-};
-var callBoundExeca = ({ mapArguments, deepOptions = {}, boundOptions = {}, setBoundExeca, createNested }, firstArgument, ...nextArguments) => {
-  if (isPlainObject(firstArgument)) {
-    return createNested(mapArguments, mergeOptions(boundOptions, firstArgument), setBoundExeca);
-  }
-  const { file, commandArguments, options, isSync } = parseArguments({
-    mapArguments,
-    firstArgument,
-    nextArguments,
-    deepOptions,
-    boundOptions
-  });
-  return isSync ? execaCoreSync(file, commandArguments, options) : execaCoreAsync(file, commandArguments, options, createNested);
-};
-var parseArguments = ({ mapArguments, firstArgument, nextArguments, deepOptions, boundOptions }) => {
-  const callArguments = isTemplateString(firstArgument) ? parseTemplates(firstArgument, nextArguments) : [firstArgument, ...nextArguments];
-  const [initialFile, initialArguments, initialOptions] = normalizeParameters(...callArguments);
-  const mergedOptions = mergeOptions(mergeOptions(deepOptions, boundOptions), initialOptions);
-  const {
-    file = initialFile,
-    commandArguments = initialArguments,
-    options = mergedOptions,
-    isSync = false
-  } = mapArguments({ file: initialFile, commandArguments: initialArguments, options: mergedOptions });
-  return {
-    file,
-    commandArguments,
-    options,
-    isSync
-  };
-};
-
-// node_modules/execa/lib/methods/command.js
-var mapCommandAsync = ({ file, commandArguments }) => parseCommand(file, commandArguments);
-var mapCommandSync = ({ file, commandArguments }) => ({ ...parseCommand(file, commandArguments), isSync: true });
-var parseCommand = (command, unusedArguments) => {
-  if (unusedArguments.length > 0) {
-    throw new TypeError(`The command and its arguments must be passed as a single string: ${command} ${unusedArguments}.`);
-  }
-  const [file, ...commandArguments] = parseCommandString(command);
-  return { file, commandArguments };
-};
-var parseCommandString = (command) => {
-  if (typeof command !== "string") {
-    throw new TypeError(`The command must be a string: ${String(command)}.`);
-  }
-  const trimmedCommand = command.trim();
-  if (trimmedCommand === "") {
-    return [];
-  }
-  const tokens = [];
-  for (const token of trimmedCommand.split(SPACES_REGEXP)) {
-    const previousToken = tokens.at(-1);
-    if (previousToken && previousToken.endsWith("\\")) {
-      tokens[tokens.length - 1] = `${previousToken.slice(0, -1)} ${token}`;
-    } else {
-      tokens.push(token);
-    }
-  }
-  return tokens;
-};
-var SPACES_REGEXP = / +/g;
-
-// node_modules/execa/lib/methods/script.js
-var setScriptSync = (boundExeca, createNested, boundOptions) => {
-  boundExeca.sync = createNested(mapScriptSync, boundOptions);
-  boundExeca.s = boundExeca.sync;
-};
-var mapScriptAsync = ({ options }) => getScriptOptions(options);
-var mapScriptSync = ({ options }) => ({ ...getScriptOptions(options), isSync: true });
-var getScriptOptions = (options) => ({ options: { ...getScriptStdinOption(options), ...options } });
-var getScriptStdinOption = ({ input, inputFile, stdio }) => input === void 0 && inputFile === void 0 && stdio === void 0 ? { stdin: "inherit" } : {};
-var deepScriptOptions = { preferLocal: true };
-
-// node_modules/execa/index.js
-var execa = createExeca(() => ({}));
-var execaSync = createExeca(() => ({ isSync: true }));
-var execaCommand = createExeca(mapCommandAsync);
-var execaCommandSync = createExeca(mapCommandSync);
-var execaNode = createExeca(mapNode);
-var $ = createExeca(mapScriptAsync, {}, deepScriptOptions, setScriptSync);
-var {
-  sendMessage: sendMessage2,
-  getOneMessage: getOneMessage2,
-  getEachMessage: getEachMessage2,
-  getCancelSignal: getCancelSignal2
-} = getIpcExport();
-
-// src/core/validator.ts
 var logger;
 async function runValidator(uri, progress, repoDir) {
   console.log("[UAV][Validator] runValidator() inicializado");
   logger = new Logger("Validator", true);
   try {
-    const workspaceFolder = vscode2.workspace.getWorkspaceFolder(uri) || vscode2.workspace.workspaceFolders?.[0];
+    const workspaceFolder = vscode3.workspace.getWorkspaceFolder(uri) || vscode3.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) throw new Error("No se detect\xF3 carpeta de proyecto");
     const pkgPath = uri.fsPath;
     progress.report({ message: "Leyendo package.xml..." });
@@ -40404,7 +40520,7 @@ async function runCodeAnalyzer(classes, repoDir) {
   const storageRoot = getStorageRoot();
   const tempDir = path8.join(storageRoot, "temp");
   await fs2.ensureDir(tempDir);
-  const workspaceRoot = vscode2.workspace.workspaceFolders?.[0]?.uri.fsPath || path8.resolve(repoDir, "../../../..");
+  const workspaceRoot = vscode3.workspace.workspaceFolders?.[0]?.uri.fsPath || path8.resolve(repoDir, "../../../..");
   const embeddedConfig = path8.resolve(__dirname, "resources", "templates", "code-analyzer.yml");
   const outputFile = path8.join(tempDir, "code_analyzer_output.json");
   const execLog = path8.join(tempDir, "code_analyzer_exec.log");
@@ -40494,7 +40610,7 @@ async function filterAnalyzerFindings(findings, apexClasses) {
 async function extractCpdSnippet(locations) {
   if (!locations || locations.length === 0) return "";
   const firstLoc = locations[0];
-  const filePath = path8.isAbsolute(firstLoc.file) ? firstLoc.file : path8.join(vscode2.workspace.workspaceFolders?.[0]?.uri.fsPath || "", firstLoc.file);
+  const filePath = path8.isAbsolute(firstLoc.file) ? firstLoc.file : path8.join(vscode3.workspace.workspaceFolders?.[0]?.uri.fsPath || "", firstLoc.file);
   try {
     const exists = await fs2.pathExists(filePath);
     if (!exists) {
@@ -40514,7 +40630,7 @@ async function extractCpdSnippet(locations) {
 }
 
 // src/core/testSuite.ts
-var vscode3 = __toESM(require("vscode"));
+var vscode4 = __toESM(require("vscode"));
 var path9 = __toESM(require("path"));
 var fs3 = __toESM(require_lib());
 var TestSuite = class {
@@ -40523,7 +40639,7 @@ var TestSuite = class {
   orgAlias;
   tempDir;
   constructor(workspaceRoot) {
-    const config2 = vscode3.workspace.getConfiguration("UnifiedApexValidator");
+    const config2 = vscode4.workspace.getConfiguration("UnifiedApexValidator");
     this.orgAlias = config2.get("sfOrgAlias") || "DEVSEGC";
     this.tempDir = path9.join(workspaceRoot, ".uav", "temp");
     this.logger = new Logger("TestSuite", false);
@@ -41225,9 +41341,9 @@ function isVisitable(thing) {
 function removeBrackets(key) {
   return utils_default.endsWith(key, "[]") ? key.slice(0, -2) : key;
 }
-function renderKey(path14, key, dots) {
-  if (!path14) return key;
-  return path14.concat(key).map(function each(token, i2) {
+function renderKey(path15, key, dots) {
+  if (!path15) return key;
+  return path15.concat(key).map(function each(token, i2) {
     token = removeBrackets(token);
     return !dots && i2 ? "[" + token + "]" : token;
   }).join(dots ? "." : "");
@@ -41275,9 +41391,9 @@ function toFormData(obj, formData, options) {
     }
     return value;
   }
-  function defaultVisitor(value, key, path14) {
+  function defaultVisitor(value, key, path15) {
     let arr = value;
-    if (value && !path14 && typeof value === "object") {
+    if (value && !path15 && typeof value === "object") {
       if (utils_default.endsWith(key, "{}")) {
         key = metaTokens ? key : key.slice(0, -2);
         value = JSON.stringify(value);
@@ -41296,7 +41412,7 @@ function toFormData(obj, formData, options) {
     if (isVisitable(value)) {
       return true;
     }
-    formData.append(renderKey(path14, key, dots), convertValue(value));
+    formData.append(renderKey(path15, key, dots), convertValue(value));
     return false;
   }
   const stack = [];
@@ -41305,10 +41421,10 @@ function toFormData(obj, formData, options) {
     convertValue,
     isVisitable
   });
-  function build(value, path14) {
+  function build(value, path15) {
     if (utils_default.isUndefined(value)) return;
     if (stack.indexOf(value) !== -1) {
-      throw Error("Circular reference detected in " + path14.join("."));
+      throw Error("Circular reference detected in " + path15.join("."));
     }
     stack.push(value);
     utils_default.forEach(value, function each(el, key) {
@@ -41316,11 +41432,11 @@ function toFormData(obj, formData, options) {
         formData,
         el,
         utils_default.isString(key) ? key.trim() : key,
-        path14,
+        path15,
         exposedHelpers
       );
       if (result === true) {
-        build(el, path14 ? path14.concat(key) : [key]);
+        build(el, path15 ? path15.concat(key) : [key]);
       }
     });
     stack.pop();
@@ -41532,7 +41648,7 @@ var platform_default = {
 // node_modules/axios/lib/helpers/toURLEncodedForm.js
 function toURLEncodedForm(data, options) {
   return toFormData_default(data, new platform_default.classes.URLSearchParams(), {
-    visitor: function(value, key, path14, helpers) {
+    visitor: function(value, key, path15, helpers) {
       if (platform_default.isNode && utils_default.isBuffer(value)) {
         this.append(key, value.toString("base64"));
         return false;
@@ -41562,11 +41678,11 @@ function arrayToObject(arr) {
   return obj;
 }
 function formDataToJSON(formData) {
-  function buildPath(path14, value, target, index) {
-    let name = path14[index++];
+  function buildPath(path15, value, target, index) {
+    let name = path15[index++];
     if (name === "__proto__") return true;
     const isNumericKey = Number.isFinite(+name);
-    const isLast = index >= path14.length;
+    const isLast = index >= path15.length;
     name = !name && utils_default.isArray(target) ? target.length : name;
     if (isLast) {
       if (utils_default.hasOwnProp(target, name)) {
@@ -41579,7 +41695,7 @@ function formDataToJSON(formData) {
     if (!target[name] || !utils_default.isObject(target[name])) {
       target[name] = [];
     }
-    const result = buildPath(path14, value, target[name], index);
+    const result = buildPath(path15, value, target[name], index);
     if (result && utils_default.isArray(target[name])) {
       target[name] = arrayToObject(target[name]);
     }
@@ -42776,9 +42892,9 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       auth = urlUsername + ":" + urlPassword;
     }
     auth && headers.delete("authorization");
-    let path14;
+    let path15;
     try {
-      path14 = buildURL(
+      path15 = buildURL(
         parsed.pathname + parsed.search,
         config2.params,
         config2.paramsSerializer
@@ -42796,7 +42912,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       false
     );
     const options = {
-      path: path14,
+      path: path15,
       method,
       headers: headers.toJSON(),
       agents: { http: config2.httpAgent, https: config2.httpsAgent },
@@ -43026,10 +43142,10 @@ var isURLSameOrigin_default = platform_default.hasStandardBrowserEnv ? /* @__PUR
 var cookies_default = platform_default.hasStandardBrowserEnv ? (
   // Standard browser envs support document.cookie
   {
-    write(name, value, expires, path14, domain, secure) {
+    write(name, value, expires, path15, domain, secure) {
       const cookie = [name + "=" + encodeURIComponent(value)];
       utils_default.isNumber(expires) && cookie.push("expires=" + new Date(expires).toGMTString());
-      utils_default.isString(path14) && cookie.push("path=" + path14);
+      utils_default.isString(path15) && cookie.push("path=" + path15);
       utils_default.isString(domain) && cookie.push("domain=" + domain);
       secure === true && cookie.push("secure");
       document.cookie = cookie.join("; ");
@@ -44196,7 +44312,7 @@ var {
 } = axios_default;
 
 // src/core/IAAnalisis.ts
-var vscode4 = __toESM(require("vscode"));
+var vscode5 = __toESM(require("vscode"));
 var IAAnalisis = class {
   logger;
   endpoint;
@@ -44206,7 +44322,7 @@ var IAAnalisis = class {
   domain;
   basePrompt;
   constructor() {
-    const config2 = vscode4.workspace.getConfiguration("UnifiedApexValidator");
+    const config2 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
     this.endpoint = config2.get("sfGptEndpoint") ?? "";
     this.model = config2.get("sfGptModel") ?? "";
     this.clientId = config2.get("sfClientId") ?? "";
@@ -44290,24 +44406,24 @@ ${prompt}`;
 // src/core/reportGenerator.ts
 var fs4 = __toESM(require_lib());
 var path10 = __toESM(require("path"));
-var vscode5 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 var nunjucks = __toESM(require_nunjucks());
 var child_process = __toESM(require("child_process"));
 var logger2 = new Logger("ReportGenerator", false);
 async function generateReport(outputDir, data) {
   try {
-    const config2 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
-    const workspaceRoot = vscode5.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+    const config2 = vscode6.workspace.getConfiguration("UnifiedApexValidator");
+    const workspaceRoot = vscode6.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
     const outputSetting = config2.get("outputDir")?.trim();
     if (!outputSetting) {
       const msg = '\u274C No se ha configurado el par\xE1metro "UnifiedApexValidator.outputDir" en Settings.';
       logger2.error(msg);
-      vscode5.window.showErrorMessage(msg);
+      vscode6.window.showErrorMessage(msg);
       throw new Error(msg);
     }
     const finalOutputDir = path10.resolve(outputSetting);
     await fs4.ensureDir(finalOutputDir);
-    const currentExt = vscode5.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
+    const currentExt = vscode6.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
     const extensionPath = currentExt?.extensionPath || __dirname;
     if (!extensionPath) {
       throw new Error("No se pudo determinar la ruta de la extensi\xF3n.");
@@ -44354,7 +44470,7 @@ async function generateReport(outputDir, data) {
   } catch (error) {
     const msg = `Error generando reporte: ${error.message}`;
     logger2.error(msg);
-    vscode5.window.showErrorMessage(msg);
+    vscode6.window.showErrorMessage(msg);
     throw error;
   }
 }
@@ -44400,19 +44516,63 @@ function formatIAResults(iaResults) {
   }
   return map;
 }
+async function generateComparisonReport(outputDir, orgAlias, comparisonResults) {
+  try {
+    const config2 = vscode6.workspace.getConfiguration("UnifiedApexValidator");
+    const workspaceRoot = vscode6.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+    const extension = vscode6.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
+    const extensionPath = extension?.extensionPath || __dirname;
+    let templatePath = path10.join(extensionPath, "dist", "resources", "templates", "class_comparison_report.html");
+    if (!fs4.existsSync(templatePath)) {
+      templatePath = path10.join(extensionPath, "src", "resources", "templates", "class_comparison_report.html");
+    }
+    if (!fs4.existsSync(templatePath)) {
+      throw new Error(`No se encontr\xF3 el template HTML (${templatePath})`);
+    }
+    await fs4.ensureDir(outputDir);
+    const env2 = nunjucks.configure(path10.dirname(templatePath), { autoescape: false });
+    env2.addFilter("tojson", function(value) {
+      try {
+        return JSON.stringify(value || "").replace(/</g, "\\u003c");
+      } catch {
+        return '""';
+      }
+    });
+    const match_count = comparisonResults.filter((r) => r.Status === "Match").length;
+    const mismatch_count = comparisonResults.filter((r) => r.Status === "Mismatch").length;
+    const not_in_local_count = comparisonResults.filter((r) => r.Status === "Solo en Local").length;
+    const not_in_salesforce_count = comparisonResults.filter((r) => r.Status === "Solo en Org").length;
+    const html = env2.render(path10.basename(templatePath), {
+      results: comparisonResults,
+      match_count,
+      mismatch_count,
+      not_in_local_count,
+      not_in_salesforce_count
+    });
+    const fileName = `compare_${orgAlias}_${(/* @__PURE__ */ new Date()).getTime()}.html`;
+    const htmlFilePath = path10.join(outputDir, fileName);
+    await fs4.writeFile(htmlFilePath, html, "utf8");
+    vscode6.window.showInformationMessage(`\u{1F4CA} Reporte HTML de comparaci\xF3n generado: ${htmlFilePath}`);
+    return htmlFilePath;
+  } catch (err) {
+    const msg = `\u274C Error generando reporte de comparaci\xF3n: ${err.message}`;
+    vscode6.window.showErrorMessage(msg);
+    throw err;
+  }
+}
 
 // src/core/reportViewer.ts
-var vscode6 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 var fs5 = __toESM(require("fs"));
 var path11 = __toESM(require("path"));
 function getVSCodeThemeClass() {
-  const themeKind = vscode6.window.activeColorTheme.kind;
+  const themeKind = vscode7.window.activeColorTheme.kind;
   switch (themeKind) {
-    case vscode6.ColorThemeKind.Light:
+    case vscode7.ColorThemeKind.Light:
       return "vscode-light";
-    case vscode6.ColorThemeKind.Dark:
+    case vscode7.ColorThemeKind.Dark:
       return "vscode-dark";
-    case vscode6.ColorThemeKind.HighContrast:
+    case vscode7.ColorThemeKind.HighContrast:
       return "vscode-high-contrast";
     default:
       return "vscode-light";
@@ -44421,21 +44581,21 @@ function getVSCodeThemeClass() {
 function showReport(htmlPath, title = "Reporte de Validaci\xF3n Apex") {
   try {
     if (!fs5.existsSync(htmlPath)) {
-      vscode6.window.showErrorMessage(`No se encontr\xF3 el archivo: ${htmlPath}`);
+      vscode7.window.showErrorMessage(`No se encontr\xF3 el archivo: ${htmlPath}`);
       return;
     }
-    const panel = vscode6.window.createWebviewPanel(
+    const panel = vscode7.window.createWebviewPanel(
       "uavReport",
       title,
-      vscode6.ViewColumn.One,
+      vscode7.ViewColumn.One,
       {
         enableScripts: true,
         retainContextWhenHidden: true,
-        localResourceRoots: [vscode6.Uri.file(path11.dirname(htmlPath))]
+        localResourceRoots: [vscode7.Uri.file(path11.dirname(htmlPath))]
       }
     );
     const html = fs5.readFileSync(htmlPath, "utf8");
-    const dirUri = vscode6.Uri.file(path11.dirname(htmlPath));
+    const dirUri = vscode7.Uri.file(path11.dirname(htmlPath));
     const baseUri = panel.webview.asWebviewUri(dirUri);
     const themeClass = getVSCodeThemeClass();
     const content = html.replace(
@@ -44446,14 +44606,20 @@ function showReport(htmlPath, title = "Reporte de Validaci\xF3n Apex") {
       `$1<base href="${baseUri}/">`
     );
     panel.webview.html = content;
-    vscode6.window.showInformationMessage("\u{1F4CA} Reporte abierto en vista integrada.");
+    vscode7.window.showInformationMessage("\u{1F4CA} Reporte abierto en vista integrada.");
   } catch (err) {
-    vscode6.window.showErrorMessage(`Error al abrir el reporte: ${err.message}`);
+    vscode7.window.showErrorMessage(`Error al abrir el reporte: ${err.message}`);
   }
 }
 
 // src/core/uavController.ts
 async function runUAV(uri) {
+  process.on("unhandledRejection", (reason) => {
+    if (String(reason).includes("CreateEmbeddingSupplier")) {
+      return;
+    }
+    console.error("[UAVController] Unhandled Rejection:", reason);
+  });
   try {
     const channel = getGlobalChannel();
     if (channel) channel.clear();
@@ -44471,17 +44637,17 @@ async function runUAV(uri) {
   }
   const logger3 = new Logger("UAVController", true);
   logger3.info("\u{1F680} Iniciando ejecuci\xF3n del Unified Apex Validator...");
-  await vscode7.window.withProgress(
+  await vscode8.window.withProgress(
     {
-      location: vscode7.ProgressLocation.Notification,
+      location: vscode8.ProgressLocation.Notification,
       title: "Unified Apex Validator",
       cancellable: true
     },
     async (progress) => {
       try {
-        const workspaceFolder = vscode7.workspace.getWorkspaceFolder(uri) || vscode7.workspace.workspaceFolders?.[0];
+        const workspaceFolder = vscode8.workspace.getWorkspaceFolder(uri) || vscode8.workspace.workspaceFolders?.[0];
         if (!workspaceFolder) throw new Error("No se detect\xF3 carpeta de proyecto");
-        const config2 = vscode7.workspace.getConfiguration("UnifiedApexValidator");
+        const config2 = vscode8.workspace.getConfiguration("UnifiedApexValidator");
         let repoDir = config2.get("sfRepositoryDir")?.trim() || "";
         if (!repoDir) {
           repoDir = workspaceFolder.uri.fsPath;
@@ -44585,7 +44751,7 @@ async function runUAV(uri) {
           }
         );
         logger3.info(`\u2705 UAV completado. Reporte generado en: ${outputDir}`);
-        vscode7.window.showInformationMessage(`\u2705 UAV completado. Reporte generado en ${outputDir}.`);
+        vscode8.window.showInformationMessage(`\u2705 UAV completado. Reporte generado en ${outputDir}.`);
         const htmlReport = path12.join(outputDir, "reporte_validaciones.html");
         if (fs6.existsSync(htmlReport)) {
           showReport(htmlReport, "Reporte de Validaci\xF3n Apex");
@@ -44601,77 +44767,23 @@ async function runUAV(uri) {
         }
       } catch (err) {
         if (err.message.includes("No se encontraron clases Apex")) {
-          vscode7.window.showWarningMessage(err.message);
+          vscode8.window.showWarningMessage(err.message);
           logger3.warn(`\u26A0\uFE0F UAV finalizado sin ApexClass (${uri.fsPath})`);
         } else {
           logger3.error(`\u274C Error en proceso UAV: ${err.message}`);
-          vscode7.window.showErrorMessage(`Error en UAV: ${err.message}`);
+          vscode8.window.showErrorMessage(`Error en UAV: ${err.message}`);
         }
       }
     }
   );
 }
-var DependenciesProvider = class {
-  constructor(context) {
-    this.context = context;
-  }
-  _onDidChangeTreeData = new vscode7.EventEmitter();
-  onDidChangeTreeData = this._onDidChangeTreeData.event;
-  refresh() {
-    this._onDidChangeTreeData.fire();
-  }
-  getTreeItem(element) {
-    return element;
-  }
-  async getChildren() {
-    const dependencies = [];
-    const checks = [
-      { label: "Node.js", cmd: "node --version" },
-      { label: "Salesforce CLI (sf)", cmd: "sf --version" },
-      { label: "Salesforce Code Analyzer v5", cmd: "sf code-analyzer run --help" },
-      { label: "Java", cmd: "java -version" },
-      { label: "wkhtmltopdf", cmd: "wkhtmltopdf --version" }
-    ];
-    for (const dep of checks) {
-      const ok = await this.checkCommand(dep.cmd);
-      dependencies.push(new DependencyItem(dep.label, ok));
-    }
-    const cfg = vscode7.workspace.getConfiguration("UnifiedApexValidator");
-    const iaFields = [
-      cfg.get("sfGptEndpoint"),
-      cfg.get("sfGptModel"),
-      cfg.get("iaPromptTemplate")
-    ];
-    const iaConfigured = iaFields.every((v) => typeof v === "string" && v.trim() !== "");
-    dependencies.push(new DependencyItem("IA Configuraci\xF3n", iaConfigured));
-    return dependencies;
-  }
-  async checkCommand(command) {
-    try {
-      await execa(command, { shell: true });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-};
-var DependencyItem = class extends vscode7.TreeItem {
-  constructor(label, ok) {
-    super(label);
-    this.label = label;
-    this.ok = ok;
-    this.iconPath = new vscode7.ThemeIcon(ok ? "check" : "error", ok ? new vscode7.ThemeColor("testing.iconPassed") : new vscode7.ThemeColor("testing.iconFailed"));
-    this.tooltip = ok ? "Disponible" : "No encontrado o no accesible";
-    this.description = ok ? "OK" : "Falta";
-  }
-};
 var FolderViewProvider = class {
   constructor(folderPath, fileExtension, label) {
     this.folderPath = folderPath;
     this.fileExtension = fileExtension;
     this.label = label;
   }
-  _onDidChangeTreeData = new vscode7.EventEmitter();
+  _onDidChangeTreeData = new vscode8.EventEmitter();
   onDidChangeTreeData = this._onDidChangeTreeData.event;
   refresh() {
     this._onDidChangeTreeData.fire();
@@ -44700,57 +44812,473 @@ var FolderViewProvider = class {
     }
   }
 };
-var FileItem = class extends vscode7.TreeItem {
+var FileItem = class extends vscode8.TreeItem {
   constructor(label, filePath, clickable) {
     super(label);
     this.label = label;
     this.filePath = filePath;
     this.clickable = clickable;
-    this.iconPath = new vscode7.ThemeIcon("file");
+    this.iconPath = new vscode8.ThemeIcon("file");
     this.tooltip = filePath;
     if (clickable) {
       this.command = {
         command: "uav.openFile",
         title: "Abrir archivo",
-        arguments: [vscode7.Uri.file(filePath)]
+        arguments: [vscode8.Uri.file(filePath)]
       };
     }
   }
 };
+
+// src/core/compareController.ts
+var vscode9 = __toESM(require("vscode"));
+var path13 = __toESM(require("path"));
+var fs7 = __toESM(require_lib());
+
+// node_modules/diff/libesm/diff/base.js
+var Diff = class {
+  diff(oldStr, newStr, options = {}) {
+    let callback;
+    if (typeof options === "function") {
+      callback = options;
+      options = {};
+    } else if ("callback" in options) {
+      callback = options.callback;
+    }
+    const oldString = this.castInput(oldStr, options);
+    const newString = this.castInput(newStr, options);
+    const oldTokens = this.removeEmpty(this.tokenize(oldString, options));
+    const newTokens = this.removeEmpty(this.tokenize(newString, options));
+    return this.diffWithOptionsObj(oldTokens, newTokens, options, callback);
+  }
+  diffWithOptionsObj(oldTokens, newTokens, options, callback) {
+    var _a2;
+    const done = (value) => {
+      value = this.postProcess(value, options);
+      if (callback) {
+        setTimeout(function() {
+          callback(value);
+        }, 0);
+        return void 0;
+      } else {
+        return value;
+      }
+    };
+    const newLen = newTokens.length, oldLen = oldTokens.length;
+    let editLength = 1;
+    let maxEditLength = newLen + oldLen;
+    if (options.maxEditLength != null) {
+      maxEditLength = Math.min(maxEditLength, options.maxEditLength);
+    }
+    const maxExecutionTime = (_a2 = options.timeout) !== null && _a2 !== void 0 ? _a2 : Infinity;
+    const abortAfterTimestamp = Date.now() + maxExecutionTime;
+    const bestPath = [{ oldPos: -1, lastComponent: void 0 }];
+    let newPos = this.extractCommon(bestPath[0], newTokens, oldTokens, 0, options);
+    if (bestPath[0].oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
+      return done(this.buildValues(bestPath[0].lastComponent, newTokens, oldTokens));
+    }
+    let minDiagonalToConsider = -Infinity, maxDiagonalToConsider = Infinity;
+    const execEditLength = () => {
+      for (let diagonalPath = Math.max(minDiagonalToConsider, -editLength); diagonalPath <= Math.min(maxDiagonalToConsider, editLength); diagonalPath += 2) {
+        let basePath;
+        const removePath = bestPath[diagonalPath - 1], addPath = bestPath[diagonalPath + 1];
+        if (removePath) {
+          bestPath[diagonalPath - 1] = void 0;
+        }
+        let canAdd = false;
+        if (addPath) {
+          const addPathNewPos = addPath.oldPos - diagonalPath;
+          canAdd = addPath && 0 <= addPathNewPos && addPathNewPos < newLen;
+        }
+        const canRemove = removePath && removePath.oldPos + 1 < oldLen;
+        if (!canAdd && !canRemove) {
+          bestPath[diagonalPath] = void 0;
+          continue;
+        }
+        if (!canRemove || canAdd && removePath.oldPos < addPath.oldPos) {
+          basePath = this.addToPath(addPath, true, false, 0, options);
+        } else {
+          basePath = this.addToPath(removePath, false, true, 1, options);
+        }
+        newPos = this.extractCommon(basePath, newTokens, oldTokens, diagonalPath, options);
+        if (basePath.oldPos + 1 >= oldLen && newPos + 1 >= newLen) {
+          return done(this.buildValues(basePath.lastComponent, newTokens, oldTokens)) || true;
+        } else {
+          bestPath[diagonalPath] = basePath;
+          if (basePath.oldPos + 1 >= oldLen) {
+            maxDiagonalToConsider = Math.min(maxDiagonalToConsider, diagonalPath - 1);
+          }
+          if (newPos + 1 >= newLen) {
+            minDiagonalToConsider = Math.max(minDiagonalToConsider, diagonalPath + 1);
+          }
+        }
+      }
+      editLength++;
+    };
+    if (callback) {
+      (function exec() {
+        setTimeout(function() {
+          if (editLength > maxEditLength || Date.now() > abortAfterTimestamp) {
+            return callback(void 0);
+          }
+          if (!execEditLength()) {
+            exec();
+          }
+        }, 0);
+      })();
+    } else {
+      while (editLength <= maxEditLength && Date.now() <= abortAfterTimestamp) {
+        const ret = execEditLength();
+        if (ret) {
+          return ret;
+        }
+      }
+    }
+  }
+  addToPath(path15, added, removed, oldPosInc, options) {
+    const last = path15.lastComponent;
+    if (last && !options.oneChangePerToken && last.added === added && last.removed === removed) {
+      return {
+        oldPos: path15.oldPos + oldPosInc,
+        lastComponent: { count: last.count + 1, added, removed, previousComponent: last.previousComponent }
+      };
+    } else {
+      return {
+        oldPos: path15.oldPos + oldPosInc,
+        lastComponent: { count: 1, added, removed, previousComponent: last }
+      };
+    }
+  }
+  extractCommon(basePath, newTokens, oldTokens, diagonalPath, options) {
+    const newLen = newTokens.length, oldLen = oldTokens.length;
+    let oldPos = basePath.oldPos, newPos = oldPos - diagonalPath, commonCount = 0;
+    while (newPos + 1 < newLen && oldPos + 1 < oldLen && this.equals(oldTokens[oldPos + 1], newTokens[newPos + 1], options)) {
+      newPos++;
+      oldPos++;
+      commonCount++;
+      if (options.oneChangePerToken) {
+        basePath.lastComponent = { count: 1, previousComponent: basePath.lastComponent, added: false, removed: false };
+      }
+    }
+    if (commonCount && !options.oneChangePerToken) {
+      basePath.lastComponent = { count: commonCount, previousComponent: basePath.lastComponent, added: false, removed: false };
+    }
+    basePath.oldPos = oldPos;
+    return newPos;
+  }
+  equals(left, right, options) {
+    if (options.comparator) {
+      return options.comparator(left, right);
+    } else {
+      return left === right || !!options.ignoreCase && left.toLowerCase() === right.toLowerCase();
+    }
+  }
+  removeEmpty(array) {
+    const ret = [];
+    for (let i2 = 0; i2 < array.length; i2++) {
+      if (array[i2]) {
+        ret.push(array[i2]);
+      }
+    }
+    return ret;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  castInput(value, options) {
+    return value;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  tokenize(value, options) {
+    return Array.from(value);
+  }
+  join(chars) {
+    return chars.join("");
+  }
+  postProcess(changeObjects, options) {
+    return changeObjects;
+  }
+  get useLongestToken() {
+    return false;
+  }
+  buildValues(lastComponent, newTokens, oldTokens) {
+    const components = [];
+    let nextComponent;
+    while (lastComponent) {
+      components.push(lastComponent);
+      nextComponent = lastComponent.previousComponent;
+      delete lastComponent.previousComponent;
+      lastComponent = nextComponent;
+    }
+    components.reverse();
+    const componentLen = components.length;
+    let componentPos = 0, newPos = 0, oldPos = 0;
+    for (; componentPos < componentLen; componentPos++) {
+      const component = components[componentPos];
+      if (!component.removed) {
+        if (!component.added && this.useLongestToken) {
+          let value = newTokens.slice(newPos, newPos + component.count);
+          value = value.map(function(value2, i2) {
+            const oldValue = oldTokens[oldPos + i2];
+            return oldValue.length > value2.length ? oldValue : value2;
+          });
+          component.value = this.join(value);
+        } else {
+          component.value = this.join(newTokens.slice(newPos, newPos + component.count));
+        }
+        newPos += component.count;
+        if (!component.added) {
+          oldPos += component.count;
+        }
+      } else {
+        component.value = this.join(oldTokens.slice(oldPos, oldPos + component.count));
+        oldPos += component.count;
+      }
+    }
+    return components;
+  }
+};
+
+// node_modules/diff/libesm/diff/line.js
+var LineDiff = class extends Diff {
+  constructor() {
+    super(...arguments);
+    this.tokenize = tokenize;
+  }
+  equals(left, right, options) {
+    if (options.ignoreWhitespace) {
+      if (!options.newlineIsToken || !left.includes("\n")) {
+        left = left.trim();
+      }
+      if (!options.newlineIsToken || !right.includes("\n")) {
+        right = right.trim();
+      }
+    } else if (options.ignoreNewlineAtEof && !options.newlineIsToken) {
+      if (left.endsWith("\n")) {
+        left = left.slice(0, -1);
+      }
+      if (right.endsWith("\n")) {
+        right = right.slice(0, -1);
+      }
+    }
+    return super.equals(left, right, options);
+  }
+};
+var lineDiff = new LineDiff();
+function diffLines(oldStr, newStr, options) {
+  return lineDiff.diff(oldStr, newStr, options);
+}
+function tokenize(value, options) {
+  if (options.stripTrailingCr) {
+    value = value.replace(/\r\n/g, "\n");
+  }
+  const retLines = [], linesAndNewlines = value.split(/(\n|\r\n)/);
+  if (!linesAndNewlines[linesAndNewlines.length - 1]) {
+    linesAndNewlines.pop();
+  }
+  for (let i2 = 0; i2 < linesAndNewlines.length; i2++) {
+    const line = linesAndNewlines[i2];
+    if (i2 % 2 && !options.newlineIsToken) {
+      retLines[retLines.length - 1] += line;
+    } else {
+      retLines.push(line);
+    }
+  }
+  return retLines;
+}
+
+// src/core/compareController.ts
+async function runCompareApexClasses(uri) {
+  const logger3 = new Logger("compareController", true);
+  logger3.info("\u{1F680} Iniciando Comparaci\xF3n de Clases...");
+  const workspace9 = vscode9.workspace.workspaceFolders?.[0];
+  if (!workspace9) {
+    vscode9.window.showErrorMessage("No hay un workspace abierto.");
+    logger3.error("\u274C No se detect\xF3 workspace activo.");
+    return;
+  }
+  const baseDir = workspace9.uri.fsPath;
+  const settings = vscode9.workspace.getConfiguration("UnifiedApexValidator");
+  const repoDir = settings.get("sfRepositoryDir") || "";
+  const outputDir = settings.get("outputDir") || path13.join(baseDir, "output");
+  logger3.info(`\u{1F4C1} Workspace: ${baseDir}`);
+  logger3.info(`\u{1F4E6} Repositorio configurado: ${repoDir}`);
+  logger3.info(`\u{1F4C2} Carpeta de salida: ${outputDir}`);
+  let classNames = [];
+  if (uri && uri.fsPath.endsWith(".xml")) {
+    logger3.info(`\u{1F9E9} Analizando package.xml: ${uri.fsPath}`);
+    const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(uri.fsPath, repoDir);
+    classNames = [...testClasses, ...nonTestClasses];
+  } else if (uri && uri.fsPath.endsWith(".cls")) {
+    const className = path13.basename(uri.fsPath, ".cls");
+    logger3.info(`\u{1F4D8} Comparando una sola clase: ${className}`);
+    classNames = [className];
+  } else {
+    vscode9.window.showWarningMessage("Abre un package.xml o un archivo .cls para comparar.");
+    logger3.warn("\u26A0\uFE0F Comando ejecutado sin archivo .xml ni .cls v\xE1lido.");
+    return;
+  }
+  if (classNames.length === 0) {
+    vscode9.window.showWarningMessage("No se encontraron clases Apex en el archivo seleccionado.");
+    logger3.warn("\u26A0\uFE0F No se encontraron clases Apex en el archivo.");
+    return;
+  }
+  logger3.info("\u{1F50D} Listando organizaciones conectadas con Salesforce CLI...");
+  const { stdout: orgListJson } = await execa("sf", ["org", "list", "--json"], {
+    env: { ...process.env, FORCE_COLOR: "0" }
+  });
+  const orgList = JSON.parse(orgListJson).result.nonScratchOrgs.filter((o2) => o2.connectedStatus === "Connected").map((o2) => o2.alias || o2.username);
+  if (!orgList.length) {
+    vscode9.window.showErrorMessage("No hay orgs conectadas.");
+    logger3.error("\u274C No se encontraron orgs conectadas.");
+    return;
+  }
+  const orgAlias = await vscode9.window.showQuickPick(orgList, {
+    placeHolder: "Selecciona la organizaci\xF3n contra la que comparar"
+  });
+  if (!orgAlias) {
+    logger3.warn("\u26A0\uFE0F Comparaci\xF3n cancelada: no se seleccion\xF3 ninguna org.");
+    return;
+  }
+  const tempDir = path13.join(getStorageRoot(), "temp", "compare");
+  await fs7.ensureDir(tempDir);
+  logger3.info(`\u{1F4C2} Carpeta temporal creada: ${tempDir}`);
+  logger3.info(`\u2B07\uFE0F Recuperando ${classNames.length} clases desde org '${orgAlias}'...`);
+  const retrieveCmd = [
+    "project",
+    "retrieve",
+    "start",
+    "--target-org",
+    orgAlias,
+    "--output-dir",
+    tempDir,
+    "--json"
+  ];
+  for (const cls of classNames) {
+    retrieveCmd.push("--metadata", `ApexClass:${cls}`);
+  }
+  logger3.info(`\u{1F9E9} Ejecutando comando: sf ${retrieveCmd.join(" ")}`);
+  try {
+    const { stdout } = await execa("sf", retrieveCmd, {
+      env: { ...process.env, FORCE_COLOR: "0" }
+    });
+    const result = JSON.parse(stdout);
+    logger3.info(`\u2705 Retrieve completado (${result.result.files?.length || 0} archivos).`);
+  } catch (err) {
+    logger3.error(`\u274C Error en retrieve: ${err.message}`);
+    if (err.stdout) logger3.error(`\u{1F4C4} STDOUT: ${err.stdout}`);
+    if (err.stderr) logger3.error(`\u26A0\uFE0F STDERR: ${err.stderr}`);
+    vscode9.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
+    return;
+  }
+  logger3.info(`\u{1F52C} Iniciando comparaci\xF3n de ${classNames.length} clases...`);
+  const results = [];
+  for (const className of classNames) {
+    const localPath = path13.join(repoDir, `${className}.cls`);
+    let retrievedPath = path13.join(tempDir, "force-app", "main", "default", "classes", `${className}.cls`);
+    if (!await fs7.pathExists(retrievedPath)) {
+      const altPath = path13.join(tempDir, "classes", `${className}.cls`);
+      if (await fs7.pathExists(altPath)) {
+        logger3.warn(`\u{1F4E6} Archivo recuperado detectado en ruta alternativa: ${altPath}`);
+        retrievedPath = altPath;
+      }
+    }
+    const existsLocal = await fs7.pathExists(localPath);
+    const existsRemote = await fs7.pathExists(retrievedPath);
+    logger3.info(`\u{1F9E9} Procesando clase: ${className}`);
+    logger3.info(`\u{1F539} Local: ${existsLocal ? "\u2705" : "\u274C"} ${localPath}`);
+    logger3.info(`\u{1F539} Remote: ${existsRemote ? "\u2705" : "\u274C"} ${retrievedPath}`);
+    if (!existsLocal && !existsRemote) {
+      logger3.warn(`\u26A0\uFE0F ${className} no existe ni en local ni en org.`);
+      results.push({ ClassName: className, Status: "No existe en ninguno" });
+      continue;
+    }
+    if (!existsLocal) {
+      logger3.warn(`\u26A0\uFE0F ${className} existe solo en la org.`);
+      results.push({ ClassName: className, Status: "Solo en Org" });
+      continue;
+    }
+    if (!existsRemote) {
+      logger3.warn(`\u26A0\uFE0F ${className} existe solo en local.`);
+      results.push({ ClassName: className, Status: "Solo en Local" });
+      continue;
+    }
+    const localBody = await fs7.readFile(localPath, "utf8");
+    const remoteBody = await fs7.readFile(retrievedPath, "utf8");
+    if (localBody.trim() === remoteBody.trim()) {
+      logger3.info(`\u2705 ${className}: Match`);
+      results.push({ ClassName: className, Status: "Match" });
+    } else {
+      logger3.info(`\u26A1 ${className}: Diferencias detectadas`);
+      const diff = diffLines(localBody, remoteBody).map((part) => {
+        const sign = part.added ? "+" : part.removed ? "-" : " ";
+        return part.value.split("\n").map((line) => `${sign} ${line}`).join("\n");
+      }).join("\n");
+      results.push({
+        ClassName: className,
+        Status: "Mismatch",
+        Differences: diff,
+        LocalVersion: localBody,
+        SalesforceVersion: remoteBody
+      });
+    }
+  }
+  logger3.info("\u{1F4CA} Generando reporte HTML de comparaci\xF3n...");
+  const htmlReport = await generateComparisonReport(outputDir, orgAlias, results);
+  const htmlContent = await fs7.readFile(htmlReport, "utf8");
+  const panel = vscode9.window.createWebviewPanel(
+    "uavComparisonReport",
+    // ID interno
+    `Comparaci\xF3n - ${orgAlias}`,
+    // título visible
+    vscode9.ViewColumn.One,
+    // dónde se abre
+    { enableScripts: true }
+    // permitir JS (para el Monaco, etc.)
+  );
+  panel.webview.html = htmlContent;
+  vscode9.window.setStatusBarMessage(`\u2705 Reporte cargado en VS Code: ${path13.basename(htmlReport)}`, 5e3);
+  logger3.info(`\u2705 Reporte abierto dentro de VS Code.`);
+}
 
 // src/extension.ts
 async function activate(context) {
   console.log("[UAV][extension] Unified Apex Validator activado.");
   console.log("[UAV][extension] globalStorageUri:", context.globalStorageUri.fsPath);
   const dependenciesProvider = new DependenciesProvider(context);
-  vscode8.window.registerTreeDataProvider("uav.dependenciesView", dependenciesProvider);
+  vscode10.window.registerTreeDataProvider("uav.dependenciesView", dependenciesProvider);
   context.subscriptions.push(
-    vscode8.commands.registerCommand("uav.dependenciesView.refresh", () => dependenciesProvider.refresh())
+    vscode10.commands.registerCommand("uav.dependenciesView.refresh", () => dependenciesProvider.refresh())
   );
-  const outputDir = vscode8.workspace.getConfiguration("UnifiedApexValidator").get("outputDir") || path13.join(context.globalStorageUri.fsPath, "output");
-  const logDir = path13.join(context.globalStorageUri.fsPath, ".uav", "logs");
-  await vscode8.workspace.fs.createDirectory(vscode8.Uri.file(outputDir));
-  await vscode8.workspace.fs.createDirectory(vscode8.Uri.file(logDir));
+  registerDependencyUpdater(context);
+  const outputDir = vscode10.workspace.getConfiguration("UnifiedApexValidator").get("outputDir") || path14.join(context.globalStorageUri.fsPath, "output");
+  const logDir = path14.join(context.globalStorageUri.fsPath, ".uav", "logs");
+  await vscode10.workspace.fs.createDirectory(vscode10.Uri.file(outputDir));
+  await vscode10.workspace.fs.createDirectory(vscode10.Uri.file(logDir));
   const reportsProvider = new FolderViewProvider(outputDir, "html|pdf", "Reportes");
-  vscode8.window.registerTreeDataProvider("uav.reportsView", reportsProvider);
+  vscode10.window.registerTreeDataProvider("uav.reportsView", reportsProvider);
   const logsProvider = new FolderViewProvider(logDir, "log", "Logs");
-  vscode8.window.registerTreeDataProvider("uav.logsView", logsProvider);
+  vscode10.window.registerTreeDataProvider("uav.logsView", logsProvider);
   context.subscriptions.push(
-    vscode8.commands.registerCommand("uav.reportsView.refresh", () => reportsProvider.refresh()),
-    vscode8.commands.registerCommand("uav.logsView.refresh", () => logsProvider.refresh()),
-    vscode8.commands.registerCommand("uav.reportsView.openFolder", () => vscode8.env.openExternal(vscode8.Uri.file(outputDir))),
-    vscode8.commands.registerCommand("uav.logsView.openFolder", () => vscode8.env.openExternal(vscode8.Uri.file(logDir))),
-    vscode8.commands.registerCommand("uav.openFile", (uri) => vscode8.env.openExternal(uri))
+    vscode10.commands.registerCommand("uav.reportsView.refresh", () => reportsProvider.refresh()),
+    vscode10.commands.registerCommand("uav.logsView.refresh", () => logsProvider.refresh()),
+    vscode10.commands.registerCommand(
+      "uav.reportsView.openFolder",
+      () => vscode10.env.openExternal(vscode10.Uri.file(outputDir))
+    ),
+    vscode10.commands.registerCommand(
+      "uav.logsView.openFolder",
+      () => vscode10.env.openExternal(vscode10.Uri.file(logDir))
+    ),
+    vscode10.commands.registerCommand("uav.openFile", (uri) => vscode10.env.openExternal(uri))
   );
   setExtensionContext(context);
   console.log("[UAV][extension] Contexto registrado.");
   try {
-    await vscode8.workspace.fs.createDirectory(context.globalStorageUri);
+    await vscode10.workspace.fs.createDirectory(context.globalStorageUri);
     console.log("[UAV][extension] Carpeta global creada o existente.");
   } catch (err) {
     console.error("[UAV][extension] Error creando carpeta global:", err);
   }
-  const disposable = vscode8.commands.registerCommand(
+  const validateApexCmd = vscode10.commands.registerCommand(
     "UnifiedApexValidator.validateApex",
     async (uri) => {
       try {
@@ -44758,15 +45286,35 @@ async function activate(context) {
         await runUAV(uri);
       } catch (error) {
         console.error("[UAV][extension] Error ejecutando UAV:", error);
-        vscode8.window.showErrorMessage(`Error ejecutando UAV: ${error.message}`);
+        vscode10.window.showErrorMessage(`Error ejecutando UAV: ${error.message}`);
       }
     }
   );
-  context.subscriptions.push(disposable);
-  vscode8.window.showInformationMessage("Unified Apex Validator activado.");
+  const compareApexClassesCmd = vscode10.commands.registerCommand(
+    "UnifiedApexValidator.compareApexClasses",
+    async (uri) => {
+      await vscode10.window.withProgress(
+        {
+          location: vscode10.ProgressLocation.Notification,
+          title: "Comparando clases Apex contra la organizaci\xF3n seleccionada...",
+          cancellable: false
+        },
+        async () => {
+          try {
+            await runCompareApexClasses(uri);
+          } catch (err) {
+            console.error("[UAV][extension] Error en comparaci\xF3n:", err);
+            vscode10.window.showErrorMessage(`\u274C Error al comparar clases: ${err.message}`);
+          }
+        }
+      );
+    }
+  );
+  context.subscriptions.push(validateApexCmd, compareApexClassesCmd);
+  vscode10.window.showInformationMessage("Unified Apex Validator activado.");
 }
 function deactivate() {
-  vscode8.window.showInformationMessage("Unified Apex Validator desactivado.");
+  vscode10.window.showInformationMessage("Unified Apex Validator desactivado.");
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
