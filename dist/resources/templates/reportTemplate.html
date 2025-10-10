@@ -234,6 +234,19 @@
         border-radius: 6px;
         }
 
+        /* 💡 Mejora de legibilidad de títulos en tarjetas dentro de VS Code oscuro */
+        body.vscode-dark .card h3 {
+        color: #ffffff !important;
+        text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+        letter-spacing: 0.3px;
+        font-weight: 600;
+        }
+
+        body.vscode-dark .card p {
+        color: #f8f8f8 !important;
+        font-weight: 600;
+        text-shadow: 0 0 5px rgba(0,0,0,0.4);
+        }
 
     </style>
 </head>
@@ -334,23 +347,22 @@
 
     <h2>Código Duplicado</h2>
     {% if pmd_results %}
-    <table>
-    <tr>
-        <th>Clase</th>
-        <th>Ubicación</th>
-        <!-- <th>Fragmento de código</th> -->
-    </tr>
-    {% for dup in pmd_results %}
-        <tr>
-        <!--td>{{ dup.clases }}</td-->
-        <td>{{ dup.clases | replace(',', '<br>') | safe }}</td>
-        <td>{{ dup.lines }}</td>
-        <td><pre>{{ dup.codeSnippet }}</pre></td>
-        </tr>
-    {% endfor %}
-    </table>
+        <table>
+            <tr>
+            <th>Clase</th>
+            <th>Líneas Duplicadas</th>
+            <th>Fragmento de código</th>
+            </tr>
+            {% for dup in pmd_results %}
+            <tr>
+            <td style="text-align:center;">{{ dup.clases | replace(',', '<br>') | safe}}</td>
+            <td style="text-align:center;">{{ dup.lines }}</td>
+            <td><pre>{{ dup.codeSnippet }}</pre></td>
+            </tr>
+            {% endfor %}
+        </table>
     {% else %}
-    <div class="empty-state success">
+    <div class="empty-state success" style="text-align:center;">
     <span class="icon">✔</span> No se encontraron duplicados.
     </div>
     {% endif %}

@@ -44,7 +44,7 @@ const utils_1 = require("./utils");
 const logger = new utils_1.Logger('ReportGenerator', false);
 /**
  * Genera el reporte HTML y PDF consolidado del UAV.
- * Intenta Puppeteer, luego wkhtmltopdf; si ninguno, deja solo HTML.
+ * Intenta wkhtmltopdf; si ninguno, deja solo HTML.
  */
 async function generateReport(outputDir, data) {
     try {
@@ -103,15 +103,6 @@ async function generateReport(outputDir, data) {
             einsteinAnalysis: iaFormatted,
             duplicate_class_count: duplicate_class_count
         };
-        // --- Diagnóstico previo al render ---
-        logger.info(`📊 Tamaño de datos previo al render:`);
-        logger.info(`   • codeAnalyzerResults: ${JSON.stringify(data.codeAnalyzerResults)?.length || 0} bytes`);
-        logger.info(`   • pmdResults: ${JSON.stringify(data.pmdResults)?.length || 0} bytes`);
-        logger.info(`   • testResults: ${JSON.stringify(data.testResults)?.length || 0} bytes`);
-        logger.info(`   • coverage: ${JSON.stringify(data.testResults?.coverage_data)?.length || 0} bytes`);
-        logger.info(`   • iaResults: ${JSON.stringify(data.iaResults)?.length || 0} bytes`);
-        //logger.info('📊 Previsualización de datos renderizados:');
-        //logger.info(JSON.stringify(context, null, 2).slice(0, 2000)); // solo los primeros 2 KB
         // 🧩 Render con Nunjucks
         const env = nunjucks.configure(path.dirname(templatePath), { autoescape: true });
         const html = env.render('reportTemplate.html', context);
@@ -122,10 +113,7 @@ async function generateReport(outputDir, data) {
         // 📄 Intentar generar PDF
         const pdfFilePath = path.join(finalOutputDir, 'reporte_validaciones.pdf');
         const pdfOk = await tryGeneratePdfHybrid(htmlFilePath, pdfFilePath, logger);
-        if (pdfOk) {
-            logger.info(`✅ Reporte PDF generado en ${pdfFilePath}`);
-        }
-        else {
+        if (!pdfOk) {
             logger.warn('⚠️ No se generó PDF (no se encontró motor compatible). Se deja solo HTML.');
         }
         return { htmlFilePath, pdfFilePath };
@@ -141,21 +129,7 @@ async function generateReport(outputDir, data) {
  * Intenta generar PDF usando Puppeteer o wkhtmltopdf.
  */
 async function tryGeneratePdfHybrid(htmlPath, pdfPath, logger) {
-    // 1️⃣ Intentar Puppeteer
-    try {
-        const htmlPdf = await Promise.resolve().then(() => __importStar(require('html-pdf-node')));
-        const file = { url: `file://${htmlPath}` };
-        const options = { format: 'A4', printBackground: true };
-        logger.info('🧩 Intentando generar PDF con Puppeteer...');
-        const pdfBuffer = await htmlPdf.generatePdf(file, options);
-        fs.writeFileSync(pdfPath, pdfBuffer);
-        logger.info('🖨️ PDF generado correctamente con Puppeteer.');
-        return true;
-    }
-    catch (e) {
-        logger.warn(`⚠️ Puppeteer no disponible o sin navegador (${e.message}).`);
-    }
-    // 2️⃣ Intentar wkhtmltopdf
+    //Intentar wkhtmltopdf
     try {
         const wkPath = await findWkhtmltopdfPath();
         if (!wkPath) {
@@ -172,7 +146,6 @@ async function tryGeneratePdfHybrid(htmlPath, pdfPath, logger) {
     catch (e) {
         logger.warn(`⚠️ Error usando wkhtmltopdf: ${e.message}`);
     }
-    // 3️⃣ Ninguno disponible
     return false;
 }
 /**
@@ -183,11 +156,12 @@ async function findWkhtmltopdfPath() {
         const cmd = process.platform === 'win32' ? 'where' : 'which';
         const { stdout } = await (0, execa_1.execa)(cmd, ['wkhtmltopdf']);
         const candidate = stdout.split(/\r?\n/)[0].trim();
-        if (candidate && fs.existsSync(candidate))
+        if (candidate && fs.existsSync(candidate)) {
             return candidate;
+        }
     }
     catch {
-        // no encontrado
+        logger.warn(`⚠️ wkhtmltopdf no encontrado`);
     }
     return null;
 }

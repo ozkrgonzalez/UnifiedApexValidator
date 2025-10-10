@@ -2,7 +2,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { XMLParser } from 'fast-xml-parser';
 import * as vscode from 'vscode';
-import glob from 'glob';
+import * as glob from 'glob';
 
 let _ctx: vscode.ExtensionContext | undefined;
 export function setExtensionContext(ctx: vscode.ExtensionContext)
@@ -28,9 +28,6 @@ export function getStorageRoot(): string
 {
   const base = _ctx?.globalStorageUri?.fsPath || path.resolve(__dirname, '..', '..');
   const dir = path.join(base, '.uav');
-
-  console.log('[UAV][getStorageRoot] Base path:', base);
-  console.log('[UAV][getStorageRoot] Dir path:', dir);
 
   try
   {
@@ -58,16 +55,20 @@ export class Logger
     console.log(`[UAV][Logger] Creando logger para ${prefix} en ${storageRoot}`);
 
     const logDir = path.join(storageRoot, 'logs');
-    try {
+    try
+    {
       fs.ensureDirSync(logDir);
-    } catch (err) {
+    }
+    catch (err)
+    {
       console.error('[UAV][Logger] ❌ Error creando carpeta de logs:', err);
     }
 
     this.logPath = path.join(logDir, `${prefix}.log`);
-    //this.outputChannel = vscode.window.createOutputChannel(channelName);
     this.outputChannel = getGlobalChannel();
-    if (autoShow) {
+
+    if (autoShow)
+      {
         this.outputChannel.show(true);
         console.log(`[UAV][Logger] Mostrando canal: ${channelName}`);
     }
@@ -79,7 +80,8 @@ export class Logger
     process.on('unhandledRejection', (reason) => this.error(`Unhandled Rejection: ${reason}`));
   }
 
-  clear() {
+  clear()
+  {
     console.log(`[UAV][Logger] Limpiando log: ${this.logPath}`);
     fs.writeFileSync(this.logPath, '');
   }
@@ -126,14 +128,7 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
         ? types
         : null;
 
-    if (!apexTypes) {
-      logger.warn('❌ No se encontraron tipos ApexClass en package.xml');
-      throw new Error('No se encontraron clases Apex en package.xml');
-    }
-
     const members = Array.isArray(apexTypes.members) ? apexTypes.members : [apexTypes.members];
-    logger.info(`📄 Miembros detectados (${members.length}): ${members.join(', ')}`);
-
     const testClasses: string[] = [];
     const nonTestClasses: string[] = [];
 
@@ -141,16 +136,20 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
 
     for (const cls of members) {
       const matches = glob.sync(`**/${cls}.cls`, { cwd: repoDir, absolute: true });
-      logger.info(`🔍 Buscando ${cls}.cls → encontrados: ${matches.length}`);
 
-      if (!matches.length) continue;
+      if (!matches.length)
+      {
+        continue;
+      }
 
       const content = await fs.readFile(matches[0], 'utf8');
       if (/@istest/i.test(content)) {
-        logger.info(`✅ ${cls} marcada como clase de prueba`);
+
         testClasses.push(cls);
-      } else {
-        logger.info(`ℹ️ ${cls} no es clase de prueba`);
+      }
+      else
+      {
+
         nonTestClasses.push(cls);
       }
     }
@@ -159,7 +158,9 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
     logger.info(`📘 Clases normales detectadas (${nonTestClasses.length}): ${nonTestClasses.join(', ') || 'Ninguna'}`);
 
     return { testClasses, nonTestClasses };
-  } catch (err: any) {
+  }
+  catch (err: any)
+  {
     console.error('[UAV][PackageParser] ❌ Error parseando package.xml:', err);
     throw err;
   }
@@ -174,14 +175,20 @@ export async function cleanUpFiles(paths: string[], logger?: Logger)
 {
   for (const dir of paths)
     {
-    try {
-      if (await fs.pathExists(dir)) {
+    try
+    {
+      if (await fs.pathExists(dir))
+        {
         await fs.emptyDir(dir);
         logger?.info(`🧹 Carpeta limpiada: ${dir}`);
-      } else {
+      }
+      else
+      {
         logger?.warn(`⚠️ Carpeta no encontrada: ${dir}`);
       }
-    } catch (err: any) {
+    }
+    catch (err: any)
+    {
       logger?.warn(`❌ No se pudo limpiar ${dir}: ${err.message}`);
     }
   }

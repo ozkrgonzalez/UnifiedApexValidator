@@ -6,6 +6,39 @@ Todas las actualizaciones notables de esta extensión se documentarán aquí.
 El formato sigue las convenciones de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/)
 y la numeración semántica [Semantic Versioning](https://semver.org/lang/es/).
 
+## 🚀 Versión 1.7.0 — Octubre 2025
+
+### 🧠 Salesforce Code Analyzer v5 (integración completa)
+- Se reemplazó la ejecución externa de **PMD/CPD** por el motor **Salesforce Code Analyzer v5**, utilizando el comando:
+  ```bash
+  sf code-analyzer run --rule-selector pmd:apex --rule-selector cpd
+  ```
+### 🧹 Limpieza y control de entorno
+- El `Logger` ya **no limpia logs ni temporales por instancia**, para evitar interferencia entre procesos.
+- La **limpieza global inicial** (ventana Output, logs y `temp/`) se realiza ahora al inicio del `uavController`.
+- Se añadió limpieza opcional final (`cleanUpFiles`) al concluir una ejecución, controlada por `keepLogFiles` en la configuración.
+
+### 🖥️ Mejoras de usabilidad
+- Ahora permite analizar cualquier archivo .xml sin importar su ubicacion, pero se validara que contenga `<name>ApexClass</name>`
+
+### 🧾 Otras correcciones y ajustes
+- Ajustado `embeddedConfig` para resolver correctamente la ruta real del archivo:
+  ```
+  dist/resources/templates/code-analyzer.yml
+  ```
+- Eliminado comportamiento de “append” en logs viejos; los archivos se reinician al comienzo de cada ejecución.
+- Añadida limpieza del panel de "OUTPUT" de VS Code mediante al inicio de cada corrida.
+- Mejoras menores de trazabilidad y mensajes de consola durante la ejecución del analizador.
+
+---
+
+## [1.6.4] - 2025-10-09
+### ✨ Nuevo
+- Ahora permite validar .xml en cualquier ubicacion y con cualquier nombre.
+- se detecta si el .xml contiene clases apex o no
+
+### 🐛 Correcciones
+- se corrije manejo de rutas relativas en MAC OS para ejecucion del validator y ubicacion del yml de reglas
 ---
 
 ## [1.6.3] - 2025-10-08
