@@ -32,9 +32,6 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Logger = void 0;
 exports.setExtensionContext = setExtensionContext;
@@ -46,7 +43,7 @@ const fs = __importStar(require("fs-extra"));
 const path = __importStar(require("path"));
 const fast_xml_parser_1 = require("fast-xml-parser");
 const vscode = __importStar(require("vscode"));
-const glob_1 = __importDefault(require("glob"));
+const glob = __importStar(require("glob"));
 let _ctx;
 function setExtensionContext(ctx) {
     console.log('[UAV][setExtensionContext] ExtensionContext recibido:', !!ctx);
@@ -64,8 +61,6 @@ function getGlobalChannel() {
 function getStorageRoot() {
     const base = _ctx?.globalStorageUri?.fsPath || path.resolve(__dirname, '..', '..');
     const dir = path.join(base, '.uav');
-    console.log('[UAV][getStorageRoot] Base path:', base);
-    console.log('[UAV][getStorageRoot] Dir path:', dir);
     try {
         fs.ensureDirSync(dir);
     }
@@ -90,7 +85,6 @@ class Logger {
             console.error('[UAV][Logger] ❌ Error creando carpeta de logs:', err);
         }
         this.logPath = path.join(logDir, `${prefix}.log`);
-        //this.outputChannel = vscode.window.createOutputChannel(channelName);
         this.outputChannel = getGlobalChannel();
         if (autoShow) {
             this.outputChannel.show(true);
@@ -138,28 +132,20 @@ async function parseApexClassesFromPackage(pkgPath, repoDir) {
             : types.name === 'ApexClass'
                 ? types
                 : null;
-        /*if (!apexTypes)
-          {
-          logger.warn('❌ No se encontraron tipos ApexClass en package.xml');
-          throw new Error('No se encontraron clases Apex en package.xml');
-        }*/
         const members = Array.isArray(apexTypes.members) ? apexTypes.members : [apexTypes.members];
-        logger.info(`📄 Miembros detectados (${members.length}): ${members.join(', ')}`);
         const testClasses = [];
         const nonTestClasses = [];
         logger.info(`📁 Buscando clases dentro de: ${repoDir}`);
         for (const cls of members) {
-            const matches = glob_1.default.sync(`**/${cls}.cls`, { cwd: repoDir, absolute: true });
-            logger.info(`🔍 Buscando ${cls}.cls → encontrados: ${matches.length}`);
-            if (!matches.length)
+            const matches = glob.sync(`**/${cls}.cls`, { cwd: repoDir, absolute: true });
+            if (!matches.length) {
                 continue;
+            }
             const content = await fs.readFile(matches[0], 'utf8');
             if (/@istest/i.test(content)) {
-                logger.info(`✅ ${cls} marcada como clase de prueba`);
                 testClasses.push(cls);
             }
             else {
-                logger.info(`ℹ️ ${cls} no es clase de prueba`);
                 nonTestClasses.push(cls);
             }
         }

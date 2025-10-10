@@ -10,16 +10,19 @@ const logger = new Logger('ReportGenerator',false);
 
 /**
  * Genera el reporte HTML y PDF consolidado del UAV.
- * Intenta Puppeteer, luego wkhtmltopdf; si ninguno, deja solo HTML.
+ * Intenta wkhtmltopdf; si ninguno, deja solo HTML.
  */
-export async function generateReport(outputDir: string, data: any) {
-    try {
+export async function generateReport(outputDir: string, data: any)
+{
+    try
+    {
         const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
         const outputSetting = config.get<string>('outputDir')?.trim();
 
         // 🚫 Validación obligatoria
-        if (!outputSetting) {
+        if (!outputSetting)
+        {
             const msg = '❌ No se ha configurado el parámetro "UnifiedApexValidator.outputDir" en Settings.';
             logger.error(msg);
             vscode.window.showErrorMessage(msg);
@@ -33,16 +36,19 @@ export async function generateReport(outputDir: string, data: any) {
         // ✅ Validar template
         const currentExt = vscode.extensions.getExtension('ozkrgonzalez.unifiedapexvalidator');
         const extensionPath = currentExt?.extensionPath || __dirname;
-        if (!extensionPath) {
+        if (!extensionPath)
+        {
             throw new Error('No se pudo determinar la ruta de la extensión.');
         }
 
         // Busca el template tanto en dist (paquete) como en src (modo debug)
         let templatePath = path.join(extensionPath, 'dist', 'resources', 'templates', 'reportTemplate.html');
-        if (!fs.existsSync(templatePath)) {
+        if (!fs.existsSync(templatePath))
+        {
             templatePath = path.join(extensionPath, 'src', 'resources', 'templates', 'reportTemplate.html');
         }
-        if (!fs.existsSync(templatePath)) {
+        if (!fs.existsSync(templatePath))
+        {
             throw new Error(`No se encontró el template empaquetado ni en dist ni en src (${templatePath})`);
         }
 
@@ -60,7 +66,8 @@ export async function generateReport(outputDir: string, data: any) {
 
         // 🔹 Contar clases únicas con duplicados detectados
         const duplicatedClasses = new Set<string>();
-        for (const dup of data.pmdResults || []) {
+        for (const dup of data.pmdResults || [])
+        {
             const classes = (dup.clases || '')
                 .split(',')
                 .map((c: string) => c.trim())
@@ -79,17 +86,6 @@ export async function generateReport(outputDir: string, data: any) {
             duplicate_class_count: duplicate_class_count
         };
 
-        // --- Diagnóstico previo al render ---
-        logger.info(`📊 Tamaño de datos previo al render:`);
-        logger.info(`   • codeAnalyzerResults: ${JSON.stringify(data.codeAnalyzerResults)?.length || 0} bytes`);
-        logger.info(`   • pmdResults: ${JSON.stringify(data.pmdResults)?.length || 0} bytes`);
-        logger.info(`   • testResults: ${JSON.stringify(data.testResults)?.length || 0} bytes`);
-        logger.info(`   • coverage: ${JSON.stringify(data.testResults?.coverage_data)?.length || 0} bytes`);
-        logger.info(`   • iaResults: ${JSON.stringify(data.iaResults)?.length || 0} bytes`);
-
-        //logger.info('📊 Previsualización de datos renderizados:');
-        //logger.info(JSON.stringify(context, null, 2).slice(0, 2000)); // solo los primeros 2 KB
-
         // 🧩 Render con Nunjucks
         const env = nunjucks.configure(path.dirname(templatePath), { autoescape: true });
         const html = env.render('reportTemplate.html', context);
@@ -103,15 +99,16 @@ export async function generateReport(outputDir: string, data: any) {
         const pdfFilePath = path.join(finalOutputDir, 'reporte_validaciones.pdf');
         const pdfOk = await tryGeneratePdfHybrid(htmlFilePath, pdfFilePath, logger);
 
-        if (pdfOk) {
-            logger.info(`✅ Reporte PDF generado en ${pdfFilePath}`);
-        } else {
+        if (!pdfOk)
+        {
             logger.warn('⚠️ No se generó PDF (no se encontró motor compatible). Se deja solo HTML.');
         }
 
         return { htmlFilePath, pdfFilePath };
 
-    } catch (error: any) {
+    }
+    catch (error: any)
+    {
         const msg = `Error generando reporte: ${error.message}`;
         logger.error(msg);
         vscode.window.showErrorMessage(msg);
@@ -122,25 +119,14 @@ export async function generateReport(outputDir: string, data: any) {
 /**
  * Intenta generar PDF usando Puppeteer o wkhtmltopdf.
  */
-async function tryGeneratePdfHybrid(htmlPath: string, pdfPath: string, logger: Logger): Promise<boolean> {
-    // 1️⃣ Intentar Puppeteer
-    try {
-        const htmlPdf = await import('html-pdf-node');
-        const file = { url: `file://${htmlPath}` };
-        const options = { format: 'A4', printBackground: true };
-        logger.info('🧩 Intentando generar PDF con Puppeteer...');
-        const pdfBuffer = await htmlPdf.generatePdf(file, options);
-        fs.writeFileSync(pdfPath, pdfBuffer);
-        logger.info('🖨️ PDF generado correctamente con Puppeteer.');
-        return true;
-    } catch (e: any) {
-        logger.warn(`⚠️ Puppeteer no disponible o sin navegador (${e.message}).`);
-    }
-
-    // 2️⃣ Intentar wkhtmltopdf
-    try {
+async function tryGeneratePdfHybrid(htmlPath: string, pdfPath: string, logger: Logger): Promise<boolean>
+{
+    //Intentar wkhtmltopdf
+    try
+    {
         const wkPath = await findWkhtmltopdfPath();
-        if (!wkPath) {
+        if (!wkPath)
+        {
             logger.warn('⚠️ wkhtmltopdf no encontrado en PATH.');
             return false;
         }
@@ -151,25 +137,32 @@ async function tryGeneratePdfHybrid(htmlPath: string, pdfPath: string, logger: L
         });
         logger.info('🖨️ PDF generado correctamente con wkhtmltopdf.');
         return true;
-    } catch (e: any) {
+    }
+    catch (e: any)
+    {
         logger.warn(`⚠️ Error usando wkhtmltopdf: ${e.message}`);
     }
-
-    // 3️⃣ Ninguno disponible
     return false;
 }
 
 /**
  * Busca wkhtmltopdf en el PATH (Windows y Linux/Mac).
  */
-async function findWkhtmltopdfPath(): Promise<string | null> {
-    try {
+async function findWkhtmltopdfPath(): Promise<string | null>
+{
+    try
+    {
         const cmd = process.platform === 'win32' ? 'where' : 'which';
         const { stdout } = await execa(cmd, ['wkhtmltopdf']);
         const candidate = stdout.split(/\r?\n/)[0].trim();
-        if (candidate && fs.existsSync(candidate)) return candidate;
-    } catch {
-        // no encontrado
+        if (candidate && fs.existsSync(candidate))
+        {
+            return candidate;
+        }
+    }
+    catch
+    {
+        logger.warn(`⚠️ wkhtmltopdf no encontrado`);
     }
     return null;
 }
@@ -179,8 +172,10 @@ async function findWkhtmltopdfPath(): Promise<string | null> {
  */
 function formatIAResults(iaResults: any[]): Record<string, any> {
     const map: Record<string, any> = {};
-    for (const r of iaResults) {
-        if (r.Clase) {
+    for (const r of iaResults)
+    {
+        if (r.Clase)
+        {
             map[r.Clase] = {
                 resumenHtml: r.resumenHtml || `<p>${r.resumen || 'Sin resumen'}</p>`
             };
