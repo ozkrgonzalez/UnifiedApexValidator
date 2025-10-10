@@ -50,6 +50,25 @@ const reportGenerator_1 = require("./reportGenerator");
 const execa_1 = require("execa");
 const reportViewer_1 = require("./reportViewer");
 async function runUAV(uri) {
+    try {
+        const channel = (0, utils_1.getGlobalChannel)();
+        if (channel)
+            channel.clear();
+        const storageRoot = (0, utils_1.getStorageRoot)();
+        const logDir = path.join(storageRoot, 'logs');
+        const tempDir = path.join(storageRoot, 'temp');
+        await fs.ensureDir(logDir);
+        await fs.ensureDir(tempDir);
+        await fs.emptyDir(tempDir);
+        const mainLog = path.join(logDir, 'Validator.log');
+        if (await fs.pathExists(mainLog))
+            await fs.writeFile(mainLog, '');
+        console.log(`[UAV][Controller] Limpieza previa completada en ${storageRoot}`);
+    }
+    catch (err) {
+        console.warn('[UAV][Controller] ⚠️ No se pudo limpiar logs/temp antes de la ejecución:', err);
+    }
+    // 🚀 Ahora sí, crear el logger principal
     const logger = new utils_1.Logger('UAVController', true);
     logger.info('🚀 Iniciando ejecución del Unified Apex Validator...');
     await vscode.window.withProgress({
@@ -79,16 +98,6 @@ async function runUAV(uri) {
             await fs.ensureDir(tempDir);
             await fs.ensureDir(logDir);
             const content = await fs.readFile(pkgPath, 'utf8');
-            // valida que el package contenga Apex Class
-            /*if (!content.includes('<name>ApexClass</name>'))
-            {
-                const msg = '⚠️ Este XML no contiene ApexClass, se omitirá.';
-                logger.warn(msg);
-                progress.report({ message: msg });
-                await new Promise((res) => setTimeout(res, 2500));
-
-                return;
-            }*/
             if (!content.includes('<name>ApexClass</name>')) {
                 const msg = '❌ No se encontraron clases Apex en este XML.';
                 logger.error(msg);
@@ -108,29 +117,21 @@ async function runUAV(uri) {
             const { testClasses, nonTestClasses } = await (0, utils_1.parseApexClassesFromPackage)(pkgPath, repoDir);
             // 2️⃣ Validación estática (Code Analyzer + PMD)
             logger.info('🧠 Llamando a runValidator...');
-            // ahora también obtenemos pmdResults del runValidator
             const { codeAnalyzerResults, pmdResults } = await (0, validator_1.runValidator)(uri, progress, repoDir);
-            logger.info(`🧩 runValidator finalizó → CodeAnalyzer=${codeAnalyzerResults?.length || 0}, CPD=${pmdResults?.length || 0}`);
             // 3️⃣ Ejecución de pruebas Apex
             progress.report({ message: 'Ejecutando pruebas Apex...' });
-            logger.info(`🧩 Clases de prueba detectadas: ${testClasses.join(', ') || 'NINGUNA'}`);
             logger.info('🧪 Ejecutando pruebas Apex...');
             const testSuite = new testSuite_1.TestSuite(workspaceFolder.uri.fsPath);
             const testResults = await testSuite.runTestSuite(testClasses, nonTestClasses);
             // 4️⃣ (Opcional) Análisis IA
             const skipIA = config.get('skipIAAnalysis') ?? false;
             let iaResults = [];
-            logger.info(`🧩 Config skipIAAnalysis=${skipIA}`);
             if (!skipIA) {
                 const sfClientId = config.get('sfClientId');
                 const sfClientSecret = config.get('sfClientSecret');
                 const sfGptEndpoint = config.get('sfGptEndpoint');
                 const sfGptPrompt = config.get('iaPromptTemplate') ?? 'Analiza la clase {class_name}:\n{truncated_body}';
                 const sfGptMaxChar = config.get('maxIAClassChars') ?? 25000;
-                /*logger.info(`🔍 Validando parámetros IA:`);
-                logger.info(`   sfClientId=${sfClientId ? '[OK]' : '[FALTA]'}`);
-                logger.info(`   sfClientSecret=${sfClientSecret ? '[OK]' : '[FALTA]'}`);
-                logger.info(`   sfGptEndpoint=${sfGptEndpoint ? sfGptEndpoint : '[NO DEFINIDO]'}`);*/
                 const iaEnabled = !!sfClientId && !!sfClientSecret && !!sfGptEndpoint;
                 if (iaEnabled) {
                     progress.report({ message: 'Ejecutando análisis IA...' });
@@ -160,14 +161,13 @@ async function runUAV(uri) {
                                 .replace('{truncated_body}', truncated);
                             // 🔹 Enviar el prompt armado, no solo el código
                             const analysis = await ia.analizar(prompt);
-                            logger.info(`🧠 IA -> ${cls}: ${analysis.resumen.slice(0, 100)}...`);
+                            //logger.info(`🧠 IA -> ${cls}: ${analysis.resumen.slice(0, 100)}...`);
                             const md = new markdown_it_1.default({
                                 html: true,
                                 linkify: true,
                                 typographer: true
                             });
                             const resumenHtml = md.render(analysis.resumen || '');
-                            logger.info(`MD Analisys: ${resumenHtml}`);
                             iaResults.push({ Clase: cls, resumenHtml });
                         }
                         catch (err) {
@@ -214,11 +214,6 @@ async function runUAV(uri) {
                 logger.info('✅ Ejecución exitosa. Se conservaron los logs por configuración.');
             }
         }
-        /*catch (err: any)
-        {
-            logger.error(`❌ Error en proceso UAV: ${err.message}`);
-            vscode.window.showErrorMessage(`Error en UAV: ${err.message}`);
-        }*/
         catch (err) {
             if (err.message.includes('No se encontraron clases Apex')) {
                 vscode.window.showWarningMessage(err.message);
@@ -251,7 +246,6 @@ class DependenciesProvider {
             { label: 'Salesforce CLI (sf)', cmd: 'sf --version' },
             { label: 'Salesforce Code Analyzer v5', cmd: 'sf code-analyzer run --help' },
             { label: 'Java', cmd: 'java -version' },
-            { label: 'PMD', cmd: 'pmd --version' },
             { label: 'wkhtmltopdf', cmd: 'wkhtmltopdf --version' }
         ];
         for (const dep of checks) {

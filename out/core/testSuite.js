@@ -52,8 +52,8 @@ class TestSuite {
         this.orgAlias = config.get('sfOrgAlias') || 'DEVSEGC';
         this.tempDir = path.join(workspaceRoot, '.uav', 'temp');
         // Logger dedicado a TestSuite (no pisa el canal principal)
-        this.logger = new utils_1.Logger('TestSuite', false); // mismo canal, prefijo distinto
-        this.tempDir = path.join((0, utils_1.getStorageRoot)(), 'temp'); // <— fuera del repo SF
+        this.logger = new utils_1.Logger('TestSuite', false);
+        this.tempDir = path.join((0, utils_1.getStorageRoot)(), 'temp');
         fs.ensureDirSync(this.tempDir);
         this.sfPath = this.resolveSfPath();
     }
@@ -65,7 +65,7 @@ class TestSuite {
         for (const cmd of candidates) {
             try {
                 (0, execa_1.execaSync)(cmd, ['--version']);
-                this.logger.info(`🧭 Salesforce CLI detectado en PATH como: ${cmd}`);
+                //this.logger.info(`🧭 Salesforce CLI detectado en PATH como: ${cmd}`);
                 return cmd;
             }
             catch {
@@ -80,11 +80,6 @@ class TestSuite {
     async runSfCommand(command, description) {
         const env = { ...process.env, FORCE_COLOR: '0' };
         try {
-            this.logger.info(`▶️ Ejecutando comando: ${description}`);
-            /*const child = execa(command[0], command.slice(1), {
-              encoding: 'utf8',
-              env
-            });*/
             const child = (0, execa_1.execa)(command[0], command.slice(1), {
                 encoding: 'utf8',
                 env,
@@ -95,16 +90,13 @@ class TestSuite {
             child.stdout?.on('data', (data) => {
                 const text = data.toString().trim();
                 if (/TestRunId|outcome|status|passed|failing|error/i.test(text)) {
-                    //this.logger.info(text);
                 }
             });
             child.stderr?.on('data', (data) => {
                 const text = data.toString().trim();
-                //if (text) this.logger.warn(text);
             });
             const { stdout, stderr } = await child;
             const raw = (stdout || stderr || '').trim();
-            this.logger.info(`✔️ Comando completado: ${description}`);
             try {
                 return JSON.parse(raw);
             }
@@ -122,21 +114,7 @@ class TestSuite {
      * Lanza las clases de prueba y obtiene el testRunId
      */
     async executeTests(testClasses) {
-        this.logger.info(`🧪 Lanzando ejecución de ${testClasses.length} clases de prueba...`);
-        const command = [
-            this.sfPath,
-            'apex',
-            'run',
-            'test',
-            '--json',
-            '--target-org',
-            this.orgAlias,
-            '--test-level',
-            'RunSpecifiedTests',
-            '--code-coverage',
-            '--class-names',
-            ...testClasses
-        ];
+        const command = [this.sfPath, 'apex', 'run', 'test', '--json', '--target-org', this.orgAlias, '--test-level', 'RunSpecifiedTests', '--code-coverage', '--class-names', ...testClasses];
         const result = await this.runSfCommand(command, 'ejecución de pruebas');
         const testRunId = result?.result?.testRunId ||
             result?.result?.summary?.testRunId ||
@@ -155,24 +133,13 @@ class TestSuite {
     async waitForTestCompletion(testRunId) {
         this.logger.info(`⏳ Esperando finalización del testRunId ${testRunId}...`);
         for (let i = 0; i < 60; i++) {
-            const command = [
-                this.sfPath,
-                'apex',
-                'get',
-                'test',
-                '--json',
-                '--target-org',
-                this.orgAlias,
-                '--test-run-id',
-                testRunId
-            ];
+            const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', this.orgAlias, '--test-run-id', testRunId];
             const result = await this.runSfCommand(command, `verificando estado (${i + 1}/60)`);
             const summary = result?.result?.summary || {};
             const outcome = summary.outcome || 'Pendiente';
             const ran = Number(summary.testsRan || 0);
             const passing = Number(summary.passing || 0);
             const failing = Number(summary.failing || 0);
-            this.logger.info(`🔄 Estado actual: outcome=${outcome}, ran=${ran}, passing=${passing}, failing=${failing}`);
             if (ran === passing + failing && ran > 0) {
                 this.logger.info(`✅ Ejecución completada para TestRun ${testRunId}.`);
                 return result;
@@ -191,23 +158,9 @@ class TestSuite {
         fs.ensureDirSync(this.tempDir);
         this.logger.info(`📥 Recuperando resultados del test run ${testRunId}...`);
         for (let i = 0; i < 3; i++) {
-            const command = [
-                this.sfPath,
-                'apex',
-                'get',
-                'test',
-                '--json',
-                '--target-org',
-                this.orgAlias,
-                '--test-run-id',
-                testRunId,
-                '--code-coverage',
-                '--output-dir',
-                this.tempDir
-            ];
+            const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', this.orgAlias, '--test-run-id', testRunId, '--code-coverage', '--output-dir', this.tempDir];
             await this.runSfCommand(command, `obtención cobertura (intento ${i + 1})`);
             if (fs.existsSync(baseFile)) {
-                this.logger.info('📦 Archivos de resultado encontrados. Procesando cobertura...');
                 const testResult = fs.readJsonSync(baseFile, { throws: false }) || {};
                 const coverageSummary = testResult?.coverage?.coverage || [];
                 let coverageDetail = {};
@@ -285,7 +238,6 @@ class TestSuite {
      * Orquestador principal
      */
     async runTestSuite(testClasses, apexClasses) {
-        this.logger.info('🚀 Iniciando ejecución de pruebas Apex...');
         if (!testClasses?.length) {
             this.logger.warn('⚠️ No se detectaron clases de prueba en el package.xml.');
             return { error: 'No hay clases test para ejecutar.', coverage_data: [], test_results: [] };
@@ -318,7 +270,6 @@ class TestSuite {
         const failed = tests.filter(t => t.outcome === 'Fail').length;
         const skipped = tests.filter(t => t.outcome === 'Skip').length;
         this.logger.info(`📊 Resumen: ${passed} pasados, ${failed} fallidos, ${skipped} omitidos, total ${total}.`);
-        this.logger.info('🧾 Cobertura procesada para clases incluidas en el package.xml.');
         for (const test of tests) {
             const statusIcon = test.outcome === 'Pass' ? '✅' : test.outcome === 'Fail' ? '❌' : '⚠️';
             this.logger.info(`${statusIcon} ${test.class_name}.${test.method_name} → ${test.outcome}`);

@@ -61,14 +61,6 @@ class IAAnalisis {
         this.domain = config.get('sfDomain') ?? 'test.salesforce.com';
         this.basePrompt = config.get('iaPromptTemplate') ?? '';
         this.logger = new utils_1.Logger('IAAnalisis', true);
-        // 🧩 Verificar configuración inicial
-        this.logger.info('⚙️ Configuración IA cargada:');
-        this.logger.info(`   endpoint=${this.endpoint}`);
-        this.logger.info(`   model=${this.model}`);
-        this.logger.info(`   domain=${this.domain}`);
-        this.logger.info(`   clientId=${this.clientId ? '[OK]' : '[FALTA]'}`);
-        this.logger.info(`   clientSecret=${this.clientSecret ? '[OK]' : '[FALTA]'}`);
-        this.logger.info(`   basePrompt=${this.basePrompt ? '[OK]' : '[VACÍO]'}`);
     }
     async getAccessToken() {
         const url = `https://${this.domain}/services/oauth2/token`;
@@ -77,29 +69,26 @@ class IAAnalisis {
             client_id: this.clientId,
             client_secret: this.clientSecret
         });
-        this.logger.info(`🔐 Solicitando token en: ${url}`);
         try {
             const response = await axios_1.default.post(url, params);
             const token = response.data.access_token;
-            this.logger.info(`🧾 Respuesta token: ${JSON.stringify(response.data).slice(0, 200)}...`);
-            if (!token)
+            if (!token) {
                 throw new Error('Token vacío en respuesta del servidor IA');
-            this.logger.info('✅ Token IA obtenido correctamente.');
+            }
             return token;
         }
         catch (error) {
             this.logger.error(`❌ Error obteniendo token IA: ${error.message}`);
-            if (error.response)
+            if (error.response) {
                 this.logger.error(`📡 Respuesta del servidor IA: ${JSON.stringify(error.response.data)}`);
+            }
             throw new Error('Error autenticando con el servidor de IA.');
         }
     }
     async analizar(prompt) {
         this.logger.info('🧠 Iniciando análisis IA...');
-        this.logger.info(`📏 Longitud del prompt: ${prompt.length} caracteres`);
         const token = await this.getAccessToken();
         const finalPrompt = `${this.basePrompt}\n\n${prompt}`;
-        this.logger.info(`🚀 Enviando solicitud a IA: ${this.endpoint}/inference`);
         try {
             // 🔹 Construir endpoint Einstein GPT
             const apiEndpoint = `${this.endpoint}/v1/models/${this.model}/generations`;
@@ -113,8 +102,6 @@ class IAAnalisis {
                 },
                 timeout: 60000
             });
-            this.logger.info(`📬 Código de respuesta: ${response.status}`);
-            this.logger.info(`📦 Datos recibidos (parciales): ${JSON.stringify(response.data).slice(0, 300)}...`);
             this.logger.info('✅ Análisis IA completado correctamente.');
             // 🔹 Detectar el texto generado según el formato real de Einstein GPT
             let generatedText = '';
@@ -134,17 +121,15 @@ class IAAnalisis {
             if (!generatedText) {
                 this.logger.warn('⚠️ No se detectó texto generado en la respuesta de IA.');
             }
-            else {
-                this.logger.info(`🧠 Texto IA detectado (inicio): ${generatedText.slice(0, 120)}...`);
-            }
             return {
                 resumen: generatedText || 'Sin resumen disponible'
             };
         }
         catch (error) {
             this.logger.error(`❌ Error durante el análisis IA: ${error.message}`);
-            if (error.response)
+            if (error.response) {
                 this.logger.error(`📡 Respuesta del servidor: ${JSON.stringify(error.response.data).slice(0, 300)}...`);
+            }
             throw new Error('No se pudo ejecutar el análisis IA.');
         }
     }

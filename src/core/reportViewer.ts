@@ -3,9 +3,11 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
-function getVSCodeThemeClass(): string {
+function getVSCodeThemeClass(): string
+{
     const themeKind = vscode.window.activeColorTheme.kind;
-    switch (themeKind) {
+    switch (themeKind)
+    {
         case vscode.ColorThemeKind.Light:
             return 'vscode-light';
         case vscode.ColorThemeKind.Dark:
@@ -17,9 +19,12 @@ function getVSCodeThemeClass(): string {
     }
 }
 
-export function showReport(htmlPath: string, title = 'Reporte de Validación Apex') {
-    try {
-        if (!fs.existsSync(htmlPath)) {
+export function showReport(htmlPath: string, title = 'Reporte de Validación Apex')
+{
+    try
+    {
+        if (!fs.existsSync(htmlPath))
+        {
             vscode.window.showErrorMessage(`No se encontró el archivo: ${htmlPath}`);
             return;
         }
@@ -50,7 +55,9 @@ export function showReport(htmlPath: string, title = 'Reporte de Validación Ape
 
         panel.webview.html = content;
         vscode.window.showInformationMessage('📊 Reporte abierto en vista integrada.');
-    } catch (err: any) {
+    }
+    catch (err: any)
+    {
         vscode.window.showErrorMessage(`Error al abrir el reporte: ${err.message}`);
     }
 }
