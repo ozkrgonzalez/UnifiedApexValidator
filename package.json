@@ -3,7 +3,7 @@
   "displayName": "Unified Apex Validator",
   "description": "Salesforce Apex validation and reporting suite built natively in TypeScript for VS Code.",
   "publisher": "ozkrgonzalez",
-  "version": "1.6.4",
+  "version": "1.7.0",
   "icon": "media/icon.png",
   "license": "GPL-3.0-only",
   "repository": "https://github.com/ozkrgonzalez/UnifiedApexValidator.git",
