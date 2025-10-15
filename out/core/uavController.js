@@ -165,7 +165,7 @@ async function runUAV(uri) {
                                 .replace('{class_name}', cls)
                                 .replace('{truncated_body}', truncated);
                             // 🔹 Enviar el prompt armado, no solo el código
-                            const analysis = await ia.analizar(prompt);
+                            const analysis = await ia.generate(prompt);
                             //logger.info(`🧠 IA -> ${cls}: ${analysis.resumen.slice(0, 100)}...`);
                             const md = new markdown_it_1.default({
                                 html: true,

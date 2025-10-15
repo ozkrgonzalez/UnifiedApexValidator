@@ -1,6 +1,6 @@
 # 🚀 Unified Apex Validator
 
-A **Visual Studio*** Code extension built in TypeScript that performs a unified validation of Salesforce Apex classes directly from the editor.
+A **Visual Studio Code*** Code extension built in TypeScript that performs a unified validation of Salesforce Apex classes directly from the editor.
 It analyzes the classes listed in `package.xml`, runs Salesforce unit tests when test classes are included, validates code quality using **Salesforce Code Analyzer v5**, and executes a **CPD (Copy-Paste Detector)** scan against the local Apex repository.
 Finally, it generates comprehensive **HTML** and **PDF** reports summarizing all analysis results.
 
@@ -11,11 +11,18 @@ Finally, it generates comprehensive **HTML** and **PDF** reports summarizing all
 - ✅ Apex class validation using Salesforce Code Analyzer v5
 - 🧩 Duplicate code detection through CPD (Copy-Paste Detector) against the local Apex repository
 - 🧪 Apex test execution via Salesforce CLI, including coverage and metrics
-- 🤖 Optional AI analysis (Einstein GPT) to identify risks and optimization opportunities
+- 🤖 (Optional) AI analysis (Einstein GPT) to identify risks and optimization opportunities
 - 📊 Automatic report generation in HTML and PDF formats
 - 🧰 Integrated VS Code sidebar view for reports, logs, and dependency checks
 - 🔄 Quick actions: Validate Apex, Refresh Reports, Open Output Folder
 - ⚙️ Fully implemented in TypeScript, with no Python dependencies
+- 🔴 (Beta) ApexDoc Generation using Einstein GPT
+- 🆕 **Compare Apex Classes against Sandbox**
+  - Right-click any `.cls` or `package.xml` file and choose
+    **“UAV: Compare Apex Classes against Org”**.
+  - Retrieves the remote version from your connected Salesforce org (via Salesforce CLI).
+  - Displays an interactive HTML diff (Monaco Editor) highlighting local vs remote differences.
+  - Compatible with both default and aliased org connections.
 
 ---
 
@@ -23,15 +30,13 @@ Finally, it generates comprehensive **HTML** and **PDF** reports summarizing all
 
 ### System
 
-- **Node .js 18+** y **npm 9+**
-- **Salesforce CLI (`sf`)** → [Official Docs](https://developer.salesforce.com/tools/sfdxcli)
-- **PMD** Intalled → [Download here](https://pmd.github.io/)
-  > Requieres **Java 11+**
-- **wkhtmltopdf** → [https://wkhtmltopdf.org/downloads.html](https://wkhtmltopdf.org/downloads.html)
-- **🤖 Salesforce Connected App (Einstein GPT)**
-   >To obtain **Client ID** y **Client Secret**, you must to create a special **Connected App** in Salesforce.
-- An active connection to a **Salesforce Sandbox** or **Production org** in VS Code through Salesforce CLI
-
+- **Node.js 18+** and **npm 9+**
+- **Salesforce CLI (`sf`)** → [Official Docs](...)
+  > Requires **Java 11+**
+- **wkhtmltopdf** → [Download Page](https://wkhtmltopdf.org/downloads.html)
+- **Salesforce Connected App (Einstein GPT)**
+  > Required to obtain **Client ID** and **Client Secret**
+- Active connection to a **Salesforce Sandbox** or **Production org** via Salesforce CLI
 ---
 
 ## ⚙️ Configuration
@@ -57,6 +62,8 @@ In Settings → Unified Apex Validator, you can define the following properties:
 | `UnifiedApexValidator.iaPromptTemplate` | Base prompt for GPT analysis                                       |
 | `UnifiedApexValidator.maxIAClassChars`  | Maximum number of characters per Apex class for AI analysis        |
 | `UnifiedApexValidator.keepLogFiles`     | Keep log and temporary files after execution                       |
+| `UnifiedApexValidator.traceAst`         | Activate AST Trace.                                                |
+| `UnifiedApexValidator.classDocTags`     | Set Defadult Apex Doc Tags                                         |
 
 
 ---

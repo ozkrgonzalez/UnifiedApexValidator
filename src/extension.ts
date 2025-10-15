@@ -4,6 +4,7 @@ import { DependenciesProvider, registerDependencyUpdater } from './providers/dep
 import { FolderViewProvider, runUAV } from './core/uavController';
 import { runCompareApexClasses } from './core/compareController';
 import { setExtensionContext } from './core/utils';
+import { generateApexDocChunked } from './core/generateApexDocChunked';
 
 /**
  * Punto de entrada de la extensión Unified Apex Validator.
@@ -99,7 +100,24 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    context.subscriptions.push(validateApexCmd, compareApexClassesCmd);
+    // 🧠 Generar ApexDoc con Einstein (modo chunked)
+    const generateApexDocChunkedCmd = vscode.commands.registerCommand(
+        'UnifiedApexValidator.generateApexDocChunked',
+        async () =>
+        {
+            try
+            {
+                await generateApexDocChunked();
+            }
+            catch (error: any)
+            {
+                console.error('[UAV][extension] Error en generación de ApexDoc:', error);
+                vscode.window.showErrorMessage(`❌ Error generando ApexDoc: ${error.message}`);
+            }
+        }
+    );
+
+    context.subscriptions.push(validateApexCmd, compareApexClassesCmd, generateApexDocChunkedCmd);
     vscode.window.showInformationMessage('Unified Apex Validator activado.');
 }
 

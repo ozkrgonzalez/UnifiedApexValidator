@@ -36,13 +36,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IAAnalisis = void 0;
+exports.IAAnalisis = exports.IAConnectionError = void 0;
 const axios_1 = __importDefault(require("axios"));
 const vscode = __importStar(require("vscode"));
 const utils_1 = require("./utils");
+class IAConnectionError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'IAConnectionError';
+        Object.setPrototypeOf(this, IAConnectionError.prototype);
+    }
+}
+exports.IAConnectionError = IAConnectionError;
 /**
- * Módulo IAAnalisis
- * Encargado de comunicarse con la API de IA definida en Settings (Einstein GPT u otra)
+ * Client responsible for talking with the configured Einstein GPT (or compatible) endpoint.
  */
 class IAAnalisis {
     logger;
@@ -63,7 +70,7 @@ class IAAnalisis {
         this.logger = new utils_1.Logger('IAAnalisis', true);
     }
     async getAccessToken() {
-        const url = `https://${this.domain}/services/oauth2/token`;
+        const url = `https://${this.domain.replace(/^https:\/\//i, '')}/services/oauth2/token`;
         const params = new URLSearchParams({
             grant_type: 'client_credentials',
             client_id: this.clientId,
@@ -71,28 +78,27 @@ class IAAnalisis {
         });
         try {
             const response = await axios_1.default.post(url, params);
-            const token = response.data.access_token;
+            const token = response.data?.access_token;
             if (!token) {
-                throw new Error('Token vacío en respuesta del servidor IA');
+                throw new Error('Token vacio en la respuesta del servidor IA.');
             }
             return token;
         }
         catch (error) {
-            this.logger.error(`❌ Error obteniendo token IA: ${error.message}`);
+            this.logger.error(`[IA] Error obteniendo token IA: ${error.message}`);
             if (error.response) {
-                this.logger.error(`📡 Respuesta del servidor IA: ${JSON.stringify(error.response.data)}`);
+                this.logger.error(`[IA] Respuesta del servidor IA: ${JSON.stringify(error.response.data)}`);
             }
-            throw new Error('Error autenticando con el servidor de IA.');
+            throw new IAConnectionError(`Error autenticando con el servidor de IA: ${error.message}`);
         }
     }
-    async analizar(prompt) {
-        this.logger.info('🧠 Iniciando análisis IA...');
+    async generate(prompt) {
+        this.logger.info('[IA] Iniciando analisis IA...');
         const token = await this.getAccessToken();
         const finalPrompt = `${this.basePrompt}\n\n${prompt}`;
         try {
-            // 🔹 Construir endpoint Einstein GPT
             const apiEndpoint = `${this.endpoint}/v1/models/${this.model}/generations`;
-            this.logger.info(`🚀 Enviando solicitud a Einstein GPT: ${apiEndpoint}`);
+            this.logger.info(`[IA] Enviando solicitud a Einstein GPT: ${apiEndpoint}`);
             const response = await axios_1.default.post(apiEndpoint, { prompt: finalPrompt }, {
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -100,17 +106,16 @@ class IAAnalisis {
                     'x-sfdc-app-context': 'EinsteinGPT',
                     'x-client-feature-id': 'ai-platform-models-connected-app'
                 },
-                timeout: 60000
+                timeout: 120000
             });
-            this.logger.info('✅ Análisis IA completado correctamente.');
-            // 🔹 Detectar el texto generado según el formato real de Einstein GPT
+            this.logger.info('[IA] Analisis IA completado correctamente.');
             let generatedText = '';
             const data = response.data || {};
             if (data.generation?.generatedText) {
                 generatedText = data.generation.generatedText;
             }
             else if (data.generations?.length) {
-                generatedText = data.generations[0].text || '';
+                generatedText = data.generations[0]?.text || '';
             }
             else if (data.generation?.text) {
                 generatedText = data.generation.text;
@@ -119,18 +124,19 @@ class IAAnalisis {
                 generatedText = data;
             }
             if (!generatedText) {
-                this.logger.warn('⚠️ No se detectó texto generado en la respuesta de IA.');
+                this.logger.warn('[IA] No se detecto texto generado en la respuesta de IA.');
             }
             return {
                 resumen: generatedText || 'Sin resumen disponible'
             };
         }
         catch (error) {
-            this.logger.error(`❌ Error durante el análisis IA: ${error.message}`);
+            this.logger.error(`[IA] Error durante el analisis IA: ${error.message}`);
             if (error.response) {
-                this.logger.error(`📡 Respuesta del servidor: ${JSON.stringify(error.response.data).slice(0, 300)}...`);
+                const payload = JSON.stringify(error.response.data);
+                this.logger.error(`[IA] Respuesta del servidor: ${payload.slice(0, 300)}...`);
             }
-            throw new Error('No se pudo ejecutar el análisis IA.');
+            throw new Error('No se pudo ejecutar el analisis IA.');
         }
     }
 }

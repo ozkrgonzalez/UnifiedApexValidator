@@ -41,6 +41,7 @@ const dependenciesProvider_1 = require("./providers/dependenciesProvider");
 const uavController_1 = require("./core/uavController");
 const compareController_1 = require("./core/compareController");
 const utils_1 = require("./core/utils");
+const generateApexDocChunked_1 = require("./core/generateApexDocChunked");
 /**
  * Punto de entrada de la extensión Unified Apex Validator.
  * Se ejecuta al activar la extensión por comando.
@@ -104,7 +105,17 @@ async function activate(context) {
             }
         });
     });
-    context.subscriptions.push(validateApexCmd, compareApexClassesCmd);
+    // 🧠 Generar ApexDoc con Einstein (modo chunked)
+    const generateApexDocChunkedCmd = vscode.commands.registerCommand('UnifiedApexValidator.generateApexDocChunked', async () => {
+        try {
+            await (0, generateApexDocChunked_1.generateApexDocChunked)();
+        }
+        catch (error) {
+            console.error('[UAV][extension] Error en generación de ApexDoc:', error);
+            vscode.window.showErrorMessage(`❌ Error generando ApexDoc: ${error.message}`);
+        }
+    });
+    context.subscriptions.push(validateApexCmd, compareApexClassesCmd, generateApexDocChunkedCmd);
     vscode.window.showInformationMessage('Unified Apex Validator activado.');
 }
 /**
