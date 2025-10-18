@@ -1,0 +1,30 @@
+*** Begin Patch
+*** Update File: src/core/testSuite.ts
+@@
+-    this.logger.info(?????????? Ejecutando clases de prueba: );
++    this.logger.info(\u{1F9EA} Ejecutando clases de prueba: );
+@@
+-    this.logger.info(?T??? Monitoreando progreso del testRunId ...);
++    this.logger.info(\u{1F50D} Monitoreando progreso del testRunId ...);
+@@
+-    this.logger.info('?????????? Ejecuci+???n de pruebas finalizada. Obteniendo resultados y cobertura...');
++    this.logger.info('\u{1F4C8} Ejecucion de pruebas finalizada. Obteniendo resultados y cobertura...');
+@@
+-    this.logger.info('?????????? Procesando datos de cobertura y resultados individuales...');
++    this.logger.info('\u{1F4DD} Procesando datos de cobertura y resultados individuales...');
+@@
+-    this.logger.info(?????????? Resumen:  pasados,  fallidos,  omitidos, total .);
++    this.logger.info(\u{1F4CB} Resumen:  pasados,  fallidos,  omitidos, total .);
+@@
+-      const statusIcon = test.outcome === 'Pass' ? '???' : test.outcome === 'Fail' ? '?????????' : '??????????';
+-      this.logger.info(${statusIcon} . ????????? );
+-      if (test.outcome === 'Fail' && test.message) {
+-        this.logger.warn(   ?????? Motivo: );
++      const statusIcon = test.outcome === 'Pass' ? '\u2705' : test.outcome === 'Fail' ? '\u274C' : '\u26A0\uFE0F';
++      this.logger.info(${statusIcon} . \u2192 );
++      if (test.outcome === 'Fail' && test.message) {
++        this.logger.warn(   \u{1F4AC} Motivo: );
+@@
+-    this.logger.info('?????????? Fin de la ejecuci+???n de pruebas Apex.');
++    this.logger.info('\u{1F389} Fin de la ejecucion de pruebas Apex.');
+*** End Patch

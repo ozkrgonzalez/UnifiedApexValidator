@@ -1,0 +1,230 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UavDependencyItem = exports.DependenciesProvider = void 0;
+exports.registerDependencyUpdater = registerDependencyUpdater;
+const vscode = __importStar(require("vscode"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const execa_1 = require("execa");
+const IAAnalisis_1 = require("../core/IAAnalisis");
+class DependenciesProvider {
+    context;
+    _onDidChangeTreeData = new vscode.EventEmitter();
+    onDidChangeTreeData = this._onDidChangeTreeData.event;
+    constructor(context) {
+        this.context = context;
+    }
+    refresh() {
+        this._onDidChangeTreeData.fire();
+    }
+    getTreeItem(element) {
+        return element;
+    }
+    async getChildren() {
+        const dependencies = [];
+        const checks = [
+            { label: 'Node.js', cmd: 'node --version', minVersion: '18.0.0', installCmd: 'npm install -g node' },
+            { label: 'Salesforce CLI (sf)', cmd: 'sf --version', minVersion: '2.0.0', installCmd: 'npm install -g @salesforce/cli' },
+            { label: 'Salesforce Code Analyzer', cmd: 'sf code-analyzer run --help', minVersion: '5.0.0', installCmd: 'sf plugins install @salesforce/sfdx-scanner' },
+            {
+                label: 'Prettier Apex Plugin',
+                minVersion: '2.2.6',
+                installCmd: 'npm install prettier prettier-plugin-apex',
+                customCheck: (minVersion) => this.checkPrettierPlugin(minVersion)
+            },
+            { label: 'Java', cmd: 'java -version', minVersion: '11.0.0', installCmd: 'apt install openjdk-11-jdk' },
+            { label: 'wkhtmltopdf', cmd: 'wkhtmltopdf --version', minVersion: '0.12.6', installCmd: 'brew install wkhtmltopdf' }
+        ];
+        for (const dep of checks) {
+            const state = await this.checkCommand(dep);
+            const item = new UavDependencyItem(dep.label, state);
+            const iconMap = {
+                ok: new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed')),
+                outdated: new vscode.ThemeIcon('triangle-right', new vscode.ThemeColor('editorWarning.foreground')),
+                missing: new vscode.ThemeIcon('close', new vscode.ThemeColor('errorForeground'))
+            };
+            item.iconPath = iconMap[state];
+            if (state !== 'ok' && dep.installCmd) {
+                item.command = {
+                    title: 'Actualizar dependencia',
+                    command: 'uav.updateDependency',
+                    arguments: [dep]
+                };
+                item.tooltip = `Actualizar ${dep.label}`;
+            }
+            dependencies.push(item);
+        }
+        const iaStatus = (0, IAAnalisis_1.evaluateIaConfig)();
+        const iaItem = new UavDependencyItem('IA Configuracion', iaStatus.ready ? 'ok' : 'missing');
+        iaItem.iconPath = iaStatus.ready
+            ? new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'))
+            : new vscode.ThemeIcon('close', new vscode.ThemeColor('errorForeground'));
+        if (iaStatus.ready) {
+            iaItem.description = 'Actualizado';
+            iaItem.tooltip = 'Credenciales IA configuradas.';
+        }
+        else {
+            const missingList = iaStatus.missing.join(', ');
+            iaItem.description = `Faltan: ${missingList}`;
+            iaItem.tooltip = `Configura los siguientes campos: ${missingList}`;
+        }
+        dependencies.push(iaItem);
+        return dependencies;
+    }
+    async checkCommand(dep) {
+        if (dep.customCheck) {
+            try {
+                return await dep.customCheck(dep.minVersion);
+            }
+            catch (error) {
+                console.error('[UAV][dependencies] Error revisando dependencia personalizada:', error);
+                return 'missing';
+            }
+        }
+        try {
+            if (!dep.cmd) {
+                return 'missing';
+            }
+            const { stdout, stderr } = await (0, execa_1.execa)(dep.cmd, { shell: true });
+            const output = stdout || stderr || '';
+            const match = output.match(/\d+(\.\d+)+/);
+            if (match && dep.minVersion) {
+                return this.compareVersions(match[0], dep.minVersion) >= 0 ? 'ok' : 'outdated';
+            }
+            return 'ok';
+        }
+        catch {
+            return 'missing';
+        }
+    }
+    compareVersions(a, b) {
+        const pa = a.split('.').map(Number);
+        const pb = b.split('.').map(Number);
+        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+            if ((pa[i] || 0) > (pb[i] || 0))
+                return 1;
+            if ((pa[i] || 0) < (pb[i] || 0))
+                return -1;
+        }
+        return 0;
+    }
+    resolveModule(moduleName) {
+        const searchPaths = [];
+        if (vscode.workspace.workspaceFolders) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+                searchPaths.push(folder.uri.fsPath);
+            }
+        }
+        searchPaths.push(this.context.extensionUri.fsPath);
+        try {
+            return require.resolve(moduleName, { paths: searchPaths });
+        }
+        catch (error) {
+            console.warn(`[UAV][dependencies] No se pudo resolver ${moduleName} con rutas personalizadas.`, error);
+            return null;
+        }
+    }
+    async checkPrettierPlugin(minVersion) {
+        try {
+            let entryPath = null;
+            try {
+                entryPath = require.resolve('prettier-plugin-apex');
+            }
+            catch {
+                entryPath = this.resolveModule('prettier-plugin-apex');
+            }
+            if (!entryPath) {
+                return 'missing';
+            }
+            let pkgPath = entryPath.replace(/dist[\\/].*$/, 'package.json');
+            if (!fs.existsSync(pkgPath)) {
+                pkgPath = path.join(path.dirname(entryPath), 'package.json');
+            }
+            if (!fs.existsSync(pkgPath)) {
+                console.warn('[UAV][dependencies] package.json no encontrado para prettier-plugin-apex:', pkgPath);
+                return 'missing';
+            }
+            const packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const version = packageJson.version;
+            if (!version) {
+                return 'missing';
+            }
+            if (minVersion) {
+                return this.compareVersions(version, minVersion) >= 0 ? 'ok' : 'outdated';
+            }
+            return 'ok';
+        }
+        catch (error) {
+            console.warn('[UAV][dependencies] No se pudo resolver prettier-plugin-apex:', error);
+            return 'missing';
+        }
+    }
+}
+exports.DependenciesProvider = DependenciesProvider;
+class UavDependencyItem extends vscode.TreeItem {
+    label;
+    state;
+    constructor(label, state) {
+        super(label, vscode.TreeItemCollapsibleState.None);
+        this.label = label;
+        this.state = state;
+        this.description = this.getDescription(state);
+    }
+    getDescription(state) {
+        switch (state) {
+            case 'ok':
+                return 'Actualizado';
+            case 'outdated':
+                return 'Desactualizado';
+            case 'missing':
+                return 'No instalado';
+        }
+    }
+}
+exports.UavDependencyItem = UavDependencyItem;
+function registerDependencyUpdater(context) {
+    context.subscriptions.push(vscode.commands.registerCommand('uav.updateDependency', async (dep) => {
+        vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Actualizando ${dep.label}...` }, async () => {
+            try {
+                await (0, execa_1.execa)(dep.installCmd, { shell: true });
+                vscode.window.showInformationMessage(`${dep.label} actualizado correctamente.`);
+            }
+            catch (err) {
+                vscode.window.showErrorMessage(`Error actualizando ${dep.label}: ${err.message}`);
+            }
+        });
+    }));
+}

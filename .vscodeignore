@@ -8,6 +8,7 @@ node_modules/**
 tsconfig.json
 package-lock.json
 *.map
+.sfdx/
 
 # Excluir código fuente TypeScript, excepto los templates
 src/**/*.ts

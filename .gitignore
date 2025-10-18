@@ -1,2 +1,6 @@
 node_modules
-unifiedapexvalidator-1.6.2.vsix
+*.vsix
+.sfdx/
+*.cls
+*.txt
+src/core/generateApexDocChunked.ts.tmp

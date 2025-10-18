@@ -1,167 +1,170 @@
-# 🚀 Unified Apex Validator
+﻿# 🧩 Unified Apex Validator
 
-A **Visual Studio*** Code extension built in TypeScript that performs a unified validation of Salesforce Apex classes directly from the editor.
-It analyzes the classes listed in `package.xml`, runs Salesforce unit tests when test classes are included, validates code quality using **Salesforce Code Analyzer v5**, and executes a **CPD (Copy-Paste Detector)** scan against the local Apex repository.
-Finally, it generates comprehensive **HTML** and **PDF** reports summarizing all analysis results.
+A VS Code extension built in TypeScript that helps you **validate, test, and document** your Salesforce Apex projects — all in one place. It scans your `package.xml`, runs tests, checks code quality with Salesforce Code Analyzer (PMD + CPD), and exports slick HTML/PDF reports. You can even plug in **Einstein GPT** for AI-powered feedback and auto-generated ApexDocs.
 
 ---
 
-## ✨ Features
+## 🚀 Features
 
-- ✅ Apex class validation using Salesforce Code Analyzer v5
-- 🧩 Duplicate code detection through CPD (Copy-Paste Detector) against the local Apex repository
-- 🧪 Apex test execution via Salesforce CLI, including coverage and metrics
-- 🤖 Optional AI analysis (Einstein GPT) to identify risks and optimization opportunities
-- 📊 Automatic report generation in HTML and PDF formats
-- 🧰 Integrated VS Code sidebar view for reports, logs, and dependency checks
-- 🔄 Quick actions: Validate Apex, Refresh Reports, Open Output Folder
-- ⚙️ Fully implemented in TypeScript, with no Python dependencies
+- 🧩 Apex class validation using **Salesforce Code Analyzer v5 (PMD + CPD)**.
+- 🔍 Duplicate code detection across your repo.
+- 🧪 Apex test execution via Salesforce CLI with coverage metrics.
+- 🧠 Optional **Einstein GPT** insights for risk detection and improvements.
+- 🧾 Automatic HTML/PDF report generation with an integrated VS Code viewer.
+- 🧭 Sidebar views for reports, logs, and dependency checks.
+- ⚡ Quick commands: Validate Apex, Refresh views, Open output folders.
+- 🤖 AI-powered ApexDoc generation (beta) with tag enforcement.
+- 🧱 Allman-style Apex formatter command for `.cls`/`.trigger` files (leverages workspace `prettier` + `prettier-plugin-apex`).
+- 🔄 Compare local Apex classes vs. your org (Monaco diff view).
 
 ---
 
-## 📦 Requirements
+## 🧰 Requirements
 
 ### System
 
-- **Node .js 18+** y **npm 9+**
-- **Salesforce CLI (`sf`)** → [Official Docs](https://developer.salesforce.com/tools/sfdxcli)
-- **PMD** Intalled → [Download here](https://pmd.github.io/)
-  > Requieres **Java 11+**
-- **wkhtmltopdf** → [https://wkhtmltopdf.org/downloads.html](https://wkhtmltopdf.org/downloads.html)
-- **🤖 Salesforce Connected App (Einstein GPT)**
-   >To obtain **Client ID** y **Client Secret**, you must to create a special **Connected App** in Salesforce.
-- An active connection to a **Salesforce Sandbox** or **Production org** in VS Code through Salesforce CLI
+- Node.js 18+ and npm 9+.
+- Salesforce CLI (`sf`) with Java 11 or newer.
+- wkhtmltopdf (for PDF export).
+- An authenticated Salesforce org through the CLI.
+- Einstein GPT credentials (Client Id/Secret) if you plan to use AI features.
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Settings
 
-In Settings → Unified Apex Validator, you can define the following properties:
+You’ll find them under **Unified Apex Validator** in your VS Code settings.
 
-| Property                                | Description                                                        |
-| --------------------------------------- | ------------------------------------------------------------------ |
-| `UnifiedApexValidator.sfUsername`       | Salesforce username                                                |
-| `UnifiedApexValidator.sfPassword`       | Salesforce password                                                |
-| `UnifiedApexValidator.sfSecurityToken`  | Salesforce security token                                          |
-| `UnifiedApexValidator.sfClientId`       | Client ID from the Connected App                                   |
-| `UnifiedApexValidator.sfClientSecret`   | Client Secret from the Connected App                               |
-| `UnifiedApexValidator.sfDomain`         | Salesforce domain (`login.salesforce.com` / `test.salesforce.com`) |
-| `UnifiedApexValidator.sfOrgAlias`       | Salesforce org alias                                               |
-| `UnifiedApexValidator.sfRepositoryDir`  | Local path to the Apex repository                                  |
-| `UnifiedApexValidator.sfCliPath`        | Path to the Salesforce CLI (`sf`) executable                       |
-| `UnifiedApexValidator.pmdPath`          | Path to the `pmd` executable (used internally by Code Analyzer)    |
-| `UnifiedApexValidator.outputDir`        | Folder where reports will be generated                             |
-| `UnifiedApexValidator.skipIAAnalysis`   | Skip Einstein GPT analysis                                         |
-| `UnifiedApexValidator.sfGptEndpoint`    | Einstein GPT endpoint                                              |
-| `UnifiedApexValidator.sfGptModel`       | Einstein GPT model                                                 |
-| `UnifiedApexValidator.iaPromptTemplate` | Base prompt for GPT analysis                                       |
-| `UnifiedApexValidator.maxIAClassChars`  | Maximum number of characters per Apex class for AI analysis        |
-| `UnifiedApexValidator.keepLogFiles`     | Keep log and temporary files after execution                       |
+| Setting | Description |
+| -------- | ----------- |
+| `sfClientId` | Einstein GPT Connected App client id |
+| `sfClientSecret` | Einstein GPT Connected App client secret |
+| `sfDomain` | Salesforce domain (My Domain URL) |
+| `sfOrgAlias` | Org alias used for CLI commands |
+| `sfRepositoryDir` | Local repo path with your Apex code |
+| `sfCliPath` | Custom Salesforce CLI path (defaults to `sf`) |
+| `pmdPath` | Optional PMD binary path |
+| `outputDir` | Folder for HTML/PDF reports |
+| `skipIAAnalysis` | Skip Einstein GPT analysis |
+| `sfGptEndpoint` | Einstein GPT API endpoint |
+| `sfGptModel` | GPT model name |
+| `iaPromptTemplate` | Custom AI prompt template |
+| `maxIAClassChars` | Max characters per class sent to GPT |
+| `keepLogFiles` | Keep log files after success |
+| `traceAst` | Enable AST tracing (debug) |
+| `classDocTags` | Required ApexDoc tags for classes |
+| `methodDocTags` | Required ApexDoc tags for methods |
+| `apexDocLanguage` | Language used by the AI ApexDoc generator (`spanish` or `english`) |
 
-
----
-
-## ▶️ Usage
-
-1. Right-click on the `package.xml` file in your Salesforce project.
-2. Select **UAV: Validate Apex Code** from the context menu.
-3. Monitor the process output in the **Unified Apex Validator** panel.
-4. Open the generated reports from the **Reports sidebar view**.
-5. If **keepLogFiles** is set to `true` in the settings, you can also review detailed logs in the **Logs view**.
-
----
-## 📂 VS Code Views
-
-## 🧩 Reports
-
-Displays all generated reports and provides quick actions to:
-- 🔄 Refresh
-- 📂 Open Folder
-- 🧾 View HTML/PDF Report
-
-## 🧾 Logs
-
-Lists all generated log files and provides quick actions to:
-- 🔄 Refresh
-- 📂 Open Folder
-- 🧾 View Log File
+💡 *Dependencies view highlights missing GPT setup fields and disables AI commands until everything’s filled in.*
 
 ---
 
-## 🤖 Einstein GPT Configuration
+## 🕹️ How to Use
 
-To enable AI-powered analysis:
-
-1. Create a **Connected App** in Salesforce with the `api` and `refresh_token` permissions.
-2. Copy the **Client ID** and **Client Secret** from the app.
-3. In VS Code, configure the following settings: `sfClientId`, `sfClientSecret`, `sfGptEndpoint`, and `sfGptModel`.
-
-- 📘 Official documentation:
-[Einstein GPT – Access Models API](https://developer.salesforce.com/docs/einstein/genai/guide/access-models-api-with-rest.html)
+1. Right-click a `package.xml` file.
+2. Select **UAV: Validate Apex Code**.
+3. Track progress in the **Unified Apex Validator** output channel.
+4. Review reports or logs in the sidebar.
+5. (Optional) Run **UAV: Compare Apex Classes against Org** to diff your local vs. org versions.
+6. (Optional) Use **UAV: Formatear Apex (Allman)** from the explorer/editor context menu to apply Allman braces to selected `.cls`/`.trigger` files (requires `prettier` + `prettier-plugin-apex` in your workspace).
 
 ---
 
-## 🛠️ Support & Troubleshooting
-### Common Issues
-#### 🔴 The extension does not appear in VS Code
-- Make sure it’s installed correctly (.vsix file or Marketplace).
-- Run Reload Window from the Command Palette (Ctrl+Shift+P).
-- Check View → Output → Unified Apex Validator for any startup errors.
+## 🧭 VS Code Views
 
-#### ⚙️ “sf” or “pmd” not recognized
-- Ensure Salesforce CLI and Code Analyzer v5 are properly installed and accessible from your system’s PATH.
-- Verify by running these commands in your terminal:
+### 📊 Reports
+Shows all generated reports (HTML/PDF) with options to refresh, open folder, or view inline in VS Code.
+
+### 📜 Logs
+Lists `.log` files stored under `~/.uav/logs`. Quick buttons to refresh or open the folder.
+
+### 🔧 Dependencies
+Checks Node.js, CLI, Java, wkhtmltopdf, Code Analyzer, and Einstein GPT configuration. Missing ones show in red and can be fixed from here.
+
+---
+
+## 🤖 Einstein GPT Setup
+
+1. Create an **External Connected App** with scopes `api` and `refresh_token`.
+   📘 Helpful docs:
+   - [Access Models API with REST](https://developer.salesforce.com/docs/einstein/genai/guide/access-models-api-with-rest.html)
+   - [Einstein Generative AI Setup](https://developer.salesforce.com/docs/einstein/genai/guide/org-setup.html)
+2. Assign a user with **API Enabled** and **API Only User** permissions.
+3. Turn on Einstein in Setup → *Einstein Generative AI*.
+4. Configure your VS Code settings (`sfClientId`, `sfClientSecret`, `sfGptEndpoint`, `sfGptModel`, `iaPromptTemplate`).
+5. Authenticate your org via CLI:
    ```bash
-   sf --version
-   java -version
+   sf org login web --alias <alias>
    ```
-- If either fails, reinstall or add them to the `PATH` environment variable.
-
-#### 🧾 No reports generated
-- Confirm that the selected file is a valid package.xml.
-- Make sure your project has at least one Apex class referenced in the package.
-- Check the output directory path in settings (UnifiedApexValidator.outputDir).
-
-#### 🪵 Logs not visible
-- Verify that keepLogFiles is set to true in settings.
-- Logs are stored in:
-`<UserData>/Code/User/globalStorage/ozkrgonzalez.unifiedapexvalidator/.uav/logs`
-
-#### 🤖 Einstein GPT analysis skipped
-- Make sure you have defined sfClientId, sfClientSecret, and sfGptEndpoint.
-- If any are missing, the AI analysis will be automatically disabled.
-
-## 💬 Need Help?
-
-If you encounter issues or have feedback:
-- Open an issue in the GitHub repository
-- Include the .log file from the .uav/logs folder for faster assistance.
-
----
-## 🧭 Next Improvements
-- 🧹 Reduce output noise in the VS Code Output panel (add configurable log levels).
-- 💬 Display the detected version of each dependency in the Dependencies View tooltip.
-- 🧠 Add deeper integration with Einstein GPT for per-class recommendations.
-- 🧾 Export additional report formats (Markdown, CSV).
-- 🌐 Multi-language support for the interface (English / Spanish).
-- 🧩 Publish to the VS Code Marketplace as a verified Salesforce tool.
+6. Refresh the **Dependencies** view — once all fields are set, AI features will unlock automatically.
 
 ---
 
-## 👤 Author
+## 🧾 ApexDoc Generation (Beta)
 
-- Developed by Oscar González
-- 📧 GitHub – ozkrgonzalez
-
-
-## 📝 Credits
-
-Desarrollado por **Oscar González**
-En colaboración con ChatGPT, Google Gemini
-GitHub → [ozkrgonzalez](https://github.com/ozkrgonzalez)
+- Command: **UAV: Generate ApexDoc (chunked)**.
+- Uses Einstein GPT to auto-generate documentation.
+- Ensures required tags (`@param`, `@return`, etc.) are filled.
+- Disabled when Einstein GPT config is incomplete or `skipIAAnalysis` is true.
 
 ---
 
-## 🧾 License
+## 🧯 Troubleshooting
 
-GPL v3 © 2025 — [Oscar González](https://github.com/ozkrgonzalez)
+### 🧩 Extension not showing
+- Make sure the `.vsix` is installed or from Marketplace.
+- Run **Developer: Reload Window**.
+- Check the **Unified Apex Validator** output channel.
+
+### ⚠️ `sf` or `pmd` not found
+- Run `sf --version` and `java -version`.
+- Update PATH or reinstall if needed.
+
+### 🚫 Org alias not connected
+- Confirm your alias in `sfOrgAlias` exists via `sf org list`.
+- If not, run `sf org login web --alias <alias>`.
+
+### 📄 No reports generated
+- The XML must contain `<name>ApexClass</name>`.
+- Make sure `outputDir` exists and is writable.
+
+### 🤖 AI analysis skipped
+- Check `sfClientId`, `sfClientSecret`, `sfGptEndpoint`, `sfGptModel`, and `iaPromptTemplate`.
+- Ensure `skipIAAnalysis` is `false`.
+
+### 🪵 Logs missing
+- Set `keepLogFiles = true`.
+- Logs live under:
+  ```
+  .../globalStorage/ozkrgonzalez.unifiedapexvalidator/.uav/logs
+  ```
+
+
+### Allman formatter not working
+- Install `prettier` and `prettier-plugin-apex` in the workspace that contains your `.cls`/`.trigger` files (`npm install --save-dev prettier prettier-plugin-apex`).
+- Refresh the **Dependencies** view to confirm both are detected (status should display in green).
+- Run **UAV: Formatear Apex (Allman)** again from the explorer/editor context menu.
+
+---
+
+## 🗺️ Roadmap
+
+- 🎚️ Configurable log levels
+- 💬 Dependency tooltips with detected versions
+- 🤖 Deeper Einstein GPT insights per class
+- 📦 Markdown and CSV export options
+- 🏪 Marketplace release with verified Salesforce badge
+
+---
+
+## 👨‍💻 Author
+
+Created by **Oscar Gonzalez**
+GitHub: [@ozkrgonzalez](https://github.com/ozkrgonzalez)
+
+---
+
+## 📄 License
+
+**GPL v3 © 2025 – Oscar Gonzalez**

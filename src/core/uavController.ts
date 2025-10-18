@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import MarkdownIt from 'markdown-it';
-import { Logger, parseApexClassesFromPackage, getStorageRoot, cleanUpFiles, getGlobalChannel } from './utils';
+import { Logger, parseApexClassesFromPackage, getStorageRoot, cleanUpFiles, getGlobalChannel, ensureOrgAliasConnected } from './utils';
 import { runValidator } from './validator';
 import { TestSuite } from './testSuite';
-import { IAAnalisis } from './IAAnalisis';
+import { IAAnalisis, evaluateIaConfig } from './IAAnalisis';
 import { generateReport } from './reportGenerator';
 import { execa } from 'execa';
 import { showReport } from './reportViewer';
@@ -107,6 +107,14 @@ export async function runUAV(uri: vscode.Uri)
                     logger.info(`📁 Repositorio configurado: ${repoDir}`);
                 }
 
+                const sfOrgAlias = config.get<string>('sfOrgAlias')?.trim() || 'DEVSEGC';
+                const aliasReady = await ensureOrgAliasConnected(sfOrgAlias, logger);
+                if (!aliasReady)
+                {
+                    logger.warn(`Se cancela la ejecuci�n: la org "${sfOrgAlias}" no est� conectada.`);
+                    return;
+                }
+
                 const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(pkgPath, repoDir);
 
                 // 2️⃣ Validación estática (Code Analyzer + PMD)
@@ -120,90 +128,75 @@ export async function runUAV(uri: vscode.Uri)
                 const testSuite = new TestSuite(workspaceFolder.uri.fsPath);
                 const testResults = await testSuite.runTestSuite(testClasses, nonTestClasses);
 
-                // 4️⃣ (Opcional) Análisis IA
-                const skipIA = config.get<boolean>('skipIAAnalysis') ?? false;
+                // 4) (Opcional) Analisis IA
+                const skipIASetting = config.get<boolean>('skipIAAnalysis') ?? false;
+                const iaStatus = evaluateIaConfig();
+                const skipIA = skipIASetting || !iaStatus.ready;
                 let iaResults: any[] = [];
 
                 if (!skipIA)
                 {
-                    const sfClientId = config.get<string>('sfClientId');
-                    const sfClientSecret = config.get<string>('sfClientSecret');
-                    const sfGptEndpoint = config.get<string>('sfGptEndpoint');
                     const sfGptPrompt = config.get<string>('iaPromptTemplate') ?? 'Analiza la clase {class_name}:\n{truncated_body}';
                     const sfGptMaxChar = config.get<number>('maxIAClassChars') ?? 25000;
-                    const iaEnabled = !!sfClientId && !!sfClientSecret && !!sfGptEndpoint;
 
-                    if (iaEnabled)
+                    progress.report({ message: 'Ejecutando analisis IA...' });
+                    logger.info('Ejecutando analisis de IA con Einstein GPT...');
+                    const ia = new IAAnalisis();
+
+                    for (const cls of nonTestClasses)
                     {
-                        progress.report({ message: 'Ejecutando análisis IA...' });
-                        logger.info('🤖 Ejecutando análisis de IA con Einstein GPT...');
-                        const ia = new IAAnalisis();
+                        const clsPath = path.join(repoDir, 'force-app', 'main', 'default', 'classes', `${cls}.cls`);
 
-                        for (const cls of nonTestClasses)
+                        if (!fs.existsSync(clsPath))
                         {
-                            const clsPath = path.join(repoDir, 'force-app','main','default','classes', `${cls}.cls`);
+                            logger.warn(`Clase no encontrada: ${clsPath}`);
+                            continue;
+                        }
 
-                            if (!fs.existsSync(clsPath))
+                        try
+                        {
+                            logger.info(`Enviando clase a IA: ${cls}`);
+                            const content = await fs.readFile(clsPath, 'utf8');
+
+                            const truncated = content.length > sfGptMaxChar ? content.slice(0, sfGptMaxChar) : content;
+
+                            if (content.length > sfGptMaxChar)
                             {
-                                logger.warn(`⚠️ Clase no encontrada: ${clsPath}`);
-                                continue;
+                                logger.warn(`Clase ${cls} truncada a ${sfGptMaxChar} caracteres para analisis.`);
                             }
 
-                            try
-                            {
-                                logger.info(`📘 Enviando clase a IA: ${cls}`);
-                                const content = await fs.readFile(clsPath, 'utf8');
-
-                                // 🔹 Truncar si excede cierto tamaño (para no pasar textos enormes)
-                                const truncated = content.length > sfGptMaxChar ? content.slice(0, sfGptMaxChar) : content;
-
-                                if (content.length > sfGptMaxChar)
-                                {
-                                    logger.warn(`⚠️ Clase ${cls} truncada a ${sfGptMaxChar} caracteres para análisis.`);
-                                }
-                                // 🔹 Combinar con el prompt base de settings
-                                if (!sfGptPrompt)
-                                {
-                                    logger.warn('⚠️ No hay plantilla de prompt configurada en settings (iaPromptTemplate).');
-                                    continue;
-                                }
-
-                                const prompt = sfGptPrompt
+                            const prompt = sfGptPrompt
                                 .replace('{class_name}', cls)
                                 .replace('{truncated_body}', truncated);
 
-                                // 🔹 Enviar el prompt armado, no solo el código
-                                const analysis = await ia.analizar(prompt);
+                            const analysis = await ia.generate(prompt);
 
-                                //logger.info(`🧠 IA -> ${cls}: ${analysis.resumen.slice(0, 100)}...`);
-                                const md = new MarkdownIt(
-                                    {
-                                        html: true,
-                                        linkify: true,
-                                        typographer: true
-                                    });
+                            const md = new MarkdownIt({
+                                html: true,
+                                linkify: true,
+                                typographer: true
+                            });
 
-                                const resumenHtml = md.render(analysis.resumen || '');
-                                iaResults.push({ Clase: cls, resumenHtml });
-                            }
-                            catch (err: any)
-                            {
-                                logger.warn(`⚠️ IA falló para ${cls}: ${err.message}`);
-                            }
+                            const resumenHtml = md.render(analysis.resumen || '');
+                            iaResults.push({ Clase: cls, resumenHtml });
                         }
+                        catch (err)
+                        {
+                            const message = err instanceof Error ? err.message : String(err);
+                            logger.warn(`IA fallo para ${cls}: ${message}`);
+                        }
+                    }
 
-                        logger.info(`🏁 Análisis IA finalizado — clases procesadas: ${iaResults.length}`);
-                    }
-                    else
-                    {
-                        logger.info('ℹ️ IA deshabilitada — faltan credenciales o endpoint.');
-                    }
+                    logger.info(`Analisis IA finalizado - clases procesadas: ${iaResults.length}`);
+                }
+                else if (skipIASetting)
+                {
+                    logger.info('Analisis IA omitido por configuracion (skipIAAnalysis=true).');
                 }
                 else
                 {
-                    logger.info('⏭️ Análisis IA omitido por configuración (skipIAAnalysis=true).');
+                    logger.info(`IA deshabilitada - faltan parametros: ${iaStatus.missing.join(', ')}`);
                 }
-
 
                 // 5️⃣ Generar reportes
                 progress.report({ message: 'Generando reportes...' });
@@ -262,79 +255,6 @@ export async function runUAV(uri: vscode.Uri)
     );
 }
 
-export class DependenciesProvider implements vscode.TreeDataProvider<DependencyItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<DependencyItem | undefined | void> = new vscode.EventEmitter<DependencyItem | undefined | void>();
-    readonly onDidChangeTreeData: vscode.Event<DependencyItem | undefined | void> = this._onDidChangeTreeData.event;
-
-    constructor(private context: vscode.ExtensionContext) {}
-
-    refresh(): void {
-        this._onDidChangeTreeData.fire();
-    }
-
-    getTreeItem(element: DependencyItem): vscode.TreeItem
-    {
-        return element;
-    }
-
-    async getChildren(): Promise<DependencyItem[]> {
-        const dependencies: DependencyItem[] = [];
-
-        const checks = [
-            { label: 'Node.js', cmd: 'node --version' },
-            { label: 'Salesforce CLI (sf)', cmd: 'sf --version' },
-            { label: 'Salesforce Code Analyzer v5', cmd: 'sf code-analyzer run --help' },
-            { label: 'Java', cmd: 'java -version' },
-            { label: 'wkhtmltopdf', cmd: 'wkhtmltopdf --version' }
-        ];
-
-        for (const dep of checks)
-        {
-            const ok = await this.checkCommand(dep.cmd);
-            dependencies.push(new DependencyItem(dep.label, ok));
-        }
-
-        // IA config (desde settings)
-        const cfg = vscode.workspace.getConfiguration('UnifiedApexValidator');
-        const iaFields = [
-            cfg.get('sfGptEndpoint'),
-            cfg.get('sfGptModel'),
-            cfg.get('iaPromptTemplate')
-        ];
-        const iaConfigured = iaFields.every(v => typeof v === 'string' && v.trim() !== '');
-        dependencies.push(new DependencyItem('IA Configuración', iaConfigured));
-
-        return dependencies;
-    }
-
-    private async checkCommand(command: string): Promise<boolean>
-    {
-        try
-        {
-            await execa(command, { shell: true });
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-}
-
-class DependencyItem extends vscode.TreeItem
-{
-    constructor(
-        public readonly label: string,
-        private readonly ok: boolean
-    )
-    {
-        super(label);
-        this.iconPath = new vscode.ThemeIcon(ok ? 'check' : 'error', ok ? new vscode.ThemeColor('testing.iconPassed') : new vscode.ThemeColor('testing.iconFailed'));
-        this.tooltip = ok ? 'Disponible' : 'No encontrado o no accesible';
-        this.description = ok ? 'OK' : 'Falta';
-    }
-}
-
 export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
 {
     private _onDidChangeTreeData = new vscode.EventEmitter<void>();
@@ -342,7 +262,7 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
 
     constructor(
         private folderPath: string,
-        private fileExtension: string,  // puede ser .html, .pdf, .log, etc.
+        private fileExtension: string,
         private label: string
     ) {}
 
@@ -410,3 +330,4 @@ class FileItem extends vscode.TreeItem
         }
     }
 }
+
