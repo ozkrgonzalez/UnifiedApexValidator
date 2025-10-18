@@ -3,7 +3,7 @@
   "displayName": "Unified Apex Validator",
   "description": "Salesforce Apex validation and reporting suite built natively in TypeScript for VS Code.",
   "publisher": "ozkrgonzalez",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "icon": "media/icon.png",
   "license": "GPL-3.0-only",
   "repository": "https://github.com/ozkrgonzalez/UnifiedApexValidator.git",
@@ -251,7 +251,7 @@
             "@param",
             "@return"
           ],
-          "markdownDescription": "Lista de etiquetas para la documentaci\u00f3n ApexDoc de m\u00e9todos y constructores. Las etiquetas faltantes se insertan vac\u00edas cuando no aparecen en la respuesta del modelo."
+          "markdownDescription": "Lista de etiquetas para la documentación ApexDoc de métodos y constructores. Las etiquetas faltantes se insertan vacías cuando no aparecen en la respuesta del modelo."
         },
         "UnifiedApexValidator.apexDocLanguage": {
           "type": "string",
@@ -260,8 +260,8 @@
             "english"
           ],
           "enumDescriptions": [
-            "Genera las descripciones de ApexDoc en espa\u00f1ol (etiquetas en ingl\u00e9s).",
-            "Genera las descripciones de ApexDoc completamente en ingl\u00e9s."
+            "Genera las descripciones de ApexDoc en español (etiquetas en inglés).",
+            "Genera las descripciones de ApexDoc completamente en inglés."
           ],
           "default": "spanish",
           "description": "Idioma usado por el generador de ApexDoc asistido por IA."
