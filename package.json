@@ -162,21 +162,6 @@
     "configuration": {
       "title": "Unified Apex Validator Settings",
       "properties": {
-        "UnifiedApexValidator.sfUsername": {
-          "type": "string",
-          "default": "",
-          "description": "Salesforce Username."
-        },
-        "UnifiedApexValidator.sfPassword": {
-          "type": "string",
-          "default": "",
-          "description": "Salesforce Password."
-        },
-        "UnifiedApexValidator.sfSecurityToken": {
-          "type": "string",
-          "default": "",
-          "description": "Salesforce Security Token."
-        },
         "UnifiedApexValidator.sfClientId": {
           "type": "string",
           "default": "",
@@ -239,6 +224,18 @@
             "@testClass"
           ],
           "markdownDescription": "Lista de etiquetas para la cabecera ApexDoc de las clases. Se insertan vacías cuando faltan en la respuesta del modelo."
+        },
+        "UnifiedApexValidator.methodDocTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "@description",
+            "@param",
+            "@return"
+          ],
+          "markdownDescription": "Lista de etiquetas para la documentaci\u00f3n ApexDoc de m\u00e9todos y constructores. Las etiquetas faltantes se insertan vac\u00edas cuando no aparecen en la respuesta del modelo."
         },
         "UnifiedApexValidator.sfCliPath": {
           "type": "string",

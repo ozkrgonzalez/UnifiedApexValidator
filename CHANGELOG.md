@@ -1,194 +1,89 @@
-# 🧩 Unified Apex Validator — Changelog
+# Unified Apex Validator – Changelog
 
-# 🧾 Changelog — Unified Apex Validator
-
-Todas las actualizaciones notables de esta extensión se documentarán aquí.
-El formato sigue las convenciones de [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/)
-y la numeración semántica [Semantic Versioning](https://semver.org/lang/es/).
-
-## 🧩 Unified Apex Validator — v1.7.1
-
-### 🚀 Nuevas Funcionalidades
-
-#### 🆕 Comparación de Clases Apex contra una Org
-Ahora puedes comparar tus clases locales con las versiones almacenadas en una organización Salesforce conectada.
-- Disponible desde el **menú contextual** de `package.xml` o archivos `.cls`.
-- Funciona con orgs conectadas mediante Salesforce CLI (sin credenciales adicionales).
-- Permite seleccionar la org destino con una lista interactiva.
-
-#### 📊 Reporte HTML Interactivo
-Nuevo reporte visual con diseño moderno y soporte claro/oscuro.
-Incluye:
-- Resumen gráfico con coincidencias y diferencias.
-- Tabla detallada por clase.
-- **Editor Monaco** integrado para ver diferencias línea a línea.
-- Navegación entre diferencias, cambio de idioma y tema visual.
+All notable changes to this project will be documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-### 🧰 Dependencias y Diagnóstico
+## [1.8.0] – 2025-02-XX
 
-#### 🧩 Nuevo módulo de Dependencias
-El árbol de dependencias fue reescrito y movido a un módulo independiente (`dependenciesProvider.ts`).
-- Muestra el estado de cada dependencia con íconos:
-  - ✅ Actualizado
-  - ⚠️ Desactualizado
-  - ❌ No instalado
-- Permite **actualizar dependencias directamente** con un clic desde la vista.
+### Added
+- Method-level ApexDoc tag enforcement driven by the new `UnifiedApexValidator.methodDocTags` setting.
+- Validation of the configured org alias (`sfOrgAlias`) ensures it is connected via Salesforce CLI and can launch `sf org login web` when missing.
+- Automatic detection of missing Einstein GPT configuration before running ApexDoc generation or IA analysis (`evaluateIaConfig` shared logic).
+- Dependencies view entry that highlights missing Einstein GPT fields and shows helpful tooltips.
+- VS Code context key (`uav.iaReady`) to hide/disable IA commands when credentials are incomplete.
+- Extended README documentation covering AI requirements and ApexDoc behaviour.
 
-#### 🪶 Otras mejoras
-- Se reorganizó la estructura interna para mejorar mantenimiento.
-- Compatibilidad confirmada con **Salesforce CLI Unified (sf v2.48+)** y nuevas rutas de salida.
+### Changed
+- ApexDoc generation now stops early with a warning when Einstein GPT credentials are incomplete.
+- IA analysis in `runUAV` respects missing configuration even if `skipIAAnalysis` is `false`.
+- ApexDoc processing synthesises `@param` and `@return` placeholders using the Apex signature whenever the model omits them.
 
----
-
-## 🚀 Versión 1.7.0
-
-### 🧠 Salesforce Code Analyzer v5 (integración completa)
-- Se reemplazó la ejecución externa de **PMD/CPD** por el motor **Salesforce Code Analyzer v5**, utilizando el comando:
-  ```bash
-  sf code-analyzer run --rule-selector pmd:apex --rule-selector cpd
-  ```
-### 🧹 Limpieza y control de entorno
-- El `Logger` ya **no limpia logs ni temporales por instancia**, para evitar interferencia entre procesos.
-- La **limpieza global inicial** (ventana Output, logs y `temp/`) se realiza ahora al inicio del `uavController`.
-- Se añadió limpieza opcional final (`cleanUpFiles`) al concluir una ejecución, controlada por `keepLogFiles` en la configuración.
-
-### 🖥️ Mejoras de usabilidad
-- Ahora permite analizar cualquier archivo .xml sin importar su ubicacion, pero se validara que contenga `<name>ApexClass</name>`
-
-### 🧾 Otras correcciones y ajustes
-- Ajustado `embeddedConfig` para resolver correctamente la ruta real del archivo:
-  ```
-  dist/resources/templates/code-analyzer.yml
-  ```
-- Eliminado comportamiento de “append” en logs viejos; los archivos se reinician al comienzo de cada ejecución.
-- Añadida limpieza del panel de "OUTPUT" de VS Code mediante al inicio de cada corrida.
-- Mejoras menores de trazabilidad y mensajes de consola durante la ejecución del analizador.
+### Removed
+- Deprecated Salesforce credential settings (`sfUsername`, `sfPassword`, `sfSecurityToken`) that were no longer used.
 
 ---
 
-## [1.6.4] - 2025-10-09
-### ✨ Nuevo
-- Ahora permite validar .xml en cualquier ubicacion y con cualquier nombre.
-- se detecta si el .xml contiene clases apex o no
+## [1.7.1] – 2025-01-XX
 
-### 🐛 Correcciones
-- se corrije manejo de rutas relativas en MAC OS para ejecucion del validator y ubicacion del yml de reglas
----
+### Added
+- Comparison view to diff local Apex classes against a connected Salesforce org.
+- Interactive HTML report with Monaco editor, light/dark theme support, and richer summary cards.
+- Redesigned Dependencies tree with per-dependency actions and status icons.
 
-## [1.6.3] - 2025-10-08
-### ✨ Nuevo
-- Vista integrada del reporte en VS Code mediante **Webview**.
-- Detección automática del tema (`vscode-dark` / `vscode-light`).
-- CSS adaptativo con soporte para bloques de código monokai.
-- Apertura automática del reporte al finalizar la validación.
-
-### 🐛 Correcciones
-- Limpieza de logs temporales después de ejecución exitosa.
-- Mejor manejo de rutas relativas en la generación del HTML.
-
-### 🔧 Cambios internos
-- Nueva utilidad `reportViewer.ts`.
-- Refactor menor en `runUAV` para integrar visor sin alterar la lógica base.
+### Changed
+- Internal refactors to improve maintainability and compatibility with Salesforce CLI v2.48+.
 
 ---
 
-## [1.2.2] - 2025-09-30
-### 🐞 Arreglos
-- Mejora de compatibilidad con `sf code-analyzer` versión 5.
-- Validación adicional para rutas de `package.xml`.
+## [1.7.0] – 2024-12-XX
+
+### Added
+- Full migration to Salesforce Code Analyzer v5 via `sf code-analyzer run`.
+- Optional cleanup of logs/temp files controlled by `keepLogFiles`.
+
+### Changed
+- Output channel and log handling redesigned to avoid truncating previous runs.
 
 ---
 
-## [1.2.0] - 2025-09-10
-### 🚀 Añadido
-- Soporte para análisis de duplicación con **PMD CPD**.
-- Generación de reportes en HTML y PDF.
+## [1.6.4] – 2024-10-09
 
+### Added
+- Validation for any `.xml` location/name with Apex class detection.
 
-## [1.0.0] — 2025-10-06
-### 🚀 Versión inicial
-
-Primera versión pública del **Unified Apex Validator**, extensión de VS Code escrita en TypeScript para la validación integral de código Apex.
+### Fixed
+- Path handling for macOS when locating rule files.
 
 ---
 
-### ✨ Funcionalidades principales
+## [1.6.3] – 2024-10-08
 
-#### 🔍 Validación de dependencias
-- Verificación automática de entorno:
-  - Node.js
-  - Java
-  - Salesforce CLI (`sf`)
-  - PMD
-  - Salesforce Code Analyzer v5
-  - wkhtmltopdf
-  - Configuración de IA Einstein GPT (Client ID, Secret y Endpoint)
-- Visualización de estado (✅/❌) en panel lateral con iconos temáticos.
+### Added
+- Webview-based HTML report viewer with automatic theme detection.
 
-#### 📊 Reportes
-- Vista dedicada en la barra lateral con ícono UAV.
-- Muestra todos los archivos `.html` y `.pdf` generados en el directorio de salida configurado.
-- Botones de acción:
-  - 🔄 **Refrescar reportes**
-  - 📂 **Abrir carpeta de reportes**
-- Integración con el generador de reportes HTML/PDF para resultados de:
-  - Code Analyzer
-  - PMD (duplicaciones)
-  - Pruebas Apex
-  - Análisis IA Einstein GPT
-
-#### 📜 Logs
-- Vista dedicada a los registros de ejecución.
-- Lectura directa desde `~/.uav/logs` (carpeta interna en `globalStorage`).
-- Muestra archivos `.log` individuales con apertura rápida.
-- Botones de acción:
-  - 🔄 **Refrescar logs**
-  - 📂 **Abrir carpeta de logs**
-
-#### 🧠 Ejecución integrada
-- Comando contextual sobre `package.xml`:
-  ```
-  UAV: Validate Apex Code
-  ```
-  Ejecuta el flujo completo:
-  1. Análisis estático (Code Analyzer + PMD)
-  2. Ejecución de pruebas Apex
-  3. Análisis IA (opcional)
-  4. Generación de reportes
-  5. Limpieza controlada de archivos temporales
-
-#### ⚙️ Configuración
-- Accesible desde `Unified Apex Validator Settings`:
-  - Credenciales Salesforce
-  - Parámetros IA
-  - Rutas personalizadas (`outputDir`, `pmdPath`, `sfCliPath`)
-  - Control de logs (`keepLogFiles`)
+### Fixed
+- Better cleanup of temporary files and improved relative path support.
 
 ---
 
-### 🧱 Base técnica
-- Implementado completamente en **TypeScript** con APIs nativas de VS Code.
-- Estructura modular:
-  - `extension.ts` → punto de entrada
-  - `uavController.ts` → núcleo de validación y vistas
-  - `utils.ts` → funciones auxiliares y logger
-- Uso de:
-  - `execa` para comandos shell
-  - `fs-extra` para operaciones de E/S
-  - `nunjucks` + `html-pdf-node` para reportes
-  - `MarkdownIt` para contenido IA
+## [1.2.2] – 2024-09-30
+
+### Fixed
+- Compatibility updates for Salesforce Code Analyzer v5.
 
 ---
 
-### 🧭 Proximas mejoras
-- 🧹 **Reducir ruido en la ventana *Output***:
-  - Parametrizar niveles de log (OFF / ERROR / WARN / INFO).
-  - Silenciar mensajes de consola sin afectar los archivos `.log`.
-- 💬 Tooltip con número de versión detectada en cada dependencia.
-- 📦 Publicación en el marketplace de VS Code.
+## [1.2.0] – 2024-09-10
+
+### Added
+- PMD CPD duplication analysis and HTML/PDF report generation.
 
 ---
 
-© 2025 — *Desarrollado por Oscar González*
+## [1.0.0] – 2024-09-06
+
+### Added
+- Initial public release of Unified Apex Validator for VS Code with validation, testing, AI analysis, and reporting.
+
+---
