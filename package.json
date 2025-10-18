@@ -3,7 +3,7 @@
   "displayName": "Unified Apex Validator",
   "description": "Salesforce Apex validation and reporting suite built natively in TypeScript for VS Code.",
   "publisher": "ozkrgonzalez",
-  "version": "1.6.4",
+  "version": "1.8.0",
   "icon": "media/icon.png",
   "license": "GPL-3.0-only",
   "repository": "https://github.com/ozkrgonzalez/UnifiedApexValidator.git",
@@ -37,7 +37,10 @@
   },
   "activationEvents": [
     "onCommand:UnifiedApexValidator.validateApex",
-    "workspaceContains:**/*.xml"
+    "onCommand:UnifiedApexValidator.compareApexClasses",
+    "onCommand:UnifiedApexValidator.formatApexAllman",
+    "workspaceContains:**/*.xml",
+    "onLanguage:apex"
   ],
   "contributes": {
     "viewsContainers": {
@@ -89,6 +92,19 @@
         "command": "uav.logsView.openFolder",
         "title": "Open logs folder",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "UnifiedApexValidator.compareApexClasses",
+        "title": "UAV: Compare Apex Classes against Org"
+      },
+      {
+        "command": "UnifiedApexValidator.generateApexDocChunked",
+        "title": "UAV: Generate ApexDoc"
+      },
+      {
+        "command": "UnifiedApexValidator.formatApexAllman",
+        "title": "UAV: Formatear Apex (Allman)",
+        "enablement": "config.UnifiedApexValidator.enableAllmanFormatter"
       }
     ],
     "menus": {
@@ -119,34 +135,49 @@
           "command": "UnifiedApexValidator.validateApex",
           "when": "resourceExtname =~ /\\.?xml/i",
           "group": "z_unifiedApex@1"
+        },
+        {
+          "command": "UnifiedApexValidator.compareApexClasses",
+          "when": "resourceExtname =~ /\\.?xml/i",
+          "group": "z_unifiedApex@10"
+        },
+        {
+          "command": "UnifiedApexValidator.compareApexClasses",
+          "when": "resourceExtname =~ /\\.?cls/i",
+          "group": "z_unifiedApex@11"
+        },
+        {
+          "command": "UnifiedApexValidator.formatApexAllman",
+          "when": "(resourceExtname == .cls || resourceExtname == .trigger) && config.UnifiedApexValidator.enableAllmanFormatter",
+          "group": "z_unifiedApex@12"
         }
       ],
       "editor/context": [
         {
           "command": "UnifiedApexValidator.validateApex",
           "when": "resourceExtname =~ /\\.?xml/i",
-          "group": "z_unifiedApex@2"
+          "group": "z_unifiedApex@3"
+        },
+        {
+          "command": "UnifiedApexValidator.compareApexClasses",
+          "when": "resourceExtname =~ /\\.?cls/i",
+          "group": "z_unifiedApex@12"
+        },
+        {
+          "command": "UnifiedApexValidator.generateApexDocChunked",
+          "when": "resourceExtname =~ /\\.?cls/i",
+          "group": "z_unifiedApex@14"
+        },
+        {
+          "command": "UnifiedApexValidator.formatApexAllman",
+          "when": "editorLangId == apex && config.UnifiedApexValidator.enableAllmanFormatter",
+          "group": "z_unifiedApex@15"
         }
       ]
     },
     "configuration": {
       "title": "Unified Apex Validator Settings",
       "properties": {
-        "UnifiedApexValidator.sfUsername": {
-          "type": "string",
-          "default": "",
-          "description": "Salesforce Username."
-        },
-        "UnifiedApexValidator.sfPassword": {
-          "type": "string",
-          "default": "",
-          "description": "Salesforce Password."
-        },
-        "UnifiedApexValidator.sfSecurityToken": {
-          "type": "string",
-          "default": "",
-          "description": "Salesforce Security Token."
-        },
         "UnifiedApexValidator.sfClientId": {
           "type": "string",
           "default": "",
@@ -197,6 +228,44 @@
           "default": 25000,
           "description": "Class body MAX chars to pass Einstein GPT."
         },
+        "UnifiedApexValidator.classDocTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "@description",
+            "@since",
+            "@author",
+            "@testClass"
+          ],
+          "markdownDescription": "Lista de etiquetas para la cabecera ApexDoc de las clases. Se insertan vacías cuando faltan en la respuesta del modelo."
+        },
+        "UnifiedApexValidator.methodDocTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "@description",
+            "@param",
+            "@return"
+          ],
+          "markdownDescription": "Lista de etiquetas para la documentación ApexDoc de métodos y constructores. Las etiquetas faltantes se insertan vacías cuando no aparecen en la respuesta del modelo."
+        },
+        "UnifiedApexValidator.apexDocLanguage": {
+          "type": "string",
+          "enum": [
+            "spanish",
+            "english"
+          ],
+          "enumDescriptions": [
+            "Genera las descripciones de ApexDoc en español (etiquetas en inglés).",
+            "Genera las descripciones de ApexDoc completamente en inglés."
+          ],
+          "default": "spanish",
+          "description": "Idioma usado por el generador de ApexDoc asistido por IA."
+        },
         "UnifiedApexValidator.sfCliPath": {
           "type": "string",
           "default": "sf",
@@ -211,6 +280,16 @@
           "type": "boolean",
           "default": true,
           "description": "Keep Logs and Temp files after a success run."
+        },
+        "UnifiedApexValidator.enableAllmanFormatter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Allman Apex formatter command and context menus."
+        },
+        "UnifiedApexValidator.traceAst": {
+          "type": "boolean",
+          "default": true,
+          "description": "Activate AST Trace."
         }
       }
     }
@@ -234,7 +313,11 @@
     "dependencies": true
   },
   "dependencies": {
+    "@apexdevtools/apex-parser": "^4.4.1",
+    "@types/diff": "^7.0.2",
+    "antlr4ts": "^0.5.0-alpha.4",
     "axios": "^1.12.2",
+    "diff": "^8.0.2",
     "dotenv": "^17.2.3",
     "execa": "^9.6.0",
     "fast-xml-parser": "^5.3.0",
@@ -242,20 +325,22 @@
     "markdown-it": "^14.1.0",
     "marked": "^12.0.2",
     "nunjucks": "^3.2.4",
-    "typescript": "^5.9.3",
-    "winston": "^3.18.3"
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/glob": "^8.1.0",
     "@types/html-pdf-node": "^1.0.2",
     "@types/markdown-it": "^14.1.2",
+    "@types/node": "^24.7.2",
     "@types/nunjucks": "^3.2.6",
     "@types/vscode": "^1.104.0",
     "@types/xml2js": "^0.4.14",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",
     "esbuild": "^0.25.10",
+    "prettier": "^3.6.2",
+    "prettier-plugin-apex": "^2.2.6",
     "rimraf": "^6.0.1"
   }
 }

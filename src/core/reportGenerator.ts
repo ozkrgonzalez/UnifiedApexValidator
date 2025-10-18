@@ -184,3 +184,71 @@ function formatIAResults(iaResults: any[]): Record<string, any> {
     return map;
 }
 
+/**
+ * Genera el reporte HTML de comparación de clases Apex (LOCAL vs ORG)
+ * usando el template class_comparison_report.html con Monaco Editor.
+ */
+export async function generateComparisonReport(
+  outputDir: string,
+  orgAlias: string,
+  comparisonResults: {
+    ClassName: string;
+    Status: string;
+    Differences?: string;
+    LocalVersion?: string;
+    SalesforceVersion?: string;
+  }[]
+) {
+  try {
+    const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+    const extension = vscode.extensions.getExtension('ozkrgonzalez.unifiedapexvalidator');
+    const extensionPath = extension?.extensionPath || __dirname;
+
+    // 📂 busca el template con nombre class_comparison_report.html
+    let templatePath = path.join(extensionPath, 'dist', 'resources', 'templates', 'class_comparison_report.html');
+    if (!fs.existsSync(templatePath)) {
+      templatePath = path.join(extensionPath, 'src', 'resources', 'templates', 'class_comparison_report.html');
+    }
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`No se encontró el template HTML (${templatePath})`);
+    }
+
+    await fs.ensureDir(outputDir);
+
+    const env = nunjucks.configure(path.dirname(templatePath), { autoescape: false });
+
+    // 🧩 Filtro personalizado para permitir {{ valor | tojson }}
+    env.addFilter('tojson', function (value) {
+      try {
+        return JSON.stringify(value || '').replace(/</g, '\\u003c');
+      } catch {
+        return '""';
+      }
+    });
+
+    const match_count = comparisonResults.filter(r => r.Status === 'Match').length;
+    const mismatch_count = comparisonResults.filter(r => r.Status === 'Mismatch').length;
+    const not_in_local_count = comparisonResults.filter(r => r.Status === 'Solo en Local').length;
+    const not_in_salesforce_count = comparisonResults.filter(r => r.Status === 'Solo en Org').length;
+
+    const html = env.render(path.basename(templatePath), {
+      results: comparisonResults,
+      match_count,
+      mismatch_count,
+      not_in_local_count,
+      not_in_salesforce_count
+    });
+
+    const fileName = `compare_${orgAlias}_${new Date().getTime()}.html`;
+    const htmlFilePath = path.join(outputDir, fileName);
+    await fs.writeFile(htmlFilePath, html, 'utf8');
+
+    vscode.window.showInformationMessage(`📊 Reporte HTML de comparación generado: ${htmlFilePath}`);
+    return htmlFilePath;
+  } catch (err: any) {
+    const msg = `❌ Error generando reporte de comparación: ${err.message}`;
+    vscode.window.showErrorMessage(msg);
+    throw err;
+  }
+}
