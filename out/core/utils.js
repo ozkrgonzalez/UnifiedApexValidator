@@ -146,7 +146,7 @@ exports.Logger = Logger;
 async function parseApexClassesFromPackage(pkgPath, repoDir) {
     const logger = new Logger('PackageParser');
     try {
-        logger.info(`\u{1F4E6} Leyendo package.xml desde: ${pkgPath}`);
+        logger.info(`📦 Leyendo package.xml desde: ${pkgPath}`);
         const xml = await fs.readFile(pkgPath, 'utf8');
         const parser = new fast_xml_parser_1.XMLParser({ ignoreAttributes: false });
         const json = parser.parse(xml);
@@ -160,7 +160,7 @@ async function parseApexClassesFromPackage(pkgPath, repoDir) {
         const members = Array.isArray(apexTypes.members) ? apexTypes.members : [apexTypes.members];
         const testClasses = [];
         const nonTestClasses = [];
-        logger.info(`\u{1F4C2} Buscando clases dentro de: ${repoDir}`);
+        logger.info(`📂 Buscando clases dentro de: ${repoDir}`);
         for (const cls of members) {
             const matches = glob.sync(`**/${cls}.cls`, { cwd: repoDir, absolute: true });
             if (!matches.length) {
@@ -174,12 +174,12 @@ async function parseApexClassesFromPackage(pkgPath, repoDir) {
                 nonTestClasses.push(cls);
             }
         }
-        logger.info(`\u{1F9EA} Clases de prueba detectadas (${testClasses.length}): ${testClasses.join(', ') || 'Ninguna'}`);
-        logger.info(`\u{1F4D6} Clases normales detectadas (${nonTestClasses.length}): ${nonTestClasses.join(', ') || 'Ninguna'}`);
+        logger.info(`🧪 Clases de prueba detectadas (${testClasses.length}): ${testClasses.join(', ') || 'Ninguna'}`);
+        logger.info(`📖 Clases normales detectadas (${nonTestClasses.length}): ${nonTestClasses.join(', ') || 'Ninguna'}`);
         return { testClasses, nonTestClasses };
     }
     catch (err) {
-        console.error('[UAV][PackageParser] \u274C Error parseando package.xml:', err);
+        console.error('[UAV][PackageParser] ❌ Error parseando package.xml:', err);
         throw err;
     }
 }
@@ -193,14 +193,14 @@ async function cleanUpFiles(paths, logger) {
         try {
             if (await fs.pathExists(dir)) {
                 await fs.emptyDir(dir);
-                logger?.info(`\u{1F9F9} Carpeta limpiada: ${dir}`);
+                logger?.info(`🧹 Carpeta limpiada: ${dir}`);
             }
             else {
-                logger?.warn(`\u26A0\uFE0F Carpeta no encontrada: ${dir}`);
+                logger?.warn(`⚠️ Carpeta no encontrada: ${dir}`);
             }
         }
         catch (err) {
-            logger?.warn(`\u274C No se pudo limpiar ${dir}: ${err.message}`);
+            logger?.warn(`❌ No se pudo limpiar ${dir}: ${err.message}`);
         }
     }
 }

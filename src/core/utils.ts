@@ -139,11 +139,13 @@ export class Logger
 /**
  * Lee un package.xml y devuelve las clases test y no-test encontradas.
  */
-export async function parseApexClassesFromPackage(pkgPath: string, repoDir: string) {
+export async function parseApexClassesFromPackage(pkgPath: string, repoDir: string)
+{
   const logger = new Logger('PackageParser');
 
-  try {
-    logger.info(`\u{1F4E6} Leyendo package.xml desde: ${pkgPath}`);
+  try
+  {
+    logger.info(`📦 Leyendo package.xml desde: ${pkgPath}`);
     const xml = await fs.readFile(pkgPath, 'utf8');
     const parser = new XMLParser({ ignoreAttributes: false });
     const json = parser.parse(xml);
@@ -161,9 +163,10 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
     const testClasses: string[] = [];
     const nonTestClasses: string[] = [];
 
-    logger.info(`\u{1F4C2} Buscando clases dentro de: ${repoDir}`);
+    logger.info(`📂 Buscando clases dentro de: ${repoDir}`);
 
-    for (const cls of members) {
+    for (const cls of members)
+    {
       const matches = glob.sync(`**/${cls}.cls`, { cwd: repoDir, absolute: true });
 
       if (!matches.length)
@@ -172,7 +175,8 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
       }
 
       const content = await fs.readFile(matches[0], 'utf8');
-      if (/@istest/i.test(content)) {
+      if (/@istest/i.test(content))
+      {
         testClasses.push(cls);
       }
       else
@@ -181,14 +185,14 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
       }
     }
 
-    logger.info(`\u{1F9EA} Clases de prueba detectadas (${testClasses.length}): ${testClasses.join(', ') || 'Ninguna'}`);
-    logger.info(`\u{1F4D6} Clases normales detectadas (${nonTestClasses.length}): ${nonTestClasses.join(', ') || 'Ninguna'}`);
+    logger.info(`🧪 Clases de prueba detectadas (${testClasses.length}): ${testClasses.join(', ') || 'Ninguna'}`);
+    logger.info(`📖 Clases normales detectadas (${nonTestClasses.length}): ${nonTestClasses.join(', ') || 'Ninguna'}`);
 
     return { testClasses, nonTestClasses };
   }
   catch (err: any)
   {
-    console.error('[UAV][PackageParser] \u274C Error parseando package.xml:', err);
+    console.error('[UAV][PackageParser] ❌ Error parseando package.xml:', err);
     throw err;
   }
 }
@@ -207,19 +211,20 @@ export async function cleanUpFiles(paths: string[], logger?: Logger)
       if (await fs.pathExists(dir))
       {
         await fs.emptyDir(dir);
-        logger?.info(`\u{1F9F9} Carpeta limpiada: ${dir}`);
+        logger?.info(`🧹 Carpeta limpiada: ${dir}`);
       }
       else
       {
-        logger?.warn(`\u26A0\uFE0F Carpeta no encontrada: ${dir}`);
+        logger?.warn(`⚠️ Carpeta no encontrada: ${dir}`);
       }
     }
     catch (err: any)
     {
-      logger?.warn(`\u274C No se pudo limpiar ${dir}: ${err.message}`);
+      logger?.warn(`❌ No se pudo limpiar ${dir}: ${err.message}`);
     }
   }
 }
+
 export function resolveSfCliPath(): string
 {
   const config = vscode.workspace.getConfiguration('UnifiedApexValidator');

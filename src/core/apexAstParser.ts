@@ -292,15 +292,15 @@ export class ApexAstParser
                 typeof startToken?.startIndex === 'number'
                     ? startToken.startIndex
                     : typeof startToken?.start === 'number'
-                    ? startToken.start
-                    : 0;
+                        ? startToken.start
+                        : 0;
 
             const stopIdx =
                 typeof stopToken?.stopIndex === 'number'
                     ? stopToken.stopIndex
                     : typeof stopToken?.stop === 'number'
-                    ? stopToken.stop
-                    : start;
+                        ? stopToken.stop
+                        : start;
 
             const end = Math.min((stopIdx ?? start) + 1, code.length);
 
