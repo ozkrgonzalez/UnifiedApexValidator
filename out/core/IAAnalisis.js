@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IAAnalisis = exports.IAConnectionError = void 0;
+exports.evaluateIaConfig = evaluateIaConfig;
 const axios_1 = __importDefault(require("axios"));
 const vscode = __importStar(require("vscode"));
 const utils_1 = require("./utils");
@@ -141,3 +142,23 @@ class IAAnalisis {
     }
 }
 exports.IAAnalisis = IAAnalisis;
+function evaluateIaConfig() {
+    const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
+    const requiredFields = [
+        { key: 'sfGptEndpoint', label: 'sfGptEndpoint' },
+        { key: 'sfGptModel', label: 'sfGptModel' },
+        { key: 'sfClientId', label: 'sfClientId' },
+        { key: 'sfClientSecret', label: 'sfClientSecret' },
+        { key: 'iaPromptTemplate', label: 'iaPromptTemplate' }
+    ];
+    const missing = requiredFields
+        .filter(({ key }) => {
+        const value = config.get(key);
+        return typeof value !== 'string' || value.trim().length === 0;
+    })
+        .map(({ label }) => label);
+    return {
+        ready: missing.length === 0,
+        missing
+    };
+}

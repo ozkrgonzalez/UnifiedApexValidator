@@ -39,10 +39,16 @@ const apexAstParser_1 = require("./apexAstParser");
 const aiDocChunkRunner_1 = require("../core/aiDocChunkRunner");
 const patchApplier_1 = require("../core/patchApplier");
 const utils_1 = require("../core/utils");
+const IAAnalisis_1 = require("./IAAnalisis");
 async function generateApexDocChunked() {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showErrorMessage('No hay ningun archivo abierto.');
+        return;
+    }
+    const iaStatus = (0, IAAnalisis_1.evaluateIaConfig)();
+    if (!iaStatus.ready) {
+        vscode.window.showWarningMessage(`Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(', ')}`);
         return;
     }
     const logger = new utils_1.Logger('GenerateApexDoc', true);
@@ -127,6 +133,12 @@ async function generateApexDocChunked() {
                         if (chunk.kind === 'classHeader') {
                             docBlock = ensureClassPlaceholders(docBlock);
                         }
+                        else if (chunk.kind === 'method') {
+                            docBlock = ensureMethodPlaceholders(docBlock, chunk, false);
+                        }
+                        else if (chunk.kind === 'constructor') {
+                            docBlock = ensureMethodPlaceholders(docBlock, chunk, true);
+                        }
                         working = patchApplier_1.PatchApplier.applyInMemory(working, localChunk, docBlock);
                         searchCursor = realStart + docBlock.length + snippet.length;
                         logger.info(`Documentacion insertada para ${chunk.name} (${matches.length} bloque(s) detectados)`);
@@ -180,24 +192,11 @@ async function generateApexDocChunked() {
         logger.info('Documentacion generada omitida por el usuario.');
     }
 }
-function ensureClassPlaceholders(docBlock) {
-    const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
-    const configured = config.get('classDocTags') ?? ['@description', '@since', '@author', '@testClass'];
-    const normalized = configured
-        .map((tag) => (tag.startsWith('@') ? tag : `@${tag}`))
-        .filter((tag, index, array) => tag.trim().length > 1 && array.indexOf(tag) === index);
-    if (!normalized.length)
-        return docBlock;
-    const hasAllTags = normalized.every((tag) => {
-        const tagPattern = new RegExp(`\\*\\s*${tag.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i');
-        return tagPattern.test(docBlock);
-    });
-    if (hasAllTags)
-        return docBlock;
+function analyzeDocBlock(docBlock) {
     const lines = docBlock.split(/\r?\n/);
     const closeIndex = [...lines].reverse().findIndex((line) => line.trim().startsWith('*/'));
     if (closeIndex === -1)
-        return docBlock;
+        return undefined;
     const closingLineIndex = lines.length - 1 - closeIndex;
     let indent = '';
     for (const line of lines) {
@@ -207,13 +206,261 @@ function ensureClassPlaceholders(docBlock) {
             break;
         }
     }
-    const missing = normalized.filter((tag) => {
-        const tagPattern = new RegExp(`\\*\\s*${tag.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i');
-        return !tagPattern.test(docBlock);
-    });
+    return { lines, closingLineIndex, indent };
+}
+function normalizeTags(settingKey, fallback) {
+    const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
+    const configured = config.get(settingKey) ?? fallback;
+    return configured
+        .map((tag) => (tag.startsWith('@') ? tag : `@${tag}`))
+        .map((tag) => tag.trim())
+        .filter((tag, index, array) => tag.length > 1 && array.indexOf(tag) === index);
+}
+function docBlockHasTag(docBlock, tag) {
+    const tagPattern = new RegExp(`\\*\\s*${tag.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'i');
+    return tagPattern.test(docBlock);
+}
+function ensureClassPlaceholders(docBlock) {
+    const normalized = normalizeTags('classDocTags', ['@description', '@since', '@author', '@testClass']);
+    if (!normalized.length)
+        return docBlock;
+    const metadata = analyzeDocBlock(docBlock);
+    if (!metadata)
+        return docBlock;
+    const { lines, closingLineIndex, indent } = metadata;
+    const missing = normalized.filter((tag) => !docBlockHasTag(docBlock, tag));
     if (!missing.length)
         return docBlock;
     const insertionLines = missing.map((tag) => `${indent} * ${tag} `);
     lines.splice(closingLineIndex, 0, ...insertionLines);
     return lines.join('\n');
+}
+function ensureMethodPlaceholders(docBlock, chunk, isConstructor) {
+    const normalized = normalizeTags('methodDocTags', ['@description', '@param', '@return']);
+    if (!normalized.length)
+        return docBlock;
+    const metadata = analyzeDocBlock(docBlock);
+    if (!metadata)
+        return docBlock;
+    const { lines, closingLineIndex, indent } = metadata;
+    const methodInfo = extractMethodMetadata(chunk, isConstructor);
+    const insertionLines = [];
+    const existingParams = new Set([...docBlock.matchAll(/\*\s*@param\s+([A-Za-z_][A-Za-z0-9_]*)/gi)].map((match) => match[1].toLowerCase()));
+    for (const tag of normalized) {
+        const lower = tag.toLowerCase();
+        if (lower === '@param') {
+            if (!methodInfo.params.length)
+                continue;
+            for (const paramName of methodInfo.params) {
+                if (!existingParams.has(paramName.toLowerCase())) {
+                    insertionLines.push(`${indent} * @param ${paramName} `);
+                }
+            }
+            continue;
+        }
+        if (lower === '@return') {
+            if (isConstructor || methodInfo.returnsVoid)
+                continue;
+            if (docBlockHasTag(docBlock, tag))
+                continue;
+            if (methodInfo.returnType) {
+                insertionLines.push(`${indent} * @return \`${methodInfo.returnType}\` `);
+            }
+            else {
+                insertionLines.push(`${indent} * @return `);
+            }
+            continue;
+        }
+        if (!docBlockHasTag(docBlock, tag)) {
+            insertionLines.push(`${indent} * ${tag} `);
+        }
+    }
+    if (!insertionLines.length)
+        return docBlock;
+    lines.splice(closingLineIndex, 0, ...insertionLines);
+    return lines.join('\n');
+}
+function extractMethodMetadata(chunk, isConstructor) {
+    const beforeBody = chunk.text.split('{', 1)[0] ?? chunk.text;
+    const sanitized = beforeBody
+        .replace(/\/\*[\s\S]*?\*\//g, ' ')
+        .replace(/\/\/.*$/gm, ' ');
+    const lines = sanitized
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith('@'));
+    const header = lines.join(' ');
+    const methodPattern = new RegExp(`\\b${chunk.name}\\s*\\(`);
+    const match = methodPattern.exec(header);
+    if (!match) {
+        return {
+            params: [],
+            returnsVoid: isConstructor,
+            returnType: isConstructor ? undefined : undefined
+        };
+    }
+    const prefix = header.slice(0, match.index).trim();
+    const suffix = header.slice(match.index);
+    const paramsStart = suffix.indexOf('(');
+    let paramsEnd = -1;
+    let depth = 0;
+    for (let i = paramsStart; i < suffix.length; i++) {
+        const char = suffix[i];
+        if (char === '(') {
+            depth++;
+        }
+        else if (char === ')') {
+            depth--;
+            if (depth === 0) {
+                paramsEnd = i;
+                break;
+            }
+        }
+    }
+    const paramSegment = paramsEnd > paramsStart ? suffix.slice(paramsStart + 1, paramsEnd) : '';
+    const params = splitParameterList(paramSegment);
+    if (isConstructor) {
+        return {
+            params,
+            returnsVoid: true,
+            returnType: undefined
+        };
+    }
+    const tokens = tokenizeSignaturePrefix(prefix);
+    const filtered = tokens.filter((token) => {
+        const lower = token.toLowerCase();
+        if (lower === 'with' || lower === 'without' || lower === 'sharing')
+            return false;
+        return ![
+            'public',
+            'private',
+            'protected',
+            'global',
+            'static',
+            'virtual',
+            'override',
+            'abstract',
+            'final',
+            'transient',
+            'testmethod',
+            'webservice',
+            'future',
+            'synchronized'
+        ].includes(lower);
+    });
+    const returnType = filtered.length ? filtered[filtered.length - 1] : undefined;
+    const returnsVoid = (returnType ?? '').toLowerCase() === 'void';
+    return {
+        params,
+        returnsVoid,
+        returnType: returnType && returnType.toLowerCase() !== 'void' ? returnType : undefined
+    };
+}
+function tokenizeSignaturePrefix(prefix) {
+    if (!prefix)
+        return [];
+    const rawTokens = prefix.split(/\s+/).filter(Boolean);
+    const merged = [];
+    let buffer;
+    let angleDepth = 0;
+    for (const token of rawTokens) {
+        if (buffer === undefined) {
+            buffer = token;
+        }
+        else {
+            buffer += ` ${token}`;
+        }
+        angleDepth += (token.match(/</g) ?? []).length;
+        angleDepth -= (token.match(/>/g) ?? []).length;
+        if (angleDepth <= 0) {
+            merged.push(buffer);
+            buffer = undefined;
+        }
+    }
+    if (buffer !== undefined) {
+        merged.push(buffer);
+    }
+    return merged;
+}
+function splitParameterList(raw) {
+    if (!raw.trim())
+        return [];
+    const segments = [];
+    let current = '';
+    let angleDepth = 0;
+    let parenDepth = 0;
+    let braceDepth = 0;
+    let inString = null;
+    for (let i = 0; i < raw.length; i++) {
+        const char = raw[i];
+        if (inString) {
+            current += char;
+            if (char === inString && raw[i - 1] !== '\\') {
+                inString = null;
+            }
+            continue;
+        }
+        if (char === '"' || char === '\'') {
+            inString = char;
+            current += char;
+            continue;
+        }
+        switch (char) {
+            case '<':
+                angleDepth++;
+                break;
+            case '>':
+                if (angleDepth > 0)
+                    angleDepth--;
+                break;
+            case '(':
+                parenDepth++;
+                break;
+            case ')':
+                if (parenDepth > 0)
+                    parenDepth--;
+                break;
+            case '{':
+                braceDepth++;
+                break;
+            case '}':
+                if (braceDepth > 0)
+                    braceDepth--;
+                break;
+            case ',':
+                if (angleDepth === 0 && parenDepth === 0 && braceDepth === 0) {
+                    segments.push(current.trim());
+                    current = '';
+                    continue;
+                }
+                break;
+        }
+        current += char;
+    }
+    if (current.trim()) {
+        segments.push(current.trim());
+    }
+    const names = [];
+    const seen = new Set();
+    for (const segment of segments) {
+        const name = extractParamName(segment);
+        if (name && !seen.has(name.toLowerCase())) {
+            seen.add(name.toLowerCase());
+            names.push(name);
+        }
+    }
+    return names;
+}
+function extractParamName(param) {
+    if (!param)
+        return undefined;
+    let cleaned = param.replace(/@[A-Za-z_][A-Za-z0-9_]*(?:\s*\([^)]*\))?/g, ' ').trim();
+    if (!cleaned)
+        return undefined;
+    const equalsIndex = cleaned.indexOf('=');
+    if (equalsIndex !== -1) {
+        cleaned = cleaned.slice(0, equalsIndex).trim();
+    }
+    const match = cleaned.match(/([A-Za-z_][A-Za-z0-9_]*)\s*$/);
+    return match ? match[1] : undefined;
 }

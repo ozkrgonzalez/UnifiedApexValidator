@@ -5,6 +5,7 @@ import { FolderViewProvider, runUAV } from './core/uavController';
 import { runCompareApexClasses } from './core/compareController';
 import { setExtensionContext } from './core/utils';
 import { generateApexDocChunked } from './core/generateApexDocChunked';
+import { evaluateIaConfig } from './core/IAAnalisis';
 
 /**
  * Punto de entrada de la extensión Unified Apex Validator.
@@ -23,6 +24,28 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // ⚙️ Habilita el comando “Actualizar dependencia”
     registerDependencyUpdater(context);
+
+    const syncIaContext = () =>
+    {
+        const iaStatus = evaluateIaConfig();
+        void vscode.commands.executeCommand('setContext', 'uav.iaReady', iaStatus.ready);
+        if (!iaStatus.ready)
+        {
+            console.warn(`[UAV][extension] IA deshabilitada. Faltan parametros: ${iaStatus.missing.join(', ')}`);
+        }
+    };
+
+    syncIaContext();
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration((event) =>
+        {
+            if (event.affectsConfiguration('UnifiedApexValidator'))
+            {
+                syncIaContext();
+                dependenciesProvider.refresh();
+            }
+        })
+    );
 
     // 📂 Rutas base
     const outputDir =

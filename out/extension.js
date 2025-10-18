@@ -42,6 +42,7 @@ const uavController_1 = require("./core/uavController");
 const compareController_1 = require("./core/compareController");
 const utils_1 = require("./core/utils");
 const generateApexDocChunked_1 = require("./core/generateApexDocChunked");
+const IAAnalisis_1 = require("./core/IAAnalisis");
 /**
  * Punto de entrada de la extensión Unified Apex Validator.
  * Se ejecuta al activar la extensión por comando.
@@ -55,6 +56,20 @@ async function activate(context) {
     context.subscriptions.push(vscode.commands.registerCommand('uav.dependenciesView.refresh', () => dependenciesProvider.refresh()));
     // ⚙️ Habilita el comando “Actualizar dependencia”
     (0, dependenciesProvider_1.registerDependencyUpdater)(context);
+    const syncIaContext = () => {
+        const iaStatus = (0, IAAnalisis_1.evaluateIaConfig)();
+        void vscode.commands.executeCommand('setContext', 'uav.iaReady', iaStatus.ready);
+        if (!iaStatus.ready) {
+            console.warn(`[UAV][extension] IA deshabilitada. Faltan parametros: ${iaStatus.missing.join(', ')}`);
+        }
+    };
+    syncIaContext();
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('UnifiedApexValidator')) {
+            syncIaContext();
+            dependenciesProvider.refresh();
+        }
+    }));
     // 📂 Rutas base
     const outputDir = vscode.workspace.getConfiguration('UnifiedApexValidator').get('outputDir') ||
         path.join(context.globalStorageUri.fsPath, 'output');

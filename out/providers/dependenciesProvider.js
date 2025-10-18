@@ -37,7 +37,7 @@ exports.UavDependencyItem = exports.DependenciesProvider = void 0;
 exports.registerDependencyUpdater = registerDependencyUpdater;
 const vscode = __importStar(require("vscode"));
 const execa_1 = require("execa");
-// 🧩 Representa un proveedor del árbol de dependencias del UAV
+const IAAnalisis_1 = require("../core/IAAnalisis");
 class DependenciesProvider {
     context;
     _onDidChangeTreeData = new vscode.EventEmitter();
@@ -56,7 +56,12 @@ class DependenciesProvider {
         const checks = [
             { label: 'Node.js', cmd: 'node --version', minVersion: '18.0.0', installCmd: 'npm install -g node' },
             { label: 'Salesforce CLI (sf)', cmd: 'sf --version', minVersion: '2.0.0', installCmd: 'npm install -g @salesforce/cli' },
-            { label: 'Salesforce Code Analyzer', cmd: 'sf code-analyzer run --help', minVersion: '5.0.0', installCmd: 'sf plugins install @salesforce/sfdx-scanner' },
+            {
+                label: 'Salesforce Code Analyzer',
+                cmd: 'sf code-analyzer run --help',
+                minVersion: '5.0.0',
+                installCmd: 'sf plugins install @salesforce/sfdx-scanner'
+            },
             { label: 'Java', cmd: 'java -version', minVersion: '11.0.0', installCmd: 'apt install openjdk-11-jdk' },
             { label: 'wkhtmltopdf', cmd: 'wkhtmltopdf --version', minVersion: '0.12.6', installCmd: 'brew install wkhtmltopdf' }
         ];
@@ -64,9 +69,9 @@ class DependenciesProvider {
             const state = await this.checkCommand(dep);
             const item = new UavDependencyItem(dep.label, state);
             const iconMap = {
-                ok: new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed')), // verde
-                outdated: new vscode.ThemeIcon('triangle-right', new vscode.ThemeColor('editorWarning.foreground')), // amarillo
-                missing: new vscode.ThemeIcon('close', new vscode.ThemeColor('errorForeground')) // rojo
+                ok: new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed')),
+                outdated: new vscode.ThemeIcon('triangle-right', new vscode.ThemeColor('editorWarning.foreground')),
+                missing: new vscode.ThemeIcon('close', new vscode.ThemeColor('errorForeground'))
             };
             item.iconPath = iconMap[state];
             if (state !== 'ok' && dep.installCmd) {
@@ -79,18 +84,20 @@ class DependenciesProvider {
             }
             dependencies.push(item);
         }
-        // IA config (desde settings)
-        const cfg = vscode.workspace.getConfiguration('UnifiedApexValidator');
-        const iaFields = [
-            cfg.get('sfGptEndpoint'),
-            cfg.get('sfGptModel'),
-            cfg.get('iaPromptTemplate')
-        ];
-        const iaConfigured = iaFields.every(v => typeof v === 'string' && v.trim() !== '');
-        const iaItem = new UavDependencyItem('IA Configuración', iaConfigured ? 'ok' : 'missing');
-        iaItem.iconPath = iaConfigured
+        const iaStatus = (0, IAAnalisis_1.evaluateIaConfig)();
+        const iaItem = new UavDependencyItem('IA Configuracion', iaStatus.ready ? 'ok' : 'missing');
+        iaItem.iconPath = iaStatus.ready
             ? new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'))
             : new vscode.ThemeIcon('close', new vscode.ThemeColor('errorForeground'));
+        if (iaStatus.ready) {
+            iaItem.description = 'Actualizado';
+            iaItem.tooltip = 'Credenciales IA configuradas.';
+        }
+        else {
+            const missingList = iaStatus.missing.join(', ');
+            iaItem.description = `Faltan: ${missingList}`;
+            iaItem.tooltip = `Configura los siguientes campos: ${missingList}`;
+        }
         dependencies.push(iaItem);
         return dependencies;
     }
@@ -121,7 +128,6 @@ class DependenciesProvider {
     }
 }
 exports.DependenciesProvider = DependenciesProvider;
-// 🧩 Elemento visual dentro del árbol de dependencias
 class UavDependencyItem extends vscode.TreeItem {
     label;
     state;
@@ -143,7 +149,6 @@ class UavDependencyItem extends vscode.TreeItem {
     }
 }
 exports.UavDependencyItem = UavDependencyItem;
-// 🧩 Registro del comando de actualización
 function registerDependencyUpdater(context) {
     context.subscriptions.push(vscode.commands.registerCommand('uav.updateDependency', async (dep) => {
         vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Actualizando ${dep.label}...` }, async () => {

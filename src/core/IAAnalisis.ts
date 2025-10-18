@@ -147,3 +147,34 @@ export class IAAnalisis
         }
     }
 }
+
+export interface IAConfigStatus
+{
+    ready: boolean;
+    missing: string[];
+}
+
+export function evaluateIaConfig(): IAConfigStatus
+{
+    const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
+    const requiredFields: Array<{ key: string; label: string }> = [
+        { key: 'sfGptEndpoint', label: 'sfGptEndpoint' },
+        { key: 'sfGptModel', label: 'sfGptModel' },
+        { key: 'sfClientId', label: 'sfClientId' },
+        { key: 'sfClientSecret', label: 'sfClientSecret' },
+        { key: 'iaPromptTemplate', label: 'iaPromptTemplate' }
+    ];
+
+    const missing = requiredFields
+        .filter(({ key }) =>
+        {
+            const value = config.get<string>(key);
+            return typeof value !== 'string' || value.trim().length === 0;
+        })
+        .map(({ label }) => label);
+
+    return {
+        ready: missing.length === 0,
+        missing
+    };
+}

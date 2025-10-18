@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -14,32 +14,94 @@
         th, td { border: 1px solid #ddd; padding: 8px; }
         th { background-color: #333; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
-        .summary {
+        .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 18px;
+        margin: 24px 0;
+        padding: 4px;
+        }
+
+        .summary-card {
+        position: relative;
+        padding: 20px 22px;
+        border-radius: 18px;
+        color: #ffffff;
+        overflow: hidden;
+        box-shadow: 0 18px 32px rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(3px);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
         display: flex;
-        justify-content: space-between;
-        gap: 15px;
-        margin: 20px 0;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 130px;
         }
 
-        .card {
-        flex: 1;
-        text-align: center;
-        padding: 15px;
-        border-radius: 8px;
-        color: white;
-        font-weight: bold;
+        .summary-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 22px 34px rgba(0, 0, 0, 0.18);
         }
-        .card.red { background-color: #dc3545; }
-        .card.green { background-color: #28a745; }
-        .card.orange { background-color: #fd7e14; }
 
-        .card h3 {
-        margin: 0 0 8px 0;
+        .summary-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.35), transparent 55%);
+        opacity: 0.7;
+        pointer-events: none;
+        }
+
+        .summary-card__title {
         font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
         }
-        .card p {
-        font-size: 22px;
-        margin: 0;
+
+        .summary-card__title span {
+        font-size: 18px;
+        }
+
+        .summary-card__value {
+        font-size: 40px;
+        line-height: 1;
+        font-weight: 700;
+        z-index: 1;
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        }
+
+        .summary-card__value small {
+        font-size: 16px;
+        font-weight: 500;
+        opacity: 0.85;
+        }
+
+        .summary-card__footer {
+        z-index: 1;
+        font-size: 13px;
+        opacity: 0.85;
+        }
+
+        .summary-card--issues {
+        background: linear-gradient(135deg, #dc3545, #9b1c2d);
+        }
+
+        .summary-card--tests {
+        background: linear-gradient(135deg, #28a745, #1a7b31);
+        }
+
+        .summary-card--coverage {
+        background: linear-gradient(135deg, #fd7e14, #c45002);
+        }
+
+        .summary-card--duplicates {
+        background: linear-gradient(135deg, #6f42c1, #452282);
         }
         .analysis h2, .analysis h3, .analysis h4 {
         color: #007bff;
@@ -59,6 +121,70 @@
         padding: 10px;
         border-radius: 6px;
         overflow-x: auto;
+        }
+        .analysis-block {
+        margin-bottom: 20px;
+        }
+        .search-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 15px 0 10px 0;
+        flex-wrap: wrap;
+        }
+        .search-bar label {
+        font-weight: 600;
+        color: #333;
+        }
+        .search-bar input {
+        flex: 1;
+        min-width: 240px;
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+        }
+        .search-no-results {
+        display: none;
+        margin: 10px 0;
+        padding: 10px 14px;
+        border-left: 4px solid #dc3545;
+        background: #f8d7da;
+        color: #721c24;
+        border-radius: 6px;
+        font-weight: 600;
+        }
+        .analysis-block {
+        margin-bottom: 20px;
+        }
+        .search-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 15px 0 10px 0;
+        flex-wrap: wrap;
+        }
+        .search-bar label {
+        font-weight: 600;
+        color: #333;
+        }
+        .search-bar input {
+        flex: 1;
+        min-width: 240px;
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+        }
+        .search-no-results {
+        display: none;
+        margin: 10px 0;
+        padding: 10px 14px;
+        border-left: 4px solid #dc3545;
+        background: #f8d7da;
+        color: #721c24;
+        border-radius: 6px;
+        font-weight: 600;
         }
         .class-name {
         background-color: #0056b3;
@@ -96,20 +222,6 @@
         background-color: #fff3cd;
         color: #856404;
         border: 1px solid #ffeeba;
-        }
-
-        .summary-table {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        }
-
-        .summary-table td {
-        flex: 1;
-        text-align: center;
-        padding: 15px;
-        border-radius: 8px;
-        color: white;
         }
 
         /* 🌙 Ajustes visuales para modo oscuro dentro de VS Code */
@@ -153,7 +265,7 @@
         }
 
         /* Cards */
-        body.vscode-dark .card {
+        body.vscode-dark .summary-card {
         color: #fff;
         box-shadow: 0 0 6px rgba(255,255,255,0.06);
         }
@@ -198,6 +310,55 @@
         text-decoration: underline;
         }
 
+        body.vscode-dark .summary-card {
+        box-shadow: 0 14px 26px rgba(0, 0, 0, 0.35);
+        }
+
+        body.vscode-dark .summary-card__title {
+        color: #f4f4f4;
+        }
+
+        body.vscode-dark .summary-card__value {
+        color: #ffffff;
+        }
+
+        body.vscode-dark .summary-card__footer {
+        color: rgba(255, 255, 255, 0.75);
+        }
+
+        body.vscode-dark .search-bar label {
+        color: #e0e0e0;
+        }
+
+        body.vscode-dark .search-bar input {
+        background-color: #1e1e1e;
+        border: 1px solid #555;
+        color: #f5f5f5;
+        }
+
+        body.vscode-dark .search-no-results {
+        background: #4a1f1f;
+        color: #f8d7da;
+        border-color: #ff8787;
+        }
+
+        body.vscode-dark .analysis-block {
+        background: transparent;
+        }
+        body.vscode-dark .search-bar label {
+        color: #e0e0e0;
+        }
+        body.vscode-dark .search-bar input {
+        background-color: #1e1e1e;
+        border: 1px solid #555;
+        color: #f5f5f5;
+        }
+        body.vscode-dark .search-no-results {
+        background: #4a1f1f;
+        color: #f8d7da;
+        border-color: #ff8787;
+        }
+
         /* Estados vacíos */
         body.vscode-dark .empty-state.success {
         background-color: #14351b;
@@ -235,14 +396,14 @@
         }
 
         /* 💡 Mejora de legibilidad de títulos en tarjetas dentro de VS Code oscuro */
-        body.vscode-dark .card h3 {
+        body.vscode-dark .summary-card__title {
         color: #ffffff !important;
         text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
         letter-spacing: 0.3px;
         font-weight: 600;
         }
 
-        body.vscode-dark .card p {
+        body.vscode-dark .summary-card__value {
         color: #f8f8f8 !important;
         font-weight: 600;
         text-shadow: 0 0 5px rgba(0,0,0,0.4);
@@ -252,30 +413,37 @@
 </head>
 <body>
     <h1>Reporte de Validaciones Salesforce Apex</h1>
-    <table class="summary-table" style="width:100%; margin:20px 0; text-align:center;">
-        <tr>
-            <td style="background:#dc3545; color:white; padding:15px; border-radius:8px;">
-            <h3>Problemas</h3>
-            <p>{{ apex_results | length }}</p>
-            </td>
-            <td style="background:#28a745; color:white; padding:15px; border-radius:8px;">
-            <h3>Pruebas</h3>
-            <p>{{ test_results | length }}</p>
-            </td>
-            <td style="background:#fd7e14; color:white; padding:15px; border-radius:8px;">
-            <h3>Clases con &lt;75% cobertura</h3>
-            <p><p>{{ low_coverage_count }}</p></p>
-            </td>
-            <td style="background:#6f42c1; color:white; padding:15px; border-radius:8px;">
-            <h3>Clases con código duplicado</h3>
-            <p>{{ duplicate_class_count }}</p>
-            </td>
-        </tr>
-    </table>
+    <div class="search-bar">
+        <label for="reportSearch">&#x1F50D; Buscar:</label>
+        <input type="search" id="reportSearch" placeholder="Filtra por clase, regla o mensaje..." autocomplete="off">
+    </div>
+    <p id="searchNoResults" class="search-no-results">Sin coincidencias para la b&uacute;squeda.</p>
+    <section class="summary-cards">
+        <article class="summary-card summary-card--issues">
+            <h3 class="summary-card__title"><span>⚠️</span> Problemas</h3>
+            <div class="summary-card__value">{{ apex_results | length }}</div>
+            <div class="summary-card__footer">Reglas que requieren Atenci&oacute;n</div>
+        </article>
+        <article class="summary-card summary-card--tests">
+            <h3 class="summary-card__title"><span>🧪</span> Pruebas ejecutadas</h3>
+            <div class="summary-card__value">{{ test_results | length }}</div>
+            <div class="summary-card__footer">Resultados de clases de prueba</div>
+        </article>
+        <article class="summary-card summary-card--coverage">
+            <h3 class="summary-card__title"><span>📉</span> Cobertura &lt; 75%</h3>
+            <div class="summary-card__value">{{ low_coverage_count }}</div>
+            <div class="summary-card__footer">Clases por debajo del umbral</div>
+        </article>
+        <article class="summary-card summary-card--duplicates">
+            <h3 class="summary-card__title"><span>🔁</span> C&oacute;digo duplicado</h3>
+            <div class="summary-card__value">{{ duplicate_class_count }}</div>
+            <div class="summary-card__footer">Clases con coincidencias detectadas</div>
+        </article>
+    </section>
 
     <h2>Problemas Detectados</h2>
     {% if apex_results %}
-    <table>
+    <table data-search-table="true">
     <tr>
         <th>Clase</th><th>Línea</th><th>Regla</th><th>Severidad</th><th>Descripción</th><th>Ver Regla</th>
     </tr>
@@ -304,7 +472,7 @@
 
     <h2>Cobertura de Código</h2>
 	{% if test_coverage %}
-	<table>
+	<table data-search-table="true">
 	  <tr>
 		<th>Clase</th><th>Líneas Totales</th><th>Cubiertas</th><th>Cobertura %</th>
 	  </tr>
@@ -326,7 +494,7 @@
 
     <h2>Resultados de Pruebas</h2>
     {% if test_results %}
-    <table>
+    <table data-search-table="true">
         <tr>
             <th>Clase</th><th>Método</th><th>Resultado</th><th>Mensaje</th>
         </tr>
@@ -345,9 +513,9 @@
     </div>
     {% endif %}
 
-    <h2>Código Duplicado</h2>
+    <h2>C&oacute;digo duplicado</h2>
     {% if pmd_results %}
-        <table>
+        <table data-search-table="true">
             <tr>
             <th>Clase</th>
             <th>Líneas Duplicadas</th>
@@ -370,12 +538,101 @@
     <h2>Análisis IA</h2>
     {% if einsteinAnalysis %}
     {% for cls, analysis in einsteinAnalysis %}
-        <h2 class="class-name">{{ cls }}</h2>
-        <div class="analysis">{{ analysis.resumenHtml | safe }}</div>
+        <section class="analysis-block" data-search-block="ia">
+            <h2 class="class-name">{{ cls }}</h2>
+            <div class="analysis">{{ analysis.resumenHtml | safe }}</div>
+        </section>
     {% endfor %}
     {% else %}
     <p>El análisis IA fue omitido o no se encontraron resultados.</p>
     {% endif %}
 
+
+    <script>
+    (function () {
+        const searchInput = document.getElementById('reportSearch');
+        if (!searchInput) return;
+
+        const tables = Array.from(document.querySelectorAll('table[data-search-table="true"]'));
+        const iaBlocks = Array.from(document.querySelectorAll('[data-search-block="ia"]'));
+        const noResultsBanner = document.getElementById('searchNoResults');
+
+        const ensureNoResultRow = (table) => {
+            let targetBody = table.tBodies.length ? table.tBodies[table.tBodies.length - 1] : null;
+            if (!targetBody) {
+                targetBody = document.createElement('tbody');
+                while (table.firstChild && table.firstChild.tagName && table.firstChild.tagName.toLowerCase() === 'tr') {
+                    targetBody.appendChild(table.firstChild);
+                }
+                table.appendChild(targetBody);
+            }
+
+            let noRow = table.querySelector('tr[data-no-results]');
+            if (!noRow) {
+                noRow = document.createElement('tr');
+                noRow.dataset.noResults = 'true';
+                const header = table.querySelector('tr th');
+                const columns = header ? header.parentElement.children.length : (table.rows[0] ? table.rows[0].cells.length : 1);
+                const cell = document.createElement('td');
+                cell.colSpan = Math.max(columns, 1);
+                cell.textContent = 'Sin coincidencias para la b&uacute;squeda.';
+                cell.style.textAlign = 'center';
+                noRow.style.display = 'none';
+                noRow.appendChild(cell);
+                targetBody.appendChild(noRow);
+            }
+        };
+
+        tables.forEach(ensureNoResultRow);
+
+        const getDataRows = (table) => {
+            const bodies = table.tBodies.length ? Array.from(table.tBodies) : [table];
+            const rows = bodies.flatMap((body) => Array.from(body.rows));
+            return rows.filter((row) => row.dataset.noResults !== 'true' && !row.querySelector('th'));
+        };
+
+        const normalize = (value) => (value || '').toString().toLowerCase();
+
+        const applyFilter = () => {
+            const term = normalize(searchInput.value.trim());
+            const hasTerm = term.length > 0;
+            let matches = 0;
+
+            tables.forEach((table) => {
+                const rows = getDataRows(table);
+                let visibleRows = 0;
+
+                rows.forEach((row) => {
+                    const text = normalize(row.textContent);
+                    const show = !hasTerm || text.includes(term);
+                    row.style.display = show ? '' : 'none';
+                    if (show) visibleRows++;
+                });
+
+                const noRow = table.querySelector('tr[data-no-results]');
+                if (noRow) {
+                    noRow.style.display = hasTerm && visibleRows === 0 ? '' : 'none';
+                }
+
+                matches += visibleRows;
+            });
+
+            iaBlocks.forEach((block) => {
+                const text = normalize(block.textContent);
+                const show = !hasTerm || text.includes(term);
+                block.style.display = show ? '' : 'none';
+                if (show) matches++;
+            });
+
+            if (noResultsBanner) {
+                noResultsBanner.style.display = hasTerm && matches === 0 ? 'block' : 'none';
+            }
+        };
+
+        searchInput.addEventListener('input', applyFilter);
+    })();
+    </script>
 </body>
 </html>
+
+
