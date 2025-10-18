@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 import { execa } from 'execa';
 import { evaluateIaConfig } from '../core/IAAnalisis';
 
@@ -27,11 +29,12 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         const checks: DepCheck[] = [
             { label: 'Node.js', cmd: 'node --version', minVersion: '18.0.0', installCmd: 'npm install -g node' },
             { label: 'Salesforce CLI (sf)', cmd: 'sf --version', minVersion: '2.0.0', installCmd: 'npm install -g @salesforce/cli' },
+            { label: 'Salesforce Code Analyzer', cmd: 'sf code-analyzer run --help', minVersion: '5.0.0', installCmd: 'sf plugins install @salesforce/sfdx-scanner' },
             {
-                label: 'Salesforce Code Analyzer',
-                cmd: 'sf code-analyzer run --help',
-                minVersion: '5.0.0',
-                installCmd: 'sf plugins install @salesforce/sfdx-scanner'
+                label: 'Prettier Apex Plugin',
+                minVersion: '2.2.6',
+                installCmd: 'npm install prettier prettier-plugin-apex',
+                customCheck: (minVersion) => this.checkPrettierPlugin(minVersion)
             },
             { label: 'Java', cmd: 'java -version', minVersion: '11.0.0', installCmd: 'apt install openjdk-11-jdk' },
             { label: 'wkhtmltopdf', cmd: 'wkhtmltopdf --version', minVersion: '0.12.6', installCmd: 'brew install wkhtmltopdf' }
@@ -85,8 +88,25 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
 
     private async checkCommand(dep: DepCheck): Promise<'ok' | 'outdated' | 'missing'>
     {
+        if (dep.customCheck)
+        {
+            try
+            {
+                return await dep.customCheck(dep.minVersion);
+            }
+            catch (error)
+            {
+                console.error('[UAV][dependencies] Error revisando dependencia personalizada:', error);
+                return 'missing';
+            }
+        }
+
         try
         {
+            if (!dep.cmd)
+            {
+                return 'missing';
+            }
             const { stdout, stderr } = await execa(dep.cmd, { shell: true });
             const output = stdout || stderr || '';
             const match = output.match(/\d+(\.\d+)+/);
@@ -113,14 +133,93 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         }
         return 0;
     }
+
+    private resolveModule(moduleName: string): string | null
+    {
+        const searchPaths: string[] = [];
+
+        if (vscode.workspace.workspaceFolders)
+        {
+            for (const folder of vscode.workspace.workspaceFolders)
+            {
+                searchPaths.push(folder.uri.fsPath);
+            }
+        }
+
+        searchPaths.push(this.context.extensionUri.fsPath);
+
+        try
+        {
+            return require.resolve(moduleName, { paths: searchPaths });
+        }
+        catch (error)
+        {
+            console.warn(`[UAV][dependencies] No se pudo resolver ${moduleName} con rutas personalizadas.`, error);
+            return null;
+        }
+    }
+
+    private async checkPrettierPlugin(minVersion?: string): Promise<'ok' | 'outdated' | 'missing'>
+    {
+        try
+        {
+            let entryPath: string | null = null;
+
+            try
+            {
+                entryPath = require.resolve('prettier-plugin-apex');
+            }
+            catch
+            {
+                entryPath = this.resolveModule('prettier-plugin-apex');
+            }
+
+            if (!entryPath)
+            {
+                return 'missing';
+            }
+
+            let pkgPath = entryPath.replace(/dist[\\/].*$/, 'package.json');
+            if (!fs.existsSync(pkgPath))
+            {
+                pkgPath = path.join(path.dirname(entryPath), 'package.json');
+            }
+
+            if (!fs.existsSync(pkgPath))
+            {
+                console.warn('[UAV][dependencies] package.json no encontrado para prettier-plugin-apex:', pkgPath);
+                return 'missing';
+            }
+
+            const packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const version = packageJson.version as string | undefined;
+            if (!version)
+            {
+                return 'missing';
+            }
+
+            if (minVersion)
+            {
+                return this.compareVersions(version, minVersion) >= 0 ? 'ok' : 'outdated';
+            }
+
+            return 'ok';
+        }
+        catch (error)
+        {
+            console.warn('[UAV][dependencies] No se pudo resolver prettier-plugin-apex:', error);
+            return 'missing';
+        }
+    }
 }
 
 interface DepCheck
 {
     label: string;
-    cmd: string;
+    cmd?: string;
     minVersion?: string;
     installCmd?: string;
+    customCheck?: (minVersion?: string) => Promise<'ok' | 'outdated' | 'missing'>;
 }
 
 export class UavDependencyItem extends vscode.TreeItem

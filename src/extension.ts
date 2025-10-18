@@ -6,6 +6,7 @@ import { runCompareApexClasses } from './core/compareController';
 import { setExtensionContext } from './core/utils';
 import { generateApexDocChunked } from './core/generateApexDocChunked';
 import { evaluateIaConfig } from './core/IAAnalisis';
+import { formatApexAllman } from './core/apexAllmanFormatter';
 
 /**
  * Punto de entrada de la extensión Unified Apex Validator.
@@ -140,7 +141,26 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    context.subscriptions.push(validateApexCmd, compareApexClassesCmd, generateApexDocChunkedCmd);
+    const formatApexAllmanCmd = vscode.commands.registerCommand(
+        'UnifiedApexValidator.formatApexAllman',
+        async (uri?: vscode.Uri, uris?: vscode.Uri[]) =>
+        {
+            const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
+            if (!(config.get<boolean>('enableAllmanFormatter') ?? true))
+            {
+                void vscode.window.showInformationMessage('El formateador Allman está deshabilitado en la configuración.');
+                return;
+            }
+            await formatApexAllman(uri, uris);
+        }
+    );
+
+    context.subscriptions.push(
+        validateApexCmd,
+        compareApexClassesCmd,
+        generateApexDocChunkedCmd,
+        formatApexAllmanCmd
+    );
     //vscode.window.showInformationMessage('Unified Apex Validator activado.');
 }
 

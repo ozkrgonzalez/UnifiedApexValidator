@@ -134,6 +134,7 @@ class Logger {
         }
         this.outputChannel.appendLine(line);
     }
+    debug(msg) { this.write('DEBUG', msg); }
     info(msg) { this.write('INFO', msg); }
     warn(msg) { this.write('WARN', msg); }
     error(msg) { this.write('ERROR', msg); }
