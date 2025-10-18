@@ -13,6 +13,8 @@ All notable changes to this project will be documented in this file. The format 
 - Dependencies view entry that highlights missing Einstein GPT fields and shows helpful tooltips.
 - VS Code context key (`uav.iaReady`) to hide/disable IA commands when credentials are incomplete.
 - Extended README documentation covering AI requirements and ApexDoc behaviour.
+- Allman-style Apex formatter command (`UnifiedApexValidator.formatApexAllman`) that reuses the workspace installation of `prettier` + `prettier-plugin-apex` and adds menu items for classes/triggers.
+- Configurable ApexDoc language via the new `UnifiedApexValidator.apexDocLanguage` setting (Spanish or English prompts for the AI generator).
 
 ### Changed
 - ApexDoc generation now stops early with a warning when Einstein GPT credentials are incomplete.

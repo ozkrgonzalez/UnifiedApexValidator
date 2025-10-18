@@ -1,4 +1,4 @@
-# 🧩 Unified Apex Validator
+﻿# 🧩 Unified Apex Validator
 
 A VS Code extension built in TypeScript that helps you **validate, test, and document** your Salesforce Apex projects — all in one place. It scans your `package.xml`, runs tests, checks code quality with Salesforce Code Analyzer (PMD + CPD), and exports slick HTML/PDF reports. You can even plug in **Einstein GPT** for AI-powered feedback and auto-generated ApexDocs.
 
@@ -6,14 +6,15 @@ A VS Code extension built in TypeScript that helps you **validate, test, and doc
 
 ## 🚀 Features
 
-- 🧠 Apex class validation using **Salesforce Code Analyzer v5 (PMD + CPD)**.
+- 🧩 Apex class validation using **Salesforce Code Analyzer v5 (PMD + CPD)**.
 - 🔍 Duplicate code detection across your repo.
 - 🧪 Apex test execution via Salesforce CLI with coverage metrics.
-- 🤖 Optional **Einstein GPT** insights for risk detection and improvements.
-- 📊 Automatic HTML/PDF report generation with an integrated VS Code viewer.
-- 🪄 Sidebar views for reports, logs, and dependency checks.
-- ⚙️ Quick commands: Validate Apex, Refresh views, Open output folders.
-- 🗒️ AI-powered ApexDoc generation (beta) with tag enforcement.
+- 🧠 Optional **Einstein GPT** insights for risk detection and improvements.
+- 🧾 Automatic HTML/PDF report generation with an integrated VS Code viewer.
+- 🧭 Sidebar views for reports, logs, and dependency checks.
+- ⚡ Quick commands: Validate Apex, Refresh views, Open output folders.
+- 🤖 AI-powered ApexDoc generation (beta) with tag enforcement.
+- 🧱 Allman-style Apex formatter command for `.cls`/`.trigger` files (leverages workspace `prettier` + `prettier-plugin-apex`).
 - 🔄 Compare local Apex classes vs. your org (Monaco diff view).
 
 ---
@@ -53,6 +54,7 @@ You’ll find them under **Unified Apex Validator** in your VS Code settings.
 | `traceAst` | Enable AST tracing (debug) |
 | `classDocTags` | Required ApexDoc tags for classes |
 | `methodDocTags` | Required ApexDoc tags for methods |
+| `apexDocLanguage` | Language used by the AI ApexDoc generator (`spanish` or `english`) |
 
 💡 *Dependencies view highlights missing GPT setup fields and disables AI commands until everything’s filled in.*
 
@@ -65,6 +67,7 @@ You’ll find them under **Unified Apex Validator** in your VS Code settings.
 3. Track progress in the **Unified Apex Validator** output channel.
 4. Review reports or logs in the sidebar.
 5. (Optional) Run **UAV: Compare Apex Classes against Org** to diff your local vs. org versions.
+6. (Optional) Use **UAV: Formatear Apex (Allman)** from the explorer/editor context menu to apply Allman braces to selected `.cls`/`.trigger` files (requires `prettier` + `prettier-plugin-apex` in your workspace).
 
 ---
 
@@ -136,6 +139,12 @@ Checks Node.js, CLI, Java, wkhtmltopdf, Code Analyzer, and Einstein GPT configur
   ```
   .../globalStorage/ozkrgonzalez.unifiedapexvalidator/.uav/logs
   ```
+
+
+### Allman formatter not working
+- Install `prettier` and `prettier-plugin-apex` in the workspace that contains your `.cls`/`.trigger` files (`npm install --save-dev prettier prettier-plugin-apex`).
+- Refresh the **Dependencies** view to confirm both are detected (status should display in green).
+- Run **UAV: Formatear Apex (Allman)** again from the explorer/editor context menu.
 
 ---
 
