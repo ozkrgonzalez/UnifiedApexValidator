@@ -87434,7 +87434,7 @@ var TestSuite = class {
    * Espera a que el test run finalice
    */
   async waitForTestCompletion(testRunId) {
-    this.logger.info(`\u23F3 Esperando finalizacion del testRunId ${testRunId}...`);
+    this.logger.info(`\u23F3 Esperando finalizaci\xF3n del testRunId ${testRunId}...`);
     for (let i2 = 0; i2 < 60; i2++) {
       const command = [this.sfPath, "apex", "get", "test", "--json", "--target-org", this.orgAlias, "--test-run-id", testRunId];
       const result = await this.runSfCommand(command, `verificando estado (${i2 + 1}/60)`);
@@ -87444,7 +87444,7 @@ var TestSuite = class {
       const passing = Number(summary.passing || 0);
       const failing = Number(summary.failing || 0);
       if (ran === passing + failing && ran > 0) {
-        this.logger.info(`\u2705 Ejecucion completada para TestRun ${testRunId}.`);
+        this.logger.info(`\u2705 Ejecuci\xF3n completada para TestRun ${testRunId}.`);
         return result;
       }
       await new Promise((r) => setTimeout(r, 1e4));
@@ -87550,7 +87550,7 @@ var TestSuite = class {
     if (!testRunId) return { error: "No se pudo iniciar pruebas.", coverage_data: [], test_results: [] };
     this.logger.info(`\u{1F50D} Monitoreando progreso del testRunId ${testRunId}...`);
     await this.waitForTestCompletion(testRunId);
-    this.logger.info("\u{1F4C8} Ejecucion de pruebas finalizada. Obteniendo resultados y cobertura...");
+    this.logger.info("\u{1F4C8} Ejecuci\xF3n de pruebas finalizada. Obteniendo resultados y cobertura...");
     const results = await this.fetchTestResults(testRunId);
     if (!results || Object.keys(results).length === 0) {
       this.logger.error("\u274C No se pudieron obtener resultados del test run.");
@@ -87575,7 +87575,7 @@ var TestSuite = class {
         this.logger.warn(`   \u{1F4AC} Motivo: ${test3.message}`);
       }
     }
-    this.logger.info("\u{1F389} Fin de la ejecucion de pruebas Apex.");
+    this.logger.info("\u{1F389} Fin de la ejecuci\xF3n de pruebas Apex.");
     return { coverage_data: coverage, test_results: tests };
   }
 };
@@ -89375,7 +89375,6 @@ async function activate(context) {
     }
   );
   context.subscriptions.push(validateApexCmd, compareApexClassesCmd, generateApexDocChunkedCmd);
-  vscode14.window.showInformationMessage("Unified Apex Validator activado.");
 }
 function deactivate() {
   vscode14.window.showInformationMessage("Unified Apex Validator desactivado.");

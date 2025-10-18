@@ -131,7 +131,7 @@ async function activate(context) {
         }
     });
     context.subscriptions.push(validateApexCmd, compareApexClassesCmd, generateApexDocChunkedCmd);
-    vscode.window.showInformationMessage('Unified Apex Validator activado.');
+    //vscode.window.showInformationMessage('Unified Apex Validator activado.');
 }
 /**
  * Opción de limpieza al desactivar la extensión.

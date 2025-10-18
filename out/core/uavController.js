@@ -232,8 +232,7 @@ class FolderViewProvider {
     label;
     _onDidChangeTreeData = new vscode.EventEmitter();
     onDidChangeTreeData = this._onDidChangeTreeData.event;
-    constructor(folderPath, fileExtension, // puede ser .html, .pdf, .log, etc.
-    label) {
+    constructor(folderPath, fileExtension, label) {
         this.folderPath = folderPath;
         this.fileExtension = fileExtension;
         this.label = label;

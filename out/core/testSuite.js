@@ -103,10 +103,10 @@ class TestSuite {
             result?.result?.summary?.testRunId ||
             null;
         if (!testRunId) {
-            this.logger.error('\u274C No se obtuvo testRunId del resultado.');
+            this.logger.error('❌ No se obtuvo testRunId del resultado.');
         }
         else {
-            this.logger.info(`\u{1F680} TestRun iniciado correctamente (ID: ${testRunId}).`);
+            this.logger.info(`🚀 TestRun iniciado correctamente (ID: ${testRunId}).`);
         }
         return testRunId;
     }
@@ -114,7 +114,7 @@ class TestSuite {
      * Espera a que el test run finalice
      */
     async waitForTestCompletion(testRunId) {
-        this.logger.info(`\u23F3 Esperando finalizacion del testRunId ${testRunId}...`);
+        this.logger.info(`⏳ Esperando finalización del testRunId ${testRunId}...`);
         for (let i = 0; i < 60; i++) {
             const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', this.orgAlias, '--test-run-id', testRunId];
             const result = await this.runSfCommand(command, `verificando estado (${i + 1}/60)`);
@@ -124,12 +124,12 @@ class TestSuite {
             const passing = Number(summary.passing || 0);
             const failing = Number(summary.failing || 0);
             if (ran === passing + failing && ran > 0) {
-                this.logger.info(`\u2705 Ejecucion completada para TestRun ${testRunId}.`);
+                this.logger.info(`✅ Ejecución completada para TestRun ${testRunId}.`);
                 return result;
             }
             await new Promise((r) => setTimeout(r, 10000));
         }
-        this.logger.warn('\u26A0\uFE0F Tiempo de espera agotado. Devolviendo resultado parcial.');
+        this.logger.warn('⚠️ Tiempo de espera agotado. Devolviendo resultado parcial.');
         return {};
     }
     /**
@@ -154,7 +154,7 @@ class TestSuite {
             }
             await new Promise((r) => setTimeout(r, 10000));
         }
-        this.logger.error('\u274C No se pudieron obtener resultados tras varios intentos.');
+        this.logger.error('❌ No se pudieron obtener resultados tras varios intentos.');
         return {};
     }
     /**
@@ -222,22 +222,22 @@ class TestSuite {
      */
     async runTestSuite(testClasses, apexClasses) {
         if (!testClasses?.length) {
-            this.logger.warn('\u26A0\uFE0F No se detectaron clases de prueba en el package.xml.');
+            this.logger.warn('⚠️ No se detectaron clases de prueba en el package.xml.');
             return { error: 'No hay clases test para ejecutar.', coverage_data: [], test_results: [] };
         }
-        this.logger.info(`\u{1F9EA} Ejecutando clases de prueba: ${testClasses.join(', ')}`);
+        this.logger.info(`🧪 Ejecutando clases de prueba: ${testClasses.join(', ')}`);
         const testRunId = await this.executeTests(testClasses);
         if (!testRunId)
             return { error: 'No se pudo iniciar pruebas.', coverage_data: [], test_results: [] };
-        this.logger.info(`\u{1F50D} Monitoreando progreso del testRunId ${testRunId}...`);
+        this.logger.info(`🔍 Monitoreando progreso del testRunId ${testRunId}...`);
         await this.waitForTestCompletion(testRunId);
-        this.logger.info('\u{1F4C8} Ejecucion de pruebas finalizada. Obteniendo resultados y cobertura...');
+        this.logger.info('📈 Ejecución de pruebas finalizada. Obteniendo resultados y cobertura...');
         const results = await this.fetchTestResults(testRunId);
         if (!results || Object.keys(results).length === 0) {
-            this.logger.error('\u274C No se pudieron obtener resultados del test run.');
+            this.logger.error('❌ No se pudieron obtener resultados del test run.');
             return { error: 'No se pudo obtener resultados.', coverage_data: [], test_results: [] };
         }
-        this.logger.info('\u{1F4DD} Procesando datos de cobertura y resultados individuales...');
+        this.logger.info('📝 Procesando datos de cobertura y resultados individuales...');
         const testResult = results.testResult || {};
         const coverageSummary = results.coverageSummary || [];
         const coverageDetail = results.coverageDetail || {};
@@ -252,15 +252,15 @@ class TestSuite {
         const passed = tests.filter((t) => t.outcome === 'Pass').length;
         const failed = tests.filter((t) => t.outcome === 'Fail').length;
         const skipped = tests.filter((t) => t.outcome === 'Skip').length;
-        this.logger.info(`\u{1F4CB} Resumen: ${passed} pasados, ${failed} fallidos, ${skipped} omitidos, total ${total}.`);
+        this.logger.info(`📋 Resumen: ${passed} pasados, ${failed} fallidos, ${skipped} omitidos, total ${total}.`);
         for (const test of tests) {
-            const statusIcon = test.outcome === 'Pass' ? '\u2705' : test.outcome === 'Fail' ? '\u274C' : '\u26A0\uFE0F';
-            this.logger.info(`${statusIcon} ${test.class_name}.${test.method_name} \u2192 ${test.outcome}`);
+            const statusIcon = test.outcome === 'Pass' ? '✅' : test.outcome === 'Fail' ? '❌' : '⚠️';
+            this.logger.info(`${statusIcon} ${test.class_name}.${test.method_name} → ${test.outcome}`);
             if (test.outcome === 'Fail' && test.message) {
-                this.logger.warn(`   \u{1F4AC} Motivo: ${test.message}`);
+                this.logger.warn(`   💬 Motivo: ${test.message}`);
             }
         }
-        this.logger.info('\u{1F389} Fin de la ejecucion de pruebas Apex.');
+        this.logger.info('🎉 Fin de la ejecución de pruebas Apex.');
         return { coverage_data: coverage, test_results: tests };
     }
 }

@@ -111,7 +111,7 @@ export async function runUAV(uri: vscode.Uri)
                 const aliasReady = await ensureOrgAliasConnected(sfOrgAlias, logger);
                 if (!aliasReady)
                 {
-                    logger.warn(`Se cancela la ejecución: la org "${sfOrgAlias}" no está conectada.`);
+                    logger.warn(`Se cancela la ejecuciï¿½n: la org "${sfOrgAlias}" no estï¿½ conectada.`);
                     return;
                 }
 
@@ -262,7 +262,7 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
 
     constructor(
         private folderPath: string,
-        private fileExtension: string,  // puede ser .html, .pdf, .log, etc.
+        private fileExtension: string,
         private label: string
     ) {}
 

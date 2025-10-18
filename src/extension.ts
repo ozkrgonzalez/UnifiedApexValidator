@@ -141,7 +141,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(validateApexCmd, compareApexClassesCmd, generateApexDocChunkedCmd);
-    vscode.window.showInformationMessage('Unified Apex Validator activado.');
+    //vscode.window.showInformationMessage('Unified Apex Validator activado.');
 }
 
 /**
