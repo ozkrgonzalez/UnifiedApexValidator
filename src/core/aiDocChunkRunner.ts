@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import { ApexChunk } from './apexAstParser';
 import { Logger } from './utils';
 import { IAAnalisis, IAConnectionError } from './IAAnalisis';
@@ -10,6 +10,8 @@ export interface ChunkResult
     error?: string;
     fatal?: boolean;
 }
+
+type DocLanguage = 'english' | 'spanish';
 
 export class AiDocChunkRunner
 {
@@ -24,6 +26,10 @@ export class AiDocChunkRunner
 
         const cfg = vscode.workspace.getConfiguration('UnifiedApexValidator');
         const maxChars = cfg.get<number>('maxIAClassChars') || 25000;
+        const languageSetting = (cfg.get<string>('apexDocLanguage') || 'spanish').toLowerCase();
+        const docLanguage: DocLanguage = languageSetting === 'english' ? 'english' : 'spanish';
+        const languageDirectives = AiDocChunkRunner.getLanguageDirectives(docLanguage);
+        logger.info(`Generating ApexDoc using language: ${docLanguage}`);
 
         let snippet = chunk.text;
         let truncatedNotice = '';
@@ -36,10 +42,11 @@ export class AiDocChunkRunner
             logger.warn(`Chunk truncated to ${maxChars} characters (original length: ${chunk.text.length})`);
         }
 
-        logger.info(`Fragmento (${chunk.name}): ${snippet.slice(0, 200)}...`);
+        logger.info(`Fragment preview (${chunk.name}): ${snippet.slice(0, 200)}...`);
 
         const contextHeader = AiDocChunkRunner.buildContextHeader(docText, chunk);
         const snippetWrapped = `/*__BEGIN_FRAGMENT__*/\n${snippet}\n/*__END_FRAGMENT__*/`;
+        const exampleBlock = AiDocChunkRunner.indentExample(languageDirectives.example);
 
         const prompt = `
         You are an expert Salesforce Apex developer.
@@ -52,13 +59,13 @@ export class AiDocChunkRunner
         - Keep the original indentation and spacing.
         - Keep the class header (public with sharing class ...) intact.
         - Return only the modified fragment between markers.
-        - All documentation tags (@description, @param, @return) must be written in Spanish.
+        ${languageDirectives.requirements}
         - Classes, constructors, and methods must always include @description.
         - Each @param must describe the purpose of the parameter briefly.
         - Methods that return a value must include an @return tag describing what is returned.
         - Methods with return type 'void' must not include an @return tag.
         - Variable declarations must not include @return.
-        - Surround the return type in the @return tag with single backticks (\`Tipo\`).
+        - Surround the return type in the @return tag with single backticks (\`Type\`).
         - Do not add empty or placeholder tags.
         - Maintain consistent indentation and spacing with the original code.
 
@@ -67,14 +74,7 @@ export class AiDocChunkRunner
         ${truncatedNotice}
 
         Example:
-        /**
-         * @description Calcula la suma de dos números.
-         * @param a Primer número.
-         * @param b Segundo número.
-         * @return \`Integer\` Suma total.
-         */
-        public static Integer add(Integer a, Integer b)
-        { ... }
+${exampleBlock}
 
         Now, document the following Apex code.
         Return only the code between delimiters:
@@ -141,7 +141,9 @@ export class AiDocChunkRunner
 
     private static buildContextHeader(full: string, chunk: ApexChunk): string
     {
-        const classMatch = full.match(/(public|global|private|protected)?\s*(with|without)?\s*sharing\s*class\s+([A-Za-z_]\w*)/);
+        const classMatch = full.match(
+            /(public|global|private|protected)?\s*(with|without)?\s*sharing\s*class\s+([A-Za-z_]\w*)/
+        );
         const className = classMatch ? classMatch[3] : 'UnknownClass';
         const classSignature = classMatch ? classMatch[0] : 'class definition not found';
 
@@ -158,5 +160,52 @@ export class AiDocChunkRunner
             `Signature: ${methodSig}`
         ].join('\n');
     }
-}
 
+    private static getLanguageDirectives(lang: DocLanguage): { requirements: string; example: string }
+    {
+        if (lang === 'english')
+        {
+            const example = [
+                '/**',
+                ' * @description Calculates the sum of two integers.',
+                ' * @param a First addend.',
+                ' * @param b Second addend.',
+                ' * @return `Integer` Total sum.',
+                ' */',
+                'public static Integer add(Integer a, Integer b)',
+                '{ ... }'
+            ].join('\n');
+
+            return {
+                requirements:
+                    '- All documentation tags (@description, @param, @return) and their descriptive text must be written in English.',
+                example
+            };
+        }
+
+        const example = [
+            '/**',
+            ' * @description Calcula la suma de dos numeros.',
+            ' * @param a Primer numero.',
+            ' * @param b Segundo numero.',
+            ' * @return `Integer` Resultado total.',
+            ' */',
+            'public static Integer add(Integer a, Integer b)',
+            '{ ... }'
+        ].join('\n');
+
+        return {
+            requirements:
+                '- All documentation tags (@description, @param, @return) must remain in English, but the descriptive text must be written in Spanish.',
+            example
+        };
+    }
+
+    private static indentExample(example: string): string
+    {
+        return example
+            .split('\n')
+            .map((line) => `        ${line}`)
+            .join('\n');
+    }
+}

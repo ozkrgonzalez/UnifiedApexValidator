@@ -38,6 +38,7 @@
   "activationEvents": [
     "onCommand:UnifiedApexValidator.validateApex",
     "onCommand:UnifiedApexValidator.compareApexClasses",
+    "onCommand:UnifiedApexValidator.formatApexAllman",
     "workspaceContains:**/*.xml",
     "onLanguage:apex"
   ],
@@ -99,6 +100,11 @@
       {
         "command": "UnifiedApexValidator.generateApexDocChunked",
         "title": "UAV: Generate ApexDoc"
+      },
+      {
+        "command": "UnifiedApexValidator.formatApexAllman",
+        "title": "UAV: Formatear Apex (Allman)",
+        "enablement": "config.UnifiedApexValidator.enableAllmanFormatter"
       }
     ],
     "menus": {
@@ -139,6 +145,11 @@
           "command": "UnifiedApexValidator.compareApexClasses",
           "when": "resourceExtname =~ /\\.?cls/i",
           "group": "z_unifiedApex@11"
+        },
+        {
+          "command": "UnifiedApexValidator.formatApexAllman",
+          "when": "(resourceExtname == .cls || resourceExtname == .trigger) && config.UnifiedApexValidator.enableAllmanFormatter",
+          "group": "z_unifiedApex@12"
         }
       ],
       "editor/context": [
@@ -156,6 +167,11 @@
           "command": "UnifiedApexValidator.generateApexDocChunked",
           "when": "resourceExtname =~ /\\.?cls/i",
           "group": "z_unifiedApex@14"
+        },
+        {
+          "command": "UnifiedApexValidator.formatApexAllman",
+          "when": "editorLangId == apex && config.UnifiedApexValidator.enableAllmanFormatter",
+          "group": "z_unifiedApex@15"
         }
       ]
     },
@@ -237,6 +253,19 @@
           ],
           "markdownDescription": "Lista de etiquetas para la documentaci\u00f3n ApexDoc de m\u00e9todos y constructores. Las etiquetas faltantes se insertan vac\u00edas cuando no aparecen en la respuesta del modelo."
         },
+        "UnifiedApexValidator.apexDocLanguage": {
+          "type": "string",
+          "enum": [
+            "spanish",
+            "english"
+          ],
+          "enumDescriptions": [
+            "Genera las descripciones de ApexDoc en espa\u00f1ol (etiquetas en ingl\u00e9s).",
+            "Genera las descripciones de ApexDoc completamente en ingl\u00e9s."
+          ],
+          "default": "spanish",
+          "description": "Idioma usado por el generador de ApexDoc asistido por IA."
+        },
         "UnifiedApexValidator.sfCliPath": {
           "type": "string",
           "default": "sf",
@@ -251,6 +280,11 @@
           "type": "boolean",
           "default": true,
           "description": "Keep Logs and Temp files after a success run."
+        },
+        "UnifiedApexValidator.enableAllmanFormatter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Allman Apex formatter command and context menus."
         },
         "UnifiedApexValidator.traceAst": {
           "type": "boolean",
@@ -305,6 +339,8 @@
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.2",
     "esbuild": "^0.25.10",
+    "prettier": "^3.6.2",
+    "prettier-plugin-apex": "^2.2.6",
     "rimraf": "^6.0.1"
   }
 }

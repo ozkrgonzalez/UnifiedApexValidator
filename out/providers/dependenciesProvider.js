@@ -36,6 +36,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UavDependencyItem = exports.DependenciesProvider = void 0;
 exports.registerDependencyUpdater = registerDependencyUpdater;
 const vscode = __importStar(require("vscode"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const execa_1 = require("execa");
 const IAAnalisis_1 = require("../core/IAAnalisis");
 class DependenciesProvider {
@@ -56,11 +58,12 @@ class DependenciesProvider {
         const checks = [
             { label: 'Node.js', cmd: 'node --version', minVersion: '18.0.0', installCmd: 'npm install -g node' },
             { label: 'Salesforce CLI (sf)', cmd: 'sf --version', minVersion: '2.0.0', installCmd: 'npm install -g @salesforce/cli' },
+            { label: 'Salesforce Code Analyzer', cmd: 'sf code-analyzer run --help', minVersion: '5.0.0', installCmd: 'sf plugins install @salesforce/sfdx-scanner' },
             {
-                label: 'Salesforce Code Analyzer',
-                cmd: 'sf code-analyzer run --help',
-                minVersion: '5.0.0',
-                installCmd: 'sf plugins install @salesforce/sfdx-scanner'
+                label: 'Prettier Apex Plugin',
+                minVersion: '2.2.6',
+                installCmd: 'npm install prettier prettier-plugin-apex',
+                customCheck: (minVersion) => this.checkPrettierPlugin(minVersion)
             },
             { label: 'Java', cmd: 'java -version', minVersion: '11.0.0', installCmd: 'apt install openjdk-11-jdk' },
             { label: 'wkhtmltopdf', cmd: 'wkhtmltopdf --version', minVersion: '0.12.6', installCmd: 'brew install wkhtmltopdf' }
@@ -102,7 +105,19 @@ class DependenciesProvider {
         return dependencies;
     }
     async checkCommand(dep) {
+        if (dep.customCheck) {
+            try {
+                return await dep.customCheck(dep.minVersion);
+            }
+            catch (error) {
+                console.error('[UAV][dependencies] Error revisando dependencia personalizada:', error);
+                return 'missing';
+            }
+        }
         try {
+            if (!dep.cmd) {
+                return 'missing';
+            }
             const { stdout, stderr } = await (0, execa_1.execa)(dep.cmd, { shell: true });
             const output = stdout || stderr || '';
             const match = output.match(/\d+(\.\d+)+/);
@@ -125,6 +140,57 @@ class DependenciesProvider {
                 return -1;
         }
         return 0;
+    }
+    resolveModule(moduleName) {
+        const searchPaths = [];
+        if (vscode.workspace.workspaceFolders) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+                searchPaths.push(folder.uri.fsPath);
+            }
+        }
+        searchPaths.push(this.context.extensionUri.fsPath);
+        try {
+            return require.resolve(moduleName, { paths: searchPaths });
+        }
+        catch (error) {
+            console.warn(`[UAV][dependencies] No se pudo resolver ${moduleName} con rutas personalizadas.`, error);
+            return null;
+        }
+    }
+    async checkPrettierPlugin(minVersion) {
+        try {
+            let entryPath = null;
+            try {
+                entryPath = require.resolve('prettier-plugin-apex');
+            }
+            catch {
+                entryPath = this.resolveModule('prettier-plugin-apex');
+            }
+            if (!entryPath) {
+                return 'missing';
+            }
+            let pkgPath = entryPath.replace(/dist[\\/].*$/, 'package.json');
+            if (!fs.existsSync(pkgPath)) {
+                pkgPath = path.join(path.dirname(entryPath), 'package.json');
+            }
+            if (!fs.existsSync(pkgPath)) {
+                console.warn('[UAV][dependencies] package.json no encontrado para prettier-plugin-apex:', pkgPath);
+                return 'missing';
+            }
+            const packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const version = packageJson.version;
+            if (!version) {
+                return 'missing';
+            }
+            if (minVersion) {
+                return this.compareVersions(version, minVersion) >= 0 ? 'ok' : 'outdated';
+            }
+            return 'ok';
+        }
+        catch (error) {
+            console.warn('[UAV][dependencies] No se pudo resolver prettier-plugin-apex:', error);
+            return 'missing';
+        }
     }
 }
 exports.DependenciesProvider = DependenciesProvider;
