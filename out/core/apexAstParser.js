@@ -35,9 +35,16 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ApexAstParser = void 0;
 const fs = __importStar(require("fs"));
-const vscode = __importStar(require("vscode"));
 const apex_parser_1 = require("@apexdevtools/apex-parser");
 const antlr4ts_1 = require("antlr4ts");
+let vscodeModule;
+try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
+    vscodeModule = require('vscode');
+}
+catch {
+    vscodeModule = undefined;
+}
 function sanitizeForParser(source) {
     const chars = source.split('');
     const length = chars.length;
@@ -93,8 +100,8 @@ class ApexAstParser {
         const lexer = new apex_parser_1.ApexLexer(inputStream);
         const tokenStream = new antlr4ts_1.CommonTokenStream(lexer);
         const parser = new apex_parser_1.ApexParser(tokenStream);
-        const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
-        const traceAst = config.get('traceAst') ?? false;
+        const config = vscodeModule?.workspace.getConfiguration('UnifiedApexValidator');
+        const traceAst = config?.get('traceAst') ?? false;
         const syntaxErrors = [];
         const chunks = [];
         const extract = (start, end) => code.substring(start, end);

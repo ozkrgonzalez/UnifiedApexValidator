@@ -76,13 +76,20 @@ async function runUAV(uri) {
     // 🚀 Ahora sí, crear el logger principal
     const logger = new utils_1.Logger('UAVController', true);
     logger.info('🚀 Iniciando ejecución del Unified Apex Validator...');
+    let tempPackagePath;
+    let sourceUri;
+    let packageUri;
     await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: 'Unified Apex Validator',
         cancellable: true
     }, async (progress) => {
         try {
-            const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri) || vscode.workspace.workspaceFolders?.[0];
+            sourceUri = uri && uri.scheme === 'file' ? uri : vscode.window.activeTextEditor?.document?.uri;
+            if (!sourceUri || sourceUri.scheme !== 'file') {
+                throw new Error('Selecciona un package.xml o una clase Apex (.cls) dentro del workspace.');
+            }
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(sourceUri) || vscode.workspace.workspaceFolders?.[0];
             if (!workspaceFolder)
                 throw new Error('No se detectó carpeta de proyecto');
             const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
@@ -91,12 +98,34 @@ async function runUAV(uri) {
                 repoDir = workspaceFolder.uri.fsPath;
                 logger.warn('⚠️ sfRepositoryDir no configurado. Usando raíz del workspace.');
             }
-            // 🧩 Validar estructura mínima del repo
+            packageUri = sourceUri;
+            const ext = path.extname(sourceUri.fsPath).toLowerCase();
+            if (ext === '.cls') {
+                const className = path.basename(sourceUri.fsPath, '.cls');
+                const tempDirWS = path.join(workspaceFolder.uri.fsPath, '.uav', 'temp');
+                await fs.ensureDir(tempDirWS);
+                const packageXml = [
+                    '<?xml version="1.0" encoding="UTF-8"?>',
+                    '<Package xmlns="http://soap.sforce.com/2006/04/metadata">',
+                    '    <types>',
+                    `        <members>${className}</members>`,
+                    '        <name>ApexClass</name>',
+                    '    </types>',
+                    '    <version>59.0</version>',
+                    '</Package>',
+                    ''
+                ].join('\n');
+                tempPackagePath = path.join(tempDirWS, `package-${className}-${Date.now()}.xml`);
+                await fs.writeFile(tempPackagePath, packageXml, 'utf8');
+                packageUri = vscode.Uri.file(tempPackagePath);
+                logger.info(`Generado package.xml temporal para la clase ${className}: ${tempPackagePath}`);
+            }
+            // Validar estructura minima del repo
             if (!fs.existsSync(path.join(repoDir, 'sfdx-project.json'))) {
                 logger.warn('⚠️ No se encontró sfdx-project.json. Ajustando repoDir al workspace raíz.');
                 repoDir = workspaceFolder.uri.fsPath;
             }
-            const pkgPath = uri.fsPath;
+            const pkgPath = packageUri.fsPath;
             const storageRoot = (0, utils_1.getStorageRoot)();
             const tempDir = path.join(storageRoot, 'temp');
             const logDir = path.join(storageRoot, 'logs');
@@ -108,10 +137,9 @@ async function runUAV(uri) {
                 logger.error(msg);
                 throw new Error(msg);
             }
-            // 1️⃣ Parsear package.xml
+            // Paso 1: Parsear package.xml
             progress.report({ message: 'Analizando package.xml...' });
             logger.info('📦 Analizando package.xml...');
-            ;
             if (!repoDir) {
                 repoDir = path.join(workspaceFolder.uri.fsPath, 'force-app', 'main', 'default', 'classes');
                 logger.warn(`⚠️ sfRepositoryDir no configurado. Usando ruta por defecto: ${repoDir}`);
@@ -122,13 +150,13 @@ async function runUAV(uri) {
             const sfOrgAlias = config.get('sfOrgAlias')?.trim() || 'DEVSEGC';
             const aliasReady = await (0, utils_1.ensureOrgAliasConnected)(sfOrgAlias, logger);
             if (!aliasReady) {
-                logger.warn(`Se cancela la ejecuci�n: la org "${sfOrgAlias}" no est� conectada.`);
+                logger.warn(`⚠️ Se cancela la ejecución: la org "${sfOrgAlias}" no está conectada.`);
                 return;
             }
             const { testClasses, nonTestClasses } = await (0, utils_1.parseApexClassesFromPackage)(pkgPath, repoDir);
             // 2️⃣ Validación estática (Code Analyzer + PMD)
             logger.info('🧠 Llamando a runValidator...');
-            const { codeAnalyzerResults, pmdResults } = await (0, validator_1.runValidator)(uri, progress, repoDir);
+            const { codeAnalyzerResults, pmdResults } = await (0, validator_1.runValidator)(packageUri, progress, repoDir);
             // 3️⃣ Ejecución de pruebas Apex
             progress.report({ message: 'Ejecutando pruebas Apex...' });
             logger.info('🧪 Ejecutando pruebas Apex...');
@@ -217,11 +245,22 @@ async function runUAV(uri) {
         catch (err) {
             if (err.message.includes('No se encontraron clases Apex')) {
                 vscode.window.showWarningMessage(err.message);
-                logger.warn(`⚠️ UAV finalizado sin ApexClass (${uri.fsPath})`);
+                const failedPath = packageUri?.fsPath || sourceUri?.fsPath || 'N/A';
+                logger.warn(`⚠️ UAV finalizado sin ApexClass (${failedPath})`);
             }
             else {
                 logger.error(`❌ Error en proceso UAV: ${err.message}`);
                 vscode.window.showErrorMessage(`Error en UAV: ${err.message}`);
+            }
+        }
+        finally {
+            if (tempPackagePath) {
+                try {
+                    await fs.remove(tempPackagePath);
+                }
+                catch (cleanupErr) {
+                    logger.warn(`No se pudo limpiar el package temporal (${tempPackagePath}): ${cleanupErr}`);
+                }
             }
         }
     });
