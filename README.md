@@ -1,6 +1,6 @@
 ﻿# 🧩 Unified Apex Validator
 
-A VS Code extension built in TypeScript that helps you **validate, test, and document** your Salesforce Apex projects — all in one place. It scans your `package.xml`, runs tests, checks code quality with Salesforce Code Analyzer (PMD + CPD), and exports slick HTML/PDF reports. You can even plug in **Einstein GPT** for AI-powered feedback and auto-generated ApexDocs.
+A VS Code extension written in TypeScript that helps you **validate, test, and document** your Salesforce Apex projects — all in one place. It scans your `package.xml`, runs tests, checks code quality with Salesforce Code Analyzer (PMD + CPD), and exports slick HTML/PDF reports. You can even plug in **Einstein GPT** for AI-powered feedback and auto-generated ApexDocs.
 
 ---
 
@@ -17,7 +17,7 @@ A VS Code extension built in TypeScript that helps you **validate, test, and doc
 - 🧱 Allman-style Apex formatter for .cls/.trigger files (leverages workspace prettier + prettier-plugin-apex).
 - 🔄 Compare local Apex classes vs. your org (Monaco diff view).
 - 🕸️ “Where is Used” report — scans dependencies across Apex Classes, Flows, and LWC, rendered in a clean interactive tree view.
-- 🎨 Unified dark-themed report design — consistent layout, accent colors, typography, and interactive search across all HTML reports.
+- 🎨 Unified dark-themed report design — for a consistent visual experience, and interactive search across all HTML reports.
 
 ---
 
@@ -27,7 +27,7 @@ A VS Code extension built in TypeScript that helps you **validate, test, and doc
 
 - Node.js 18+ and npm 9+.
 - Salesforce CLI (`sf`) with Java 11 or newer.
-- wkhtmltopdf (for PDF export).
+- wkhtmltopdf (for PDF export, Optional, but Recommended).
 - Prettier and Prettier-Plugin-Apex.
 - An authenticated Salesforce org through the CLI.
 - Einstein GPT credentials (Client Id/Secret) if you plan to use AI features.
