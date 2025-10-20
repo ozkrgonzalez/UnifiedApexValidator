@@ -1,4 +1,4 @@
-import * as fs from 'fs-extra';
+﻿import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import * as nunjucks from 'nunjucks';
@@ -20,25 +20,25 @@ export async function generateReport(outputDir: string, data: any)
         const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
         const outputSetting = config.get<string>('outputDir')?.trim();
 
-        // 🚫 Validación obligatoria
+        // ðŸš« ValidaciÃ³n obligatoria
         if (!outputSetting)
         {
-            const msg = '❌ No se ha configurado el parámetro "UnifiedApexValidator.outputDir" en Settings.';
+            const msg = 'âŒ No se ha configurado el parÃ¡metro "UnifiedApexValidator.outputDir" en Settings.';
             logger.error(msg);
             vscode.window.showErrorMessage(msg);
             throw new Error(msg);
         }
 
-        // ✅ Crear carpeta de salida
+        // âœ… Crear carpeta de salida
         const finalOutputDir = path.resolve(outputSetting);
         await fs.ensureDir(finalOutputDir);
 
-        // ✅ Validar template
+        // âœ… Validar template
         const currentExt = vscode.extensions.getExtension('ozkrgonzalez.unifiedapexvalidator');
         const extensionPath = currentExt?.extensionPath || __dirname;
         if (!extensionPath)
         {
-            throw new Error('No se pudo determinar la ruta de la extensión.');
+            throw new Error('No se pudo determinar la ruta de la extensiÃ³n.');
         }
 
         // Busca el template tanto en dist (paquete) como en src (modo debug)
@@ -49,22 +49,22 @@ export async function generateReport(outputDir: string, data: any)
         }
         if (!fs.existsSync(templatePath))
         {
-            throw new Error(`No se encontró el template empaquetado ni en dist ni en src (${templatePath})`);
+            throw new Error(`No se encontrÃ³ el template empaquetado ni en dist ni en src (${templatePath})`);
         }
 
-        // 🔹 Marcar cobertura baja
+        // ðŸ”¹ Marcar cobertura baja
         const coverageData = (data.testResults?.coverage_data || []).map((c: any) => ({
             ...c,
             isLowCoverage: (c.CoveragePercentageInt ?? 0) < 75
         }));
 
-        // 🔹 Calcular cuántas clases tienen cobertura < 75 %
+        // ðŸ”¹ Calcular cuÃ¡ntas clases tienen cobertura < 75 %
         const lowCoverageCount = coverageData.filter((c: any) => c.isLowCoverage).length;
 
-        // 🔹 Transformar resultados IA
+        // ðŸ”¹ Transformar resultados IA
         const iaFormatted = formatIAResults(data.iaResults || []);
 
-        // 🔹 Contar clases únicas con duplicados detectados
+        // ðŸ”¹ Contar clases Ãºnicas con duplicados detectados
         const duplicatedClasses = new Set<string>();
         for (const dup of data.pmdResults || [])
         {
@@ -83,25 +83,51 @@ export async function generateReport(outputDir: string, data: any)
             test_coverage: coverageData,
             low_coverage_count: lowCoverageCount,
             einsteinAnalysis: iaFormatted,
-            duplicate_class_count: duplicate_class_count
+            duplicate_class_count: duplicate_class_count,
+            generatedAt: data?.generatedAt ?? formatGeneratedAt(new Date())
         };
 
-        // 🧩 Render con Nunjucks
+        // Render con Nunjucks
         const env = nunjucks.configure(path.dirname(templatePath), { autoescape: true });
         const html = env.render('reportTemplate.html', context);
 
-        // 📝 Guardar HTML
+        // Guardar HTML principal
         const htmlFilePath = path.join(finalOutputDir, 'reporte_validaciones.html');
         await fs.writeFile(htmlFilePath, html, 'utf8');
-        logger.info('📄 HTML del reporte generado correctamente.');
+        logger.info('Reporte HTML generado correctamente.');
 
-        // 📄 Intentar generar PDF
+        // Generar HTML alternativo para PDF si existe
+        let pdfHtmlPath = htmlFilePath;
+        let pdfHtmlTempCreated = false;
+        const pdfTemplatePath = path.join(path.dirname(templatePath), 'reportTemplate_pdf.html');
+        if (fs.existsSync(pdfTemplatePath))
+        {
+            try
+            {
+                const pdfHtml = env.render('reportTemplate_pdf.html', context);
+                pdfHtmlPath = path.join(finalOutputDir, 'reporte_validaciones_pdf.html');
+                await fs.writeFile(pdfHtmlPath, pdfHtml, 'utf8');
+                pdfHtmlTempCreated = true;
+            }
+            catch (renderError: any)
+            {
+                logger.warn(`No se pudo renderizar el template PDF dedicado: ${renderError.message}. Se usará el HTML principal.`);
+                pdfHtmlPath = htmlFilePath;
+            }
+        }
+
+        // Intentar generar PDF
         const pdfFilePath = path.join(finalOutputDir, 'reporte_validaciones.pdf');
-        const pdfOk = await tryGeneratePdfHybrid(htmlFilePath, pdfFilePath, logger);
+        const pdfOk = await tryGeneratePdfHybrid(pdfHtmlPath, pdfFilePath, logger);
+
+        if (pdfHtmlTempCreated)
+        {
+            try { await fs.remove(pdfHtmlPath); } catch { /* ignorar */ }
+        }
 
         if (!pdfOk)
         {
-            logger.warn('⚠️ No se generó PDF (no se encontró motor compatible). Se deja solo HTML.');
+            logger.warn('No se generó PDF (no se encontró motor compatible). Se deja solo HTML.');
         }
 
         return { htmlFilePath, pdfFilePath };
@@ -121,7 +147,7 @@ export async function generateReport(outputDir: string, data: any)
  */
 async function tryGeneratePdfHybrid(htmlPath: string, pdfPath: string, logger: Logger): Promise<boolean>
 {
-    //Intentar wkhtmltopdf
+    // Intentar wkhtmltopdf
     try
     {
         const wkPath = await findWkhtmltopdfPath();
@@ -162,7 +188,7 @@ async function findWkhtmltopdfPath(): Promise<string | null>
     }
     catch
     {
-        logger.warn(`⚠️ wkhtmltopdf no encontrado`);
+        logger.warn(`âš ï¸ wkhtmltopdf no encontrado`);
     }
     return null;
 }
@@ -170,6 +196,19 @@ async function findWkhtmltopdfPath(): Promise<string | null>
 /**
  * Convierte los resultados IA en un objeto agrupado por clase.
  */
+function formatGeneratedAt(date: Date): string {
+    try {
+        return date.toLocaleString('es-ES', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch {
+        return date.toISOString();
+    }
+}
 function formatIAResults(iaResults: any[]): Record<string, any> {
     const map: Record<string, any> = {};
     for (const r of iaResults)
@@ -185,7 +224,7 @@ function formatIAResults(iaResults: any[]): Record<string, any> {
 }
 
 /**
- * Genera el reporte HTML de comparación de clases Apex (LOCAL vs ORG)
+ * Genera el reporte HTML de comparaciÃ³n de clases Apex (LOCAL vs ORG)
  * usando el template class_comparison_report.html con Monaco Editor.
  */
 export async function generateComparisonReport(
@@ -205,20 +244,20 @@ export async function generateComparisonReport(
     const extension = vscode.extensions.getExtension('ozkrgonzalez.unifiedapexvalidator');
     const extensionPath = extension?.extensionPath || __dirname;
 
-    // 📂 busca el template con nombre class_comparison_report.html
+    // ðŸ“‚ busca el template con nombre class_comparison_report.html
     let templatePath = path.join(extensionPath, 'dist', 'resources', 'templates', 'class_comparison_report.html');
     if (!fs.existsSync(templatePath)) {
       templatePath = path.join(extensionPath, 'src', 'resources', 'templates', 'class_comparison_report.html');
     }
     if (!fs.existsSync(templatePath)) {
-      throw new Error(`No se encontró el template HTML (${templatePath})`);
+      throw new Error(`No se encontrÃ³ el template HTML (${templatePath})`);
     }
 
     await fs.ensureDir(outputDir);
 
     const env = nunjucks.configure(path.dirname(templatePath), { autoescape: false });
 
-    // 🧩 Filtro personalizado para permitir {{ valor | tojson }}
+    // ðŸ§© Filtro personalizado para permitir {{ valor | tojson }}
     env.addFilter('tojson', function (value) {
       try {
         return JSON.stringify(value || '').replace(/</g, '\\u003c');
@@ -244,11 +283,13 @@ export async function generateComparisonReport(
     const htmlFilePath = path.join(outputDir, fileName);
     await fs.writeFile(htmlFilePath, html, 'utf8');
 
-    vscode.window.showInformationMessage(`📊 Reporte HTML de comparación generado: ${htmlFilePath}`);
+    vscode.window.showInformationMessage(`ðŸ“Š Reporte HTML de comparaciÃ³n generado: ${htmlFilePath}`);
     return htmlFilePath;
   } catch (err: any) {
-    const msg = `❌ Error generando reporte de comparación: ${err.message}`;
+    const msg = `âŒ Error generando reporte de comparaciÃ³n: ${err.message}`;
     vscode.window.showErrorMessage(msg);
     throw err;
   }
 }
+
+
