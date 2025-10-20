@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ---
 
-## [1.8.0] – 2025-10-20
+## [1.9.2] – 2025-10-20
 
 ### Added
 - Validation of the configured org alias (`sfOrgAlias`) ensures it is connected via Salesforce CLI and can launch `sf org login web` when missing.
