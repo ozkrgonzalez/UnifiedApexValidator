@@ -6,16 +6,18 @@ A VS Code extension built in TypeScript that helps you **validate, test, and doc
 
 ## 🚀 Features
 
-- 🧩 Apex class validation using **Salesforce Code Analyzer v5 (PMD + CPD)**.
+- 🧩 Apex class validation using Salesforce Code Analyzer v5 (PMD + CPD).
 - 🔍 Duplicate code detection across your repo.
 - 🧪 Apex test execution via Salesforce CLI with coverage metrics.
-- 🧠 Optional **Einstein GPT** insights for risk detection and improvements.
+- 🧠 Optional Einstein GPT insights for risk detection and improvements.
 - 🧾 Automatic HTML/PDF report generation with an integrated VS Code viewer.
 - 🧭 Sidebar views for reports, logs, and dependency checks.
 - ⚡ Quick commands: Validate Apex, Refresh views, Open output folders.
 - 🤖 AI-powered ApexDoc generation (beta) with tag enforcement.
-- 🧱 Allman-style Apex formatter command for `.cls`/`.trigger` files (leverages workspace `prettier` + `prettier-plugin-apex`).
+- 🧱 Allman-style Apex formatter for .cls/.trigger files (leverages workspace prettier + prettier-plugin-apex).
 - 🔄 Compare local Apex classes vs. your org (Monaco diff view).
+- 🕸️ “Where is Used” report — scans dependencies across Apex Classes, Flows, and LWC, rendered in a clean interactive tree view.
+- 🎨 Unified dark-themed report design — consistent layout, accent colors, typography, and interactive search across all HTML reports.
 
 ---
 
@@ -26,6 +28,7 @@ A VS Code extension built in TypeScript that helps you **validate, test, and doc
 - Node.js 18+ and npm 9+.
 - Salesforce CLI (`sf`) with Java 11 or newer.
 - wkhtmltopdf (for PDF export).
+- Prettier and Prettier-Plugin-Apex.
 - An authenticated Salesforce org through the CLI.
 - Einstein GPT credentials (Client Id/Secret) if you plan to use AI features.
 
@@ -68,6 +71,7 @@ You’ll find them under **Unified Apex Validator** in your VS Code settings.
 4. Review reports or logs in the sidebar.
 5. (Optional) Run **UAV: Compare Apex Classes against Org** to diff your local vs. org versions.
 6. (Optional) Use **UAV: Formatear Apex (Allman)** from the explorer/editor context menu to apply Allman braces to selected `.cls`/`.trigger` files (requires `prettier` + `prettier-plugin-apex` in your workspace).
+7. (Optional) Use **UAV: Where is Used** from the editor context menu to run a report that scans dependencies across Apex Classes, Flows, and LWC, showing where each element is referenced.
 
 ---
 
@@ -103,7 +107,7 @@ Checks Node.js, CLI, Java, wkhtmltopdf, Code Analyzer, and Einstein GPT configur
 
 ## 🧾 ApexDoc Generation (Beta)
 
-- Command: **UAV: Generate ApexDoc (chunked)**.
+- Command: **UAV: Generate ApexDoc**.
 - Uses Einstein GPT to auto-generate documentation.
 - Ensures required tags (`@param`, `@return`, etc.) are filled.
 - Disabled when Einstein GPT config is incomplete or `skipIAAnalysis` is true.
