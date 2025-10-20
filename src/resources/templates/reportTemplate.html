@@ -1,638 +1,357 @@
 ﻿<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Reporte de Validaciones Salesforce Apex</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        body, .analysis {
-        font-family: "Segoe UI Emoji", "Arial", sans-serif;
-        }
-        h1 { background-color: #007bff; color: white; padding: 10px; }
-        h2 { color: #333; margin-top: 20px; border-bottom: 2px solid #007bff; }
-        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; }
-        th { background-color: #333; color: white; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .summary-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        gap: 18px;
-        margin: 24px 0;
-        padding: 4px;
-        }
+  <meta charset="UTF-8" />
+  <title>Unified Apex Validator Report</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0e1720;
+      --bg-card: #152232;
+      --bg-muted: #1e2d40;
+      --fg: #f3f6fc;
+      --fg-muted: #b9c4d2;
+      --accent: #4cc2ff;
+      --accent-muted: rgba(76, 194, 255, 0.12);
+      --border: rgba(255, 255, 255, 0.08);
+      --shadow: 0 12px 32px rgba(4, 10, 20, 0.45);
+      --shadow-small: 0 6px 16px rgba(4, 10, 20, 0.35);
+    }
 
-        .summary-card {
-        position: relative;
-        padding: 20px 22px;
-        border-radius: 18px;
-        color: #ffffff;
-        overflow: hidden;
-        box-shadow: 0 18px 32px rgba(0, 0, 0, 0.12);
-        backdrop-filter: blur(3px);
-        transition: transform 0.25s ease, box-shadow 0.25s ease;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        min-height: 130px;
-        }
+    body {
+      margin: 0;
+      padding: 32px;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(120% 120% at 50% 0%, rgba(76, 194, 255, 0.18) 0%, transparent 70%), var(--bg);
+      color: var(--fg);
+    }
 
-        .summary-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 22px 34px rgba(0, 0, 0, 0.18);
-        }
+    .canvas {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
 
-        .summary-card::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.35), transparent 55%);
-        opacity: 0.7;
-        pointer-events: none;
-        }
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
 
-        .summary-card__title {
-        font-size: 16px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-        text-transform: uppercase;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        }
+    header h1 {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
 
-        .summary-card__title span {
-        font-size: 18px;
-        }
+    header p {
+      margin: 0;
+      color: var(--fg-muted);
+      font-size: 0.95rem;
+    }
 
-        .summary-card__value {
-        font-size: 40px;
-        line-height: 1;
-        font-weight: 700;
-        z-index: 1;
-        display: flex;
-        align-items: baseline;
-        gap: 6px;
-        }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
 
-        .summary-card__value small {
-        font-size: 16px;
-        font-weight: 500;
-        opacity: 0.85;
-        }
+    .search {
+      flex: 1;
+      min-width: 220px;
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      box-shadow: var(--shadow-small);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
 
-        .summary-card__footer {
-        z-index: 1;
-        font-size: 13px;
-        opacity: 0.85;
-        }
+    .search:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-muted);
+    }
 
-        .summary-card--issues {
-        background: linear-gradient(135deg, #dc3545, #9b1c2d);
-        }
+    .search span {
+      margin-right: 10px;
+      font-size: 1rem;
+    }
 
-        .summary-card--tests {
-        background: linear-gradient(135deg, #28a745, #1a7b31);
-        }
+    .search input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font-size: 0.95rem;
+      outline: none;
+    }
 
-        .summary-card--coverage {
-        background: linear-gradient(135deg, #fd7e14, #c45002);
-        }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--accent-muted);
+      color: var(--accent);
+    }
 
-        .summary-card--duplicates {
-        background: linear-gradient(135deg, #6f42c1, #452282);
-        }
-        .analysis h2, .analysis h3, .analysis h4 {
-        color: #007bff;
-        margin-top: 15px;
-        }
-        .analysis ul {
-        margin: 5px 0 10px 20px;
-        }
-        .analysis code {
-        background: #f8f9fa;
-        padding: 2px 4px;
-        border-radius: 4px;
-        font-family: monospace;
-        }
-        .analysis pre {
-        background: #f0f0f0;
-        padding: 10px;
-        border-radius: 6px;
-        overflow-x: auto;
-        }
-        .analysis-block {
-        margin-bottom: 20px;
-        }
-        .search-bar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 15px 0 10px 0;
-        flex-wrap: wrap;
-        }
-        .search-bar label {
-        font-weight: 600;
-        color: #333;
-        }
-        .search-bar input {
-        flex: 1;
-        min-width: 240px;
-        padding: 8px 12px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        font-size: 14px;
-        }
-        .search-no-results {
-        display: none;
-        margin: 10px 0;
-        padding: 10px 14px;
-        border-left: 4px solid #dc3545;
-        background: #f8d7da;
-        color: #721c24;
-        border-radius: 6px;
-        font-weight: 600;
-        }
-        .analysis-block {
-        margin-bottom: 20px;
-        }
-        .search-bar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 15px 0 10px 0;
-        flex-wrap: wrap;
-        }
-        .search-bar label {
-        font-weight: 600;
-        color: #333;
-        }
-        .search-bar input {
-        flex: 1;
-        min-width: 240px;
-        padding: 8px 12px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        font-size: 14px;
-        }
-        .search-no-results {
-        display: none;
-        margin: 10px 0;
-        padding: 10px 14px;
-        border-left: 4px solid #dc3545;
-        background: #f8d7da;
-        color: #721c24;
-        border-radius: 6px;
-        font-weight: 600;
-        }
-        .class-name {
-        background-color: #0056b3;
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        margin-top: 25px;
-        margin-bottom: 10px;
-        font-size: 20px;
-        font-weight: bold;
-        }
-        .empty-state {
-        margin: 15px 0;
-        padding: 12px;
-        border-radius: 6px;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        }
-        .empty-state .icon {
-        margin-right: 8px;
-        font-size: 18px;
-        }
-        .empty-state.success {
-        background-color: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-        }
-        .empty-state.info {
-        background-color: #d1ecf1;
-        color: #0c5460;
-        border: 1px solid #bee5eb;
-        }
-        .empty-state.warning {
-        background-color: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeeba;
-        }
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 30px;
+    }
 
-        /* 🌙 Ajustes visuales para modo oscuro dentro de VS Code */
-        body.vscode-dark {
-        background-color: #0e0e0e;
-        color: #e0e0e0;
-        }
+    .summary-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-small);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 8px;
+      transition: transform 0.2s ease;
+    }
 
-        /* Titulares */
-        body.vscode-dark h1,
-        body.vscode-dark h2,
-        body.vscode-dark h3 {
-        color: #4ea3ff;
-        }
+    .summary-card:hover {
+      transform: translateY(-3px);
+    }
 
-        body.vscode-dark h1 {
-        background-color: #007bff;
-        color: #fff;
-        }
+    .summary-card h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-        /* Tablas */
-        body.vscode-dark table {
-        border-collapse: collapse;
-        width: 100%;
-        border-color: #2a2a2a;
-        }
+    .summary-card strong {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: var(--fg);
+    }
 
-        body.vscode-dark th {
-        background-color: #1f1f1f;
-        color: #f1f1f1;
-        border: 1px solid #2a2a2a;
-        }
+    h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
 
-        body.vscode-dark td {
-        border: 1px solid #2a2a2a;
-        color: #ddd;
-        }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-small);
+    }
 
-        body.vscode-dark tr:nth-child(even) {
-        background-color: #161616;
-        }
+    th,
+    td {
+      padding: 12px 14px;
+      text-align: left;
+    }
 
-        /* Cards */
-        body.vscode-dark .summary-card {
-        color: #fff;
-        box-shadow: 0 0 6px rgba(255,255,255,0.06);
-        }
+    th {
+      background: var(--bg-muted);
+      color: var(--fg-muted);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
 
-        /* 🧱 Bloques de código */
-        body.vscode-dark code {
-        background-color: #1e1e1e !important;
-        color: #9cdcfe !important;
-        border: 1px solid #333 !important;
-        padding: 2px 4px;
-        border-radius: 4px;
-        font-family: "Consolas", monospace;
-        }
+    tr:nth-child(even) td {
+      background: var(--bg-muted);
+    }
 
-        body.vscode-dark pre {
-        background-color: #1e1e1e !important;
-        color: #dcdcdc !important;
-        border: 1px solid #333 !important;
-        border-radius: 6px;
-        padding: 10px;
-        overflow-x: auto;
-        font-family: "Consolas", monospace;
-        line-height: 1.4;
-        }
+    .empty-state {
+      padding: 14px;
+      border-radius: 10px;
+      background: var(--bg-muted);
+      color: var(--fg-muted);
+      font-size: 0.9rem;
+    }
 
-        /* 🎨 Mini sintaxis tipo Monokai */
-        body.vscode-dark pre .keyword,
-        body.vscode-dark code .keyword { color: #569cd6; }
-        body.vscode-dark pre .string,
-        body.vscode-dark code .string { color: #ce9178; }
-        body.vscode-dark pre .comment,
-        body.vscode-dark code .comment { color: #6a9955; }
-        body.vscode-dark pre .number,
-        body.vscode-dark code .number { color: #b5cea8; }
-
-        /* Enlaces */
-        body.vscode-dark a {
-        color: #4ea3ff;
-        text-decoration: none;
-        }
-        body.vscode-dark a:hover {
-        text-decoration: underline;
-        }
-
-        body.vscode-dark .summary-card {
-        box-shadow: 0 14px 26px rgba(0, 0, 0, 0.35);
-        }
-
-        body.vscode-dark .summary-card__title {
-        color: #f4f4f4;
-        }
-
-        body.vscode-dark .summary-card__value {
-        color: #ffffff;
-        }
-
-        body.vscode-dark .summary-card__footer {
-        color: rgba(255, 255, 255, 0.75);
-        }
-
-        body.vscode-dark .search-bar label {
-        color: #e0e0e0;
-        }
-
-        body.vscode-dark .search-bar input {
-        background-color: #1e1e1e;
-        border: 1px solid #555;
-        color: #f5f5f5;
-        }
-
-        body.vscode-dark .search-no-results {
-        background: #4a1f1f;
-        color: #f8d7da;
-        border-color: #ff8787;
-        }
-
-        body.vscode-dark .analysis-block {
-        background: transparent;
-        }
-        body.vscode-dark .search-bar label {
-        color: #e0e0e0;
-        }
-        body.vscode-dark .search-bar input {
-        background-color: #1e1e1e;
-        border: 1px solid #555;
-        color: #f5f5f5;
-        }
-        body.vscode-dark .search-no-results {
-        background: #4a1f1f;
-        color: #f8d7da;
-        border-color: #ff8787;
-        }
-
-        /* Estados vacíos */
-        body.vscode-dark .empty-state.success {
-        background-color: #14351b;
-        color: #9ce69c;
-        border-color: #236f3a;
-        }
-        body.vscode-dark .empty-state.info {
-        background-color: #0b2a36;
-        color: #78d2ec;
-        border-color: #1c6073;
-        }
-        body.vscode-dark .empty-state.warning {
-        background-color: #3a2f00;
-        color: #fbd269;
-        border-color: #8b6f00;
-        }
-
-        /* Clase actual */
-        body.vscode-dark .class-name {
-        background-color: #0078d7;
-        color: #fff;
-        padding: 10px 12px;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 18px;
-        margin-top: 25px;
-        }
-
-        /* Bloques de análisis */
-        body.vscode-dark .analysis {
-        background-color: #141414;
-        border-left: 4px solid #0078d7;
-        padding: 10px 15px;
-        border-radius: 6px;
-        }
-
-        /* 💡 Mejora de legibilidad de títulos en tarjetas dentro de VS Code oscuro */
-        body.vscode-dark .summary-card__title {
-        color: #ffffff !important;
-        text-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
-        letter-spacing: 0.3px;
-        font-weight: 600;
-        }
-
-        body.vscode-dark .summary-card__value {
-        color: #f8f8f8 !important;
-        font-weight: 600;
-        text-shadow: 0 0 5px rgba(0,0,0,0.4);
-        }
-
-    </style>
+    .analysis {
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-small);
+    }
+  </style>
 </head>
 <body>
-    <h1>Reporte de Validaciones Salesforce Apex</h1>
-    <div class="search-bar">
-        <label for="reportSearch">&#x1F50D; Buscar:</label>
-        <input type="search" id="reportSearch" placeholder="Filtra por clase, regla o mensaje..." autocomplete="off">
+  <div class="canvas">
+    <header>
+      <h1>Unified Apex Validator Report</h1>
+      <p>Panorama general del estado de calidad y pruebas para tu organización Salesforce.</p>
+    </header>
+
+    <div class="toolbar">
+      <label class="search" for="reportSearch">
+        <span>🔍</span>
+        <input type="search" id="reportSearch" placeholder="Filtrar resultados..." autocomplete="off" />
+      </label>
+      <div class="badge">Actualizado {{ generatedAt }}</div>
     </div>
-    <p id="searchNoResults" class="search-no-results">Sin coincidencias para la b&uacute;squeda.</p>
+
+    <p id="searchNoResults" class="empty-state" style="display: none;">⚠️ Sin coincidencias para la búsqueda.</p>
+
     <section class="summary-cards">
-        <article class="summary-card summary-card--issues">
-            <h3 class="summary-card__title"><span>⚠️</span> Problemas</h3>
-            <div class="summary-card__value">{{ apex_results | length }}</div>
-            <div class="summary-card__footer">Reglas que requieren Atenci&oacute;n</div>
-        </article>
-        <article class="summary-card summary-card--tests">
-            <h3 class="summary-card__title"><span>🧪</span> Pruebas ejecutadas</h3>
-            <div class="summary-card__value">{{ test_results | length }}</div>
-            <div class="summary-card__footer">Resultados de clases de prueba</div>
-        </article>
-        <article class="summary-card summary-card--coverage">
-            <h3 class="summary-card__title"><span>📉</span> Cobertura &lt; 75%</h3>
-            <div class="summary-card__value">{{ low_coverage_count }}</div>
-            <div class="summary-card__footer">Clases por debajo del umbral</div>
-        </article>
-        <article class="summary-card summary-card--duplicates">
-            <h3 class="summary-card__title"><span>🔁</span> C&oacute;digo duplicado</h3>
-            <div class="summary-card__value">{{ duplicate_class_count }}</div>
-            <div class="summary-card__footer">Clases con coincidencias detectadas</div>
-        </article>
+      <article class="summary-card">
+        <h3>🚨 Problemas</h3>
+        <strong>{{ apex_results | length }}</strong>
+        <span>Reglas que requieren atención</span>
+      </article>
+      <article class="summary-card">
+        <h3>🧪 Pruebas ejecutadas</h3>
+        <strong>{{ test_results | length }}</strong>
+        <span>Resultados de clases de prueba</span>
+      </article>
+      <article class="summary-card">
+        <h3>📉 Cobertura &lt; 75%</h3>
+        <strong>{{ low_coverage_count }}</strong>
+        <span>Clases por debajo del umbral</span>
+      </article>
+      <article class="summary-card">
+        <h3>📑 Código duplicado</h3>
+        <strong>{{ duplicate_class_count }}</strong>
+        <span>Clases con coincidencias detectadas</span>
+      </article>
     </section>
 
     <h2>Problemas Detectados</h2>
     {% if apex_results %}
-    <table data-search-table="true">
-    <tr>
-        <th>Clase</th><th>Línea</th><th>Regla</th><th>Severidad</th><th>Descripción</th><th>Ver Regla</th>
-    </tr>
-    {% for issue in apex_results %}
-    <tr>
+    <table>
+      <tr>
+        <th>Clase</th>
+        <th>Línea</th>
+        <th>Regla</th>
+        <th>Severidad</th>
+        <th>Descripción</th>
+        <th>Ver Regla</th>
+      </tr>
+      {% for issue in apex_results %}
+      <tr>
         <td>{{ issue.clase }}</td>
         <td>{{ issue.linea }}</td>
         <td>{{ issue.regla }}</td>
         <td>{{ issue.severidad }}</td>
         <td>{{ issue.descripcion }}</td>
-        <td>
-        {% if issue.recurso %}
-            <a href="{{ issue.recurso }}" target="_blank">🔗 Abrir</a>
-        {% else %}
-            -
-        {% endif %}
-        </td>
-    </tr>
-    {% endfor %}
+        <td>{% if issue.recurso %}<a href="{{ issue.recurso }}" target="_blank">🔗 Abrir</a>{% else %}-{% endif %}</td>
+      </tr>
+      {% endfor %}
     </table>
     {% else %}
-    <div class="empty-state success">
-    <span class="icon">✔</span> No se encontraron problemas.
-    </div>
+    <p class="empty-state">✅ No se encontraron problemas.</p>
     {% endif %}
 
     <h2>Cobertura de Código</h2>
-	{% if test_coverage %}
-	<table data-search-table="true">
-	  <tr>
-		<th>Clase</th><th>Líneas Totales</th><th>Cubiertas</th><th>Cobertura %</th>
-	  </tr>
-	  {% for c in test_coverage %}
-	  <tr {% if c.isLowCoverage %} style="background-color:#f8d7da;color:#721c24;font-weight:bold;" {% endif %}>
-		<td>{{ c.ClassName }}</td>
-		<td>{{ c.TotalLines }}</td>
-		<td>{{ c.CoveredLines }}</td>
-		<td>{{ c.CoveragePercentage }}</td>
-	  </tr>
-	  {% endfor %}
-	</table>
-	{% else %}
-	<div class="empty-state info">
-	  <span class="icon">ℹ️</span> No hay datos de cobertura.
-	</div>
-	{% endif %}
-
+    {% if test_coverage %}
+    <table>
+      <tr><th>Clase</th><th>Líneas Totales</th><th>Cubiertas</th><th>Cobertura %</th></tr>
+      {% for c in test_coverage %}
+      <tr {% if c.isLowCoverage %}style="color: var(--negative);" {% endif %}>
+        <td>{{ c.ClassName }}</td>
+        <td>{{ c.TotalLines }}</td>
+        <td>{{ c.CoveredLines }}</td>
+        <td>{{ c.CoveragePercentage }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty-state">ℹ️ No hay datos de cobertura.</p>
+    {% endif %}
 
     <h2>Resultados de Pruebas</h2>
     {% if test_results %}
-    <table data-search-table="true">
-        <tr>
-            <th>Clase</th><th>Método</th><th>Resultado</th><th>Mensaje</th>
-        </tr>
-        {% for t in test_results %}
-        <tr>
-            <td>{{ t.class_name }}</td>
-            <td>{{ t.method_name }}</td>
-            <td>{{ t.outcome }}</td>
-            <td>{{ t.message }}</td>
-        </tr>
-        {% endfor %}
+    <table>
+      <tr><th>Clase</th><th>Método</th><th>Resultado</th><th>Mensaje</th></tr>
+      {% for t in test_results %}
+      <tr>
+        <td>{{ t.class_name }}</td>
+        <td>{{ t.method_name }}</td>
+        <td>{{ t.outcome }}</td>
+        <td>{{ t.message }}</td>
+      </tr>
+      {% endfor %}
     </table>
     {% else %}
-    <div class="empty-state warning">
-        <span class="icon">⚠️</span> No se ejecutaron pruebas.
-    </div>
+    <p class="empty-state">⚠️ No se ejecutaron pruebas.</p>
     {% endif %}
 
-    <h2>C&oacute;digo duplicado</h2>
+    <h2>Código Duplicado</h2>
     {% if pmd_results %}
-        <table data-search-table="true">
-            <tr>
-            <th>Clase</th>
-            <th>Líneas Duplicadas</th>
-            <th>Fragmento de código</th>
-            </tr>
-            {% for dup in pmd_results %}
-            <tr>
-            <td style="text-align:center;">{{ dup.clases | replace(',', '<br>') | safe}}</td>
-            <td style="text-align:center;">{{ dup.lines }}</td>
-            <td><pre>{{ dup.codeSnippet }}</pre></td>
-            </tr>
-            {% endfor %}
-        </table>
+    <table>
+      <tr><th>Clase</th><th>Líneas Duplicadas</th><th>Fragmento</th></tr>
+      {% for dup in pmd_results %}
+      <tr>
+        <td>{{ dup.clases | replace(',', '<br>') | safe }}</td>
+        <td>{{ dup.lines }}</td>
+        <td><pre>{{ dup.codeSnippet }}</pre></td>
+      </tr>
+      {% endfor %}
+    </table>
     {% else %}
-    <div class="empty-state success" style="text-align:center;">
-    <span class="icon">✔</span> No se encontraron duplicados.
-    </div>
+    <p class="empty-state">✅ No se encontraron duplicados.</p>
     {% endif %}
 
-    <h2>Análisis IA</h2>
+    <h2>🧠 Análisis IA</h2>
     {% if einsteinAnalysis %}
     {% for cls, analysis in einsteinAnalysis %}
-        <section class="analysis-block" data-search-block="ia">
-            <h2 class="class-name">{{ cls }}</h2>
-            <div class="analysis">{{ analysis.resumenHtml | safe }}</div>
-        </section>
+    <section class="analysis">
+      <h3>{{ cls }}</h3>
+      <div>{{ analysis.resumenHtml | safe }}</div>
+    </section>
     {% endfor %}
     {% else %}
-    <p>El análisis IA fue omitido o no se encontraron resultados.</p>
+    <p class="empty-state">🤖 El análisis IA fue omitido o no se encontraron resultados.</p>
     {% endif %}
+  </div>
 
-
-    <script>
+  <script>
     (function () {
-        const searchInput = document.getElementById('reportSearch');
-        if (!searchInput) return;
+      const search = document.getElementById('reportSearch');
+      const sections = Array.from(document.querySelectorAll('section, table, h2'));
+      const notice = document.getElementById('searchNoResults');
 
-        const tables = Array.from(document.querySelectorAll('table[data-search-table="true"]'));
-        const iaBlocks = Array.from(document.querySelectorAll('[data-search-block="ia"]'));
-        const noResultsBanner = document.getElementById('searchNoResults');
+      function filter() {
+        const term = search.value.trim().toLowerCase();
+        let hasResults = false;
 
-        const ensureNoResultRow = (table) => {
-            let targetBody = table.tBodies.length ? table.tBodies[table.tBodies.length - 1] : null;
-            if (!targetBody) {
-                targetBody = document.createElement('tbody');
-                while (table.firstChild && table.firstChild.tagName && table.firstChild.tagName.toLowerCase() === 'tr') {
-                    targetBody.appendChild(table.firstChild);
-                }
-                table.appendChild(targetBody);
-            }
+        document.querySelectorAll('table tr').forEach(row => {
+          if (row.querySelector('th')) return;
+          const text = row.innerText.toLowerCase();
+          const match = text.includes(term);
+          row.style.display = match ? '' : 'none';
+          if (match) hasResults = true;
+        });
 
-            let noRow = table.querySelector('tr[data-no-results]');
-            if (!noRow) {
-                noRow = document.createElement('tr');
-                noRow.dataset.noResults = 'true';
-                const header = table.querySelector('tr th');
-                const columns = header ? header.parentElement.children.length : (table.rows[0] ? table.rows[0].cells.length : 1);
-                const cell = document.createElement('td');
-                cell.colSpan = Math.max(columns, 1);
-                cell.textContent = 'Sin coincidencias para la b&uacute;squeda.';
-                cell.style.textAlign = 'center';
-                noRow.style.display = 'none';
-                noRow.appendChild(cell);
-                targetBody.appendChild(noRow);
-            }
-        };
+        notice.style.display = term && !hasResults ? '' : 'none';
+      }
 
-        tables.forEach(ensureNoResultRow);
-
-        const getDataRows = (table) => {
-            const bodies = table.tBodies.length ? Array.from(table.tBodies) : [table];
-            const rows = bodies.flatMap((body) => Array.from(body.rows));
-            return rows.filter((row) => row.dataset.noResults !== 'true' && !row.querySelector('th'));
-        };
-
-        const normalize = (value) => (value || '').toString().toLowerCase();
-
-        const applyFilter = () => {
-            const term = normalize(searchInput.value.trim());
-            const hasTerm = term.length > 0;
-            let matches = 0;
-
-            tables.forEach((table) => {
-                const rows = getDataRows(table);
-                let visibleRows = 0;
-
-                rows.forEach((row) => {
-                    const text = normalize(row.textContent);
-                    const show = !hasTerm || text.includes(term);
-                    row.style.display = show ? '' : 'none';
-                    if (show) visibleRows++;
-                });
-
-                const noRow = table.querySelector('tr[data-no-results]');
-                if (noRow) {
-                    noRow.style.display = hasTerm && visibleRows === 0 ? '' : 'none';
-                }
-
-                matches += visibleRows;
-            });
-
-            iaBlocks.forEach((block) => {
-                const text = normalize(block.textContent);
-                const show = !hasTerm || text.includes(term);
-                block.style.display = show ? '' : 'none';
-                if (show) matches++;
-            });
-
-            if (noResultsBanner) {
-                noResultsBanner.style.display = hasTerm && matches === 0 ? 'block' : 'none';
-            }
-        };
-
-        searchInput.addEventListener('input', applyFilter);
+      search.addEventListener('input', filter);
     })();
-    </script>
+  </script>
 </body>
 </html>
-
-
