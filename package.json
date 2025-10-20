@@ -31,13 +31,14 @@
     "clean": "rimraf dist node_modules && del /q *.vsix 2>nul || true",
     "compile": "tsc -p .",
     "bundle": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outdir=dist --format=cjs",
-    "copy-resources": "mkdir -p dist/resources && cp -r src/resources/* dist/resources/ || xcopy src\\resources\\* dist\\resources\\ /E /I /Y",
+    "copy-resources": "node scripts/copyResources.js",
     "build": "npm run clean && npm install && npm run compile && npm run bundle && npm run copy-resources",
     "package": "npm run build && npm install --omit=dev && vsce package"
   },
   "activationEvents": [
     "onCommand:UnifiedApexValidator.validateApex",
     "onCommand:UnifiedApexValidator.compareApexClasses",
+    "onCommand:UnifiedApexValidator.whereIsUsed",
     "onCommand:UnifiedApexValidator.formatApexAllman",
     "workspaceContains:**/*.xml",
     "onLanguage:apex"
@@ -102,6 +103,10 @@
         "title": "UAV: Generate ApexDoc"
       },
       {
+        "command": "UnifiedApexValidator.whereIsUsed",
+        "title": "UAV: Where is Used?"
+      },
+      {
         "command": "UnifiedApexValidator.formatApexAllman",
         "title": "UAV: Formatear Apex (Allman)",
         "enablement": "config.UnifiedApexValidator.enableAllmanFormatter"
@@ -137,6 +142,11 @@
           "group": "z_unifiedApex@1"
         },
         {
+          "command": "UnifiedApexValidator.validateApex",
+          "when": "resourceExtname == .cls",
+          "group": "z_unifiedApex@2"
+        },
+        {
           "command": "UnifiedApexValidator.compareApexClasses",
           "when": "resourceExtname =~ /\\.?xml/i",
           "group": "z_unifiedApex@10"
@@ -147,9 +157,14 @@
           "group": "z_unifiedApex@11"
         },
         {
+          "command": "UnifiedApexValidator.whereIsUsed",
+          "when": "resourceExtname =~ /\\.?cls/i",
+          "group": "z_unifiedApex@12"
+        },
+        {
           "command": "UnifiedApexValidator.formatApexAllman",
           "when": "(resourceExtname == .cls || resourceExtname == .trigger) && config.UnifiedApexValidator.enableAllmanFormatter",
-          "group": "z_unifiedApex@12"
+          "group": "z_unifiedApex@13"
         }
       ],
       "editor/context": [
@@ -159,9 +174,19 @@
           "group": "z_unifiedApex@3"
         },
         {
+          "command": "UnifiedApexValidator.validateApex",
+          "when": "resourceExtname == .cls",
+          "group": "z_unifiedApex@4"
+        },
+        {
           "command": "UnifiedApexValidator.compareApexClasses",
           "when": "resourceExtname =~ /\\.?cls/i",
           "group": "z_unifiedApex@12"
+        },
+        {
+          "command": "UnifiedApexValidator.whereIsUsed",
+          "when": "resourceExtname =~ /\\.?cls/i",
+          "group": "z_unifiedApex@13"
         },
         {
           "command": "UnifiedApexValidator.generateApexDocChunked",

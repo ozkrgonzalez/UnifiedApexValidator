@@ -1,8 +1,19 @@
-﻿import * as fs from 'fs';
-import * as vscode from 'vscode';
+import * as fs from 'fs';
+import type { TextDocument } from 'vscode';
 import { ApexParser, ApexLexer, CaseInsensitiveInputStream } from '@apexdevtools/apex-parser';
 import { CommonTokenStream, CharStreams } from 'antlr4ts';
 import { ANTLRErrorListener, RecognitionException, Recognizer } from 'antlr4ts';
+
+let vscodeModule: typeof import('vscode') | undefined;
+try
+{
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
+    vscodeModule = require('vscode');
+}
+catch
+{
+    vscodeModule = undefined;
+}
 
 export interface ApexChunk
 {
@@ -86,8 +97,8 @@ export class ApexAstParser
         const tokenStream = new CommonTokenStream(lexer);
         const parser = new ApexParser(tokenStream);
 
-        const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
-        const traceAst = config.get<boolean>('traceAst') ?? false;
+        const config = vscodeModule?.workspace.getConfiguration('UnifiedApexValidator');
+        const traceAst = config?.get<boolean>('traceAst') ?? false;
         const syntaxErrors: string[] = [];
         const chunks: ApexChunk[] = [];
         const extract = (start: number, end: number): string => code.substring(start, end);
@@ -451,10 +462,14 @@ export class ApexAstParser
         return chunks;
     }
 
-    public static parseDocument(doc: vscode.TextDocument): ApexChunk[]
+    public static parseDocument(doc: TextDocument): ApexChunk[]
     {
         const tempFile = doc.uri.fsPath;
         fs.writeFileSync(tempFile, doc.getText(), 'utf8');
         return ApexAstParser.parseFile(tempFile);
     }
 }
+
+
+
+

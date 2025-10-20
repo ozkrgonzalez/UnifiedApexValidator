@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Where is Used</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #0e1720;
+            --bg-card: #152232;
+            --bg-muted: #1e2d40;
+            --fg: #f3f6fc;
+            --fg-muted: #b9c4d2;
+            --accent: #4cc2ff;
+            --accent-muted: rgba(76, 194, 255, 0.12);
+            --border: rgba(255, 255, 255, 0.08);
+            --shadow: 0 12px 32px rgba(4, 10, 20, 0.45);
+            --shadow-small: 0 6px 16px rgba(4, 10, 20, 0.35);
+        }
+
+        body.vscode-light {
+            --bg: #f4f6fb;
+            --bg-card: #ffffff;
+            --bg-muted: #f0f3fa;
+            --fg: #1a2433;
+            --fg-muted: #5b6573;
+            --accent: #0078d4;
+            --accent-muted: rgba(0, 120, 212, 0.12);
+            --border: rgba(16, 33, 61, 0.12);
+            --shadow: 0 10px 28px rgba(16, 33, 61, 0.12);
+            --shadow-small: 0 6px 18px rgba(16, 33, 61, 0.08);
+        }
+
+        body {
+            margin: 0;
+            padding: 32px;
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            background: radial-gradient(120% 120% at 50% 0%, rgba(76, 194, 255, 0.18) 0%, transparent 70%), var(--bg);
+            color: var(--fg);
+        }
+
+        .canvas {
+            max-width: 1080px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 28px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--fg-muted);
+            font-size: 0.95rem;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .search {
+            flex: 1;
+            min-width: 220px;
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            box-shadow: var(--shadow-small);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        body.vscode-light .search {
+            border-color: rgba(16, 33, 61, 0.06);
+        }
+
+        .search:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-muted);
+        }
+
+        .search span {
+            margin-right: 10px;
+            font-size: 1rem;
+        }
+
+        .search input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: inherit;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 26px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 18px 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-small);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stat-card h3 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--fg-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-card strong {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: var(--fg);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--accent-muted);
+            color: var(--accent);
+        }
+
+        body.vscode-light .badge {
+            background: rgba(0, 120, 212, 0.08);
+        }
+
+        details.class-card {
+            background: var(--bg-card);
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+
+        details.class-card[open] {
+            border-color: rgba(76, 194, 255, 0.35);
+            box-shadow: 0 18px 46px rgba(13, 35, 58, 0.4);
+        }
+
+        summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            transition: background 0.2s ease;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        summary:hover {
+            background: var(--bg-muted);
+        }
+
+        .class-title {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .class-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .class-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--fg-muted);
+            font-size: 0.85rem;
+        }
+
+        .category-grid {
+            display: grid;
+            gap: 20px;
+            padding: 0 28px 24px 28px;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        }
+
+        .category-card {
+            background: var(--bg-muted);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-height: 155px;
+        }
+
+        body.vscode-light .category-card {
+            border-color: rgba(16, 33, 61, 0.08);
+        }
+
+        .category-card h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .category-card ul {
+            margin: 0;
+            padding-left: 18px;
+            display: grid;
+            gap: 6px;
+            color: var(--fg-muted);
+            font-size: 0.9rem;
+        }
+
+        .category-card li {
+            list-style: disc;
+        }
+
+        .empty {
+            margin: 0;
+            font-size: 0.88rem;
+            color: var(--fg-muted);
+            opacity: 0.7;
+        }
+
+        .no-results {
+            margin-top: 48px;
+            text-align: center;
+            color: var(--fg-muted);
+            font-size: 1rem;
+            display: none;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 24px 16px;
+            }
+
+            summary {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .class-meta {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body class="vscode-light">
+    <div class="canvas">
+        <header>
+            <h1>Where is Used</h1>
+            <p>Reporte generado el {{ generatedAt }} — {{ totalClasses }} clases analizadas, {{ totalReferences }} referencias encontradas.</p>
+        </header>
+
+        <div class="toolbar">
+            <label class="search" for="class-filter">
+                <span>🔍</span>
+                <input id="class-filter" type="search" placeholder="Filtrar por nombre de clase..." aria-label="Buscar clase">
+            </label>
+            <div class="badge">Actualizado {{ generatedAt }}</div>
+        </div>
+
+        <section class="stats">
+            {% for summary in categoryTotals %}
+            <article class="stat-card">
+                <h3>{{ summary.icon }} {{ summary.label }}</h3>
+                <strong>{{ summary.count }}</strong>
+            </article>
+            {% endfor %}
+        </section>
+
+        <section id="results">
+            {% for entry in entries %}
+            <details class="class-card" data-class="{{ entry.className | lower }}" {% if loop.first %} open {% endif %}>
+                <summary>
+                    <div class="class-title">
+                        <span class="class-name">{{ entry.className }}</span>
+                        <div class="class-meta">
+                            <span class="badge">Total: {{ entry.totalCount }}</span>
+                        </div>
+                    </div>
+                    <span aria-hidden="true">▾</span>
+                </summary>
+                <div class="category-grid">
+                    {% for bucket in entry.categories %}
+                    <article class="category-card" data-empty="{{ 'true' if bucket.count == 0 else 'false' }}">
+                        <h4>
+                            <span>{{ bucket.icon }} {{ bucket.label }}</span>
+                            <span class="badge">{{ bucket.count }}</span>
+                        </h4>
+                        {% if bucket.count %}
+                        <ul>
+                            {% for item in bucket.items %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="empty">Sin referencias.</p>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+            </details>
+            {% endfor %}
+        </section>
+
+        <p id="no-results" class="no-results">No se encontraron clases que coincidan con el filtro.</p>
+    </div>
+
+    <script>
+        (function () {
+            const filter = document.getElementById('class-filter');
+            const cards = Array.from(document.querySelectorAll('details.class-card'));
+            const emptyState = document.getElementById('no-results');
+
+            function applyFilter() {
+                const value = filter.value.trim().toLowerCase();
+                let matches = 0;
+
+                for (const card of cards) {
+                    const className = card.dataset.class || '';
+                    const isMatch = !value || className.includes(value);
+                    card.style.display = isMatch ? '' : 'none';
+                    if (isMatch) {
+                        matches++;
+                    }
+                }
+
+                emptyState.style.display = matches ? 'none' : 'block';
+            }
+
+            filter.addEventListener('input', applyFilter);
+        }());
+    </script>
+</body>
+</html>

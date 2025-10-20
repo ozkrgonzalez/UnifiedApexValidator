@@ -1,12 +1,17 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs-extra';
+import { fork } from 'child_process';
 import { DependenciesProvider, registerDependencyUpdater } from './providers/dependenciesProvider';
 import { FolderViewProvider, runUAV } from './core/uavController';
 import { runCompareApexClasses } from './core/compareController';
-import { setExtensionContext } from './core/utils';
+import { Logger, setExtensionContext } from './core/utils';
 import { generateApexDocChunked } from './core/generateApexDocChunked';
 import { evaluateIaConfig } from './core/IAAnalisis';
 import { formatApexAllman } from './core/apexAllmanFormatter';
+import { showWhereUsedPanel } from './core/whereUsedPanel';
+import { WhereUsedEntry } from './core/whereUsedCore';
+
 
 /**
  * Punto de entrada de la extensión Unified Apex Validator.
@@ -155,13 +160,260 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    const whereIsUsedCmd = vscode.commands.registerCommand(
+        'UnifiedApexValidator.whereIsUsed',
+        async (uri?: vscode.Uri, uris?: vscode.Uri[]) =>
+        {
+            const logger = new Logger('WhereIsUsed');
+            const selectedUris = collectClsUris(uri, uris);
+
+            if (!selectedUris.length)
+            {
+                vscode.window.showWarningMessage('Selecciona al menos una clase Apex (.cls) para analizar su uso.');
+                return;
+            }
+
+            let success = false;
+
+            try
+            {
+                await vscode.window.withProgress(
+                    {
+                        location: vscode.ProgressLocation.Notification,
+                        title: 'Scanning project for class usage...',
+                        cancellable: false
+                    },
+                    async (progress) =>
+                    {
+                        progress.report({ message: 'Analizando referencias en Apex, Flows y LWC...' });
+                        const repoDir = await resolveWhereUsedRepoDir(logger);
+                        const workerPath = resolveWhereUsedWorkerPath(context);
+                        const targetPaths = selectedUris.map((item) => item.fsPath);
+                        const results = await runWhereIsUsedWorker(workerPath, {
+                            repoDir,
+                            classIdentifiers: targetPaths
+                        }, logger);
+                        progress.report({ message: 'Generando reporte visual...' });
+                        await showWhereUsedPanel(results);
+                        success = true;
+                    }
+                );
+            }
+            catch (err: any)
+            {
+                const reason = err?.message || String(err);
+                logger.error(`Error generando Where is Used: ${reason}`);
+                vscode.window.showErrorMessage(`Error generando Where is Used: ${reason}`);
+            }
+
+            if (success)
+            {
+                vscode.window.showInformationMessage('Where is Used report generated.');
+            }
+        }
+    );
+
     context.subscriptions.push(
         validateApexCmd,
         compareApexClassesCmd,
         generateApexDocChunkedCmd,
-        formatApexAllmanCmd
+        formatApexAllmanCmd,
+        whereIsUsedCmd
     );
     //vscode.window.showInformationMessage('Unified Apex Validator activado.');
+}
+
+
+function collectClsUris(primary?: vscode.Uri, multiSelect?: vscode.Uri[]): vscode.Uri[]
+{
+    const candidates = multiSelect && multiSelect.length ? multiSelect : (primary ? [primary] : []);
+    const unique = new Map<string, vscode.Uri>();
+
+    for (const uri of candidates)
+    {
+        if (!uri || uri.scheme !== 'file')
+        {
+            continue;
+        }
+
+        const lower = uri.fsPath.toLowerCase();
+        if (!lower.endsWith('.cls'))
+        {
+            continue;
+        }
+
+        unique.set(lower, uri);
+    }
+
+    if (!unique.size)
+    {
+        const activeUri = vscode.window.activeTextEditor?.document?.uri;
+        if (activeUri && activeUri.scheme === 'file')
+        {
+            const lower = activeUri.fsPath.toLowerCase();
+            if (lower.endsWith('.cls'))
+            {
+                unique.set(lower, activeUri);
+            }
+        }
+    }
+
+    return Array.from(unique.values());
+}
+
+async function resolveWhereUsedRepoDir(logger: Logger): Promise<string>
+{
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder)
+    {
+        throw new Error('No se detect� un workspace abierto.');
+    }
+
+    const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
+    let repoDir = config.get<string>('sfRepositoryDir')?.trim() || '';
+
+    if (!repoDir)
+    {
+        repoDir = workspaceFolder.uri.fsPath;
+        logger.warn('sfRepositoryDir no configurado. Se usara la raiz del workspace.');
+    }
+
+    repoDir = path.resolve(repoDir);
+
+    if (!fs.existsSync(repoDir))
+    {
+        throw new Error('La ruta configurada no existe: ' + repoDir);
+    }
+
+    return repoDir;
+}
+
+function resolveWhereUsedWorkerPath(context: vscode.ExtensionContext): string
+{
+    const candidates = [
+        path.join(__dirname, 'core', 'whereUsedWorkerProcess.js'),
+        path.join(context.extensionPath, 'out', 'core', 'whereUsedWorkerProcess.js'),
+        path.join(context.extensionPath, 'dist', 'core', 'whereUsedWorkerProcess.js')
+    ];
+
+    for (const candidate of candidates)
+    {
+        if (fs.existsSync(candidate))
+        {
+            return candidate;
+        }
+    }
+
+    throw new Error('No se encontro el componente whereUsedWorkerProcess.js.');
+}
+
+interface WhereIsUsedWorkerRequest
+{
+    repoDir: string;
+    classIdentifiers: string[];
+}
+
+interface WhereIsUsedWorkerResponse
+{
+    type: 'result' | 'error';
+    result?: WhereUsedEntry[];
+    message?: string;
+    stack?: string;
+}
+
+function runWhereIsUsedWorker(
+    workerPath: string,
+    payload: WhereIsUsedWorkerRequest,
+    logger: Logger
+): Promise<WhereUsedEntry[]>
+{
+    return new Promise((resolve, reject) =>
+    {
+        let settled = false;
+
+        const child = fork(workerPath, [], {
+            stdio: ['ignore', 'pipe', 'pipe', 'ipc']
+        });
+
+        const timeoutMs = 1000 * 60 * 10;
+        const timer = setTimeout(() =>
+        {
+            if (settled) return;
+            settled = true;
+            child.kill();
+            reject(new Error('Where is Used worker timeout tras 10 minutos.'));
+        }, timeoutMs);
+
+        const clearAll = () =>
+        {
+            clearTimeout(timer);
+            child.removeAllListeners();
+            child.stdout?.removeAllListeners();
+            child.stderr?.removeAllListeners();
+        };
+
+        child.stdout?.on('data', (data: Buffer) =>
+        {
+            const text = data.toString().trim();
+            if (text)
+            {
+                logger.info(`[WhereIsUsedWorker] ${text}`);
+            }
+        });
+
+        child.stderr?.on('data', (data: Buffer) =>
+        {
+            const text = data.toString().trim();
+            if (text)
+            {
+                logger.warn(`[WhereIsUsedWorker] ${text}`);
+            }
+        });
+
+        child.on('message', (message: WhereIsUsedWorkerResponse) =>
+        {
+            if (settled) return;
+
+            if (message.type === 'result' && message.result)
+            {
+                settled = true;
+                clearAll();
+                resolve(message.result);
+            }
+            else
+            {
+                settled = true;
+                clearAll();
+                reject(new Error(message.message || 'Where is Used worker reporto un error.'));
+            }
+        });
+
+        child.on('error', (err) =>
+        {
+            if (settled) return;
+            settled = true;
+            clearAll();
+            reject(err);
+        });
+
+        child.on('exit', (code) =>
+        {
+            if (settled) return;
+            settled = true;
+            clearAll();
+
+            if (code === 0)
+            {
+                resolve([]);
+            }
+            else
+            {
+                reject(new Error(`Where is Used worker finalizo con codigo ${code ?? 'desconocido'}.`));
+            }
+        });
+
+        child.send(payload);
+    });
 }
 
 /**

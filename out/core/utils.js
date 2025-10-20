@@ -41,6 +41,7 @@ exports.parseApexClassesFromPackage = parseApexClassesFromPackage;
 exports.cleanUpFiles = cleanUpFiles;
 exports.resolveSfCliPath = resolveSfCliPath;
 exports.ensureOrgAliasConnected = ensureOrgAliasConnected;
+exports.formatGeneratedAt = formatGeneratedAt;
 const fs = __importStar(require("fs-extra"));
 const path = __importStar(require("path"));
 const fast_xml_parser_1 = require("fast-xml-parser");
@@ -308,4 +309,15 @@ async function ensureOrgAliasConnected(alias, logger) {
     }
     vscode.window.showErrorMessage(`El alias "${trimmed}" sigue sin conexion tras el intento de login. Verifica tus permisos y repite el proceso.`);
     return false;
+}
+function formatGeneratedAt(date) {
+    // Ejemplo: "Oct 19, 2025, 11:53 PM"
+    return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    }).format(date);
 }

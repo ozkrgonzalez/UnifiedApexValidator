@@ -1,214 +1,392 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de Comparación de Clases Apex</title>
+    <title>Reporte de ComparaciÃ³n de Clases Apex</title>
 
-    <!-- Prism.js para resaltar código -->
+    <!-- Prism.js para resaltar cÃ³digo -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
 
     <!-- Font Awesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Chart.js para el gráfico de resumen -->
+    <!-- Chart.js para el grÃ¡fico de resumen -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Estilos personalizados -->
-    <style>
-        /* Estilos para el botón de cambio de tema */
+        <style>
+        :root {
+            color-scheme: light dark;
+            --bg: #0e1720;
+            --bg-card: #152232;
+            --bg-muted: #1e2d40;
+            --fg: #f3f6fc;
+            --fg-muted: #b9c4d2;
+            --accent: #4cc2ff;
+            --accent-strong: #2aa8f4;
+            --accent-muted: rgba(76, 194, 255, 0.12);
+            --border: rgba(255, 255, 255, 0.08);
+            --shadow: 0 12px 32px rgba(4, 10, 20, 0.45);
+            --shadow-small: 0 6px 16px rgba(4, 10, 20, 0.35);
+            --positive: #66e0a3;
+            --warning: #ffc061;
+            --negative: #ff7f73;
+            --diff: #6f85ff;
+        }
+
+        body.vscode-light {
+            --bg: #f4f6fb;
+            --bg-card: #ffffff;
+            --bg-muted: #eef2fb;
+            --fg: #1a2433;
+            --fg-muted: #5b6573;
+            --accent: #0078d4;
+            --accent-strong: #005fa3;
+            --accent-muted: rgba(0, 120, 212, 0.12);
+            --border: rgba(16, 33, 61, 0.12);
+            --shadow: 0 10px 28px rgba(16, 33, 61, 0.12);
+            --shadow-small: 0 6px 18px rgba(16, 33, 61, 0.08);
+            --positive: #1c8b57;
+            --warning: #c77a1e;
+            --negative: #d95d5d;
+            --diff: #4956c4;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            background: radial-gradient(120% 120% at 50% 0%, rgba(76, 194, 255, 0.18) 0%, transparent 70%), var(--bg);
+            color: var(--fg);
+            padding: 32px 20px 56px;
+        }
+
+        .canvas {
+            max-width: 1180px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 28px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.1rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--fg-muted);
+            font-size: 0.95rem;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .language-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 10px 14px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-small);
+        }
+
+        .language-container label {
+            font-weight: 600;
+            color: var(--fg-muted);
+        }
+
+        #language-select {
+            background: transparent;
+            color: var(--fg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 6px 14px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #language-select:hover {
+            border-color: var(--accent);
+        }
+
+        #language-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-muted);
+        }
+
         .theme-toggle {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #00aaff;
-            border: none;
-            padding: 10px 15px;
-            color: white;
-            font-size: 16px;
-            border-radius: 5px;
+            top: 24px;
+            right: 24px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: #0e1720;
+            font-size: 0.95rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: 0.3s;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            z-index: 20;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+
+        .summary-card {
+            position: relative;
+            padding: 20px 22px;
+            border-radius: 18px;
+            color: #ffffff;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 130px;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 22px 34px rgba(0, 0, 0, 0.2);
+        }
+
+        .summary-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.35), transparent 55%);
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .summary-card h3 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .theme-toggle:hover {
-            background-color: #0088cc;
-            transform: scale(1.1);
+        .summary-card__value {
+            font-size: 2.6rem;
+            font-weight: 700;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
         }
 
-        /* Estilos del tema claro */
-        .light-mode {
-            background-color: #f9f9f9;
-            color: #333;
-        }
-        .light-mode .container {
-            background-color: #ffffff;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .light-mode table {
-            background-color: #f0f0f0;
-        }
-        .light-mode th {
-            background-color: #007bff;
-            color: white;
-        }
-        .light-mode button {
-            background-color: #007bff;
-            color: white;
-        }
-        .light-mode .theme-toggle {
-            background-color: #007bff;
-        }
-        .light-mode .theme-toggle:hover {
-            background-color: #0056b3;
-        }
-        .light-mode tr:nth-child(even) {
-            background-color: #ffffff !important;
-        }
-        .light-mode tr:nth-child(odd) {
-            background-color: #f0f0f0 !important;
-        }
-        .light-mode td, .light-mode th {
-            border: 1px solid #ddd !important;
-            color: #333 !important;
+        .summary-card__footer {
+            font-size: 0.88rem;
+            opacity: 0.9;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #181818;
-            color: #ffffff;
-            margin: 0;
-            padding: 20px;
+        .summary-card--matches { background: linear-gradient(135deg, #2dd19d, #139d6f); }
+        .summary-card--mismatches { background: linear-gradient(135deg, #ff7f73, #d9574a); }
+        .summary-card--local { background: linear-gradient(135deg, #ffc061, #c77a1e); }
+        .summary-card--salesforce { background: linear-gradient(135deg, #6f85ff, #4956c4); }
+
+        .section-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 28px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-small);
         }
-        .container {
-            max-width: 90%;
+
+        .section-card h2 {
+            margin: 0 0 18px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--fg);
+        }
+
+        .diff-title {
+            margin: 0 0 12px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .diff-class {
+            color: var(--fg);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 520px;
+            height: 340px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #1f1f1f;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease-in-out;
         }
-        h1, h2 {
-            text-align: center;
-            color: #00aaff;
-            text-shadow: 0 0 5px rgba(0, 170, 255, 0.5);
+
+        .chart-wrapper canvas {
+            width: 100%;
+            height: 100%;
         }
+
+        .table-scroll {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-muted);
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            background-color: #222;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+            min-width: 520px;
         }
+
         th, td {
-            border: 1px solid #444;
-            padding: 12px;
+            padding: 14px 16px;
             text-align: left;
+            border-bottom: 1px solid var(--border);
+            color: var(--fg);
         }
+
         th {
-            background-color: #00aaff;
-            color: #ffffff;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: #0e1720;
+            font-weight: 700;
+            letter-spacing: 0.02em;
         }
+
         tr:nth-child(even) {
-            background-color: #2a2a2a;
+            background-color: rgba(76, 194, 255, 0.06);
         }
-        .match { color: #00ff00; font-weight: bold; }
-        .mismatch { color: #ff3333; font-weight: bold; }
-        .not-in-local { color: #ffaa00; font-weight: bold; }
-        .not-in-salesforce { color: #8888ff; font-weight: bold; }
-        .diff-container {
-            display: none;
-            padding: 15px;
-            background-color: #282828;
-            border-radius: 10px;
-            border: 1px solid #444;
-            box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease-in-out;
-        }
-        .editor-container {
-            height: 500px;
-        }
-        button {
-            padding: 10px 15px;
-            border: none;
-            background-color: #00aaff;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        button i {
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #0088cc;
-            transform: scale(1.05);
-        }
+
+        .match { color: var(--positive); font-weight: 600; }
+        .mismatch { color: var(--negative); font-weight: 600; }
+        .not-in-local { color: var(--warning); font-weight: 600; }
+        .not-in-salesforce { color: var(--diff); font-weight: 600; }
+
         .action-buttons {
             display: flex;
             gap: 10px;
-            justify-content: flex-start;
-        }
-        canvas {
-            display: block;
-            max-width: 400px;
-            margin: 20px auto;
-        }
-        /* Resaltar la línea de diferencia actual con fondo azul */
-        .current-diff-highlight {
-            background-color: rgba(0, 170, 255, 0.2) !important;
-            border-left: 4px solid #00aaff !important;
+            flex-wrap: wrap;
         }
 
-        /* Añadir un indicador en la barra lateral */
-        .current-diff-highlight-margin {
-            background-color: #00aaff !important;
-        }
-        /* Estilo del selector de idioma */
-        .language-container {
-            display: flex;
+        .action-buttons button {
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        #language-label {
-            font-weight: bold;
-            font-size: 16px;
-            color: #00aaff;
-        }
-
-        #language-select {
-            background-color: #00aaff;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-size: 16px;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
-            font-weight: bold;
-            transition: 0.3s;
+            background: var(--accent-muted);
+            color: var(--accent);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
-        #language-select:hover {
-            background-color: #0088cc;
+        .action-buttons button:hover {
+            transform: translateY(-1px);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-muted);
         }
 
-        #language-select:focus {
-            outline: none;
-            box-shadow: 0 0 5px rgba(0, 170, 255, 0.8);
+        .diff-container {
+            display: none;
+            margin-top: 18px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-muted);
+            box-shadow: var(--shadow-small);
+            overflow: hidden;
         }
 
+        .editor-container {
+            height: 500px;
+        }
+
+        .current-diff-highlight {
+            background: rgba(76, 194, 255, 0.14) !important;
+            border-left: 4px solid var(--accent) !important;
+        }
+
+        .language-container, .theme-toggle {
+            backdrop-filter: blur(6px);
+        }
+
+        .status-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-match { background: rgba(102, 224, 163, 0.18); color: var(--positive); }
+        .status-mismatch { background: rgba(255, 127, 115, 0.18); color: var(--negative); }
+        .status-local { background: rgba(255, 192, 97, 0.18); color: var(--warning); }
+        .status-salesforce { background: rgba(111, 133, 255, 0.18); color: var(--diff); }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 28px 16px 48px;
+            }
+
+            .theme-toggle {
+                top: 16px;
+                right: 16px;
+                padding: 8px 14px;
+            }
+
+            .chart-wrapper {
+                height: 280px;
+            }
+
+            .language-container {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
     </style>
 
     <!-- Carga de Monaco Editor -->
@@ -218,187 +396,269 @@
             paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' }
         });
     </script>
-    <script>
-        function toggleTheme() {
-            const body = document.body;
-            const themeText = document.getElementById("theme-text");
-            const icon = document.querySelector(".theme-toggle i");
+        <script>
+        let currentLanguage = 'es';
+        let statusChartInstance;
 
-            if (body.classList.contains("light-mode")) {
-                body.classList.remove("light-mode");
-                localStorage.setItem("theme", "dark");
-                themeText.textContent = "Modo Claro";
-                icon.classList.replace("fa-sun", "fa-moon");
+        function getChartLegendColor() {
+            const styles = getComputedStyle(document.body);
+            return styles.getPropertyValue('--fg').trim() || '#f3f6fc';
+        }
+
+        function renderStatusChart(updateOnly = false, language = currentLanguage) {
+            const canvas = document.getElementById('statusChart');
+            if (!canvas || typeof Chart === 'undefined') {
+                return;
+            }
+
+            const legendColor = getChartLegendColor();
+            const dictionary = (typeof translations !== 'undefined' && translations[language]) ? translations[language] : null;
+            const labels = [
+                dictionary?.identicalClasses || 'Clases Idénticas',
+                dictionary?.differentClasses || 'Clases con Diferencias',
+                dictionary?.onlyLocal || 'Clases Solo en Local',
+                dictionary?.onlySalesforce || 'Clases Solo en Salesforce'
+            ];
+
+            if (statusChartInstance && updateOnly) {
+                statusChartInstance.options.plugins.legend.labels.color = legendColor;
+                statusChartInstance.update();
+                return;
+            }
+
+            if (statusChartInstance) {
+                statusChartInstance.destroy();
+            }
+
+            statusChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: [{{ match_count }}, {{ mismatch_count }}, {{ not_in_local_count }}, {{ not_in_salesforce_count }}],
+                        backgroundColor: ['#2dd19d', '#ff7f73', '#ffc061', '#6f85ff']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: legendColor }
+                        }
+                    }
+                }
+            });
+        }
+
+        function setThemeLabel(language) {
+            const themeText = document.getElementById('theme-text');
+            const icon = document.querySelector('.theme-toggle i');
+            if (!themeText || !icon) {
+                return;
+            }
+
+            const isLight = document.body.classList.contains('vscode-light');
+            const dictionary = (typeof translations !== 'undefined' && translations[language]) ? translations[language] : null;
+            const darkLabel = dictionary?.themeToggleDark || 'Dark Mode';
+            const lightLabel = dictionary?.themeToggleLight || 'Light Mode';
+
+            if (isLight) {
+                themeText.textContent = darkLabel;
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
             } else {
-                body.classList.add("light-mode");
-                localStorage.setItem("theme", "light");
-                themeText.textContent = "Modo Oscuro";
-                icon.classList.replace("fa-moon", "fa-sun");
+                themeText.textContent = lightLabel;
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
             }
         }
 
-        // Cargar el tema guardado
-        window.onload = function() {
-            const savedTheme = localStorage.getItem("theme");
-            if (savedTheme === "light") {
-                document.body.classList.add("light-mode");
-                document.getElementById("theme-text").textContent = "Modo Oscuro";
-                document.querySelector(".theme-toggle i").classList.replace("fa-moon", "fa-sun");
+        function applyTheme(theme) {
+            if (theme === 'light') {
+                document.body.classList.add('vscode-light');
+            } else {
+                document.body.classList.remove('vscode-light');
             }
-        };
+
+            localStorage.setItem('theme', theme);
+            renderStatusChart(false, currentLanguage);
+        }
+
+        function toggleTheme() {
+            const isLight = document.body.classList.contains('vscode-light');
+            applyTheme(isLight ? 'dark' : 'light');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+        });
     </script>
 </head>
-<body>
+<body class="vscode-light">
 
-<!-- Botón para cambiar de tema -->
+<!-- Boton para cambiar de tema -->
 <button class="theme-toggle" onclick="toggleTheme()">
     <i class="fa fa-moon"></i> <span id="theme-text">Modo Oscuro</span>
 </button>
 
-<!-- Selector de idioma -->
-<div class="language-container">
-    <label for="language-select" id="language-label">Idioma:</label>
-    <select id="language-select">
-        <option value="en">English</option>
-        <option value="es">Español</option>
-    </select>
+<div class="canvas">
+    <header>
+        <h1 id="title"><i class="fa fa-code"></i> Reporte de Comparaci&oacute;n de Clases Apex</h1>
+        <p class="tagline">Comparaci&oacute;n entre el repositorio local y la organizaci&oacute;n Salesforce seleccionada.</p>
+    </header>
+
+    <div class="toolbar">
+        <div class="language-container">
+            <label for="language-select" id="language-label">Idioma:</label>
+            <select id="language-select">
+                <option value="en">English</option>
+                <option value="es">Espa&ntilde;ol</option>
+            </select>
+        </div>
+    </div>
+
+    <section class="summary-cards">
+        <article class="summary-card summary-card--matches">
+            <h3><span>&#x2705;</span> <span data-translate="cardMatches">Coincidencias</span></h3>
+            <div class="summary-card__value">{{ match_count }}</div>
+            <div class="summary-card__footer" data-translate="cardMatchesHint">Clases id&eacute;nticas en ambos entornos</div>
+        </article>
+        <article class="summary-card summary-card--mismatches">
+            <h3><span>⚠️</span> <span data-translate="cardMismatches">Diferencias</span></h3>
+            <div class="summary-card__value">{{ mismatch_count }}</div>
+            <div class="summary-card__footer" data-translate="cardMismatchesHint">Clases con divergencias detectadas</div>
+        </article>
+        <article class="summary-card summary-card--local">
+            <h3><span>💻</span> <span data-translate="cardLocal">Solo local</span></h3>
+            <div class="summary-card__value">{{ not_in_local_count }}</div>
+            <h3><span>&#x1F4BB;</span> <span data-translate="cardLocal">Solo local</span></h3>
+        </article>
+        <article class="summary-card summary-card--salesforce">
+            <h3><span>☁️</span> <span data-translate="cardSalesforce">Solo Salesforce</span></h3>
+            <div class="summary-card__value">{{ not_in_salesforce_count }}</div>
+            <div class="summary-card__footer" data-translate="cardSalesforceHint">Clases exclusivas en la organizaci&oacute;n</div>
+    </section>
+
+    <section class="section-card">
+        <h2 id="summaryChart"><i class="fa fa-chart-pie"></i> Resumen Gr&aacute;fico</h2>
+        <div class="chart-wrapper">
+            <canvas id="statusChart"></canvas>
+        </div>
+    </section>
+
+    <!--section class="section-card">
+        <h2 id="summary"><i class="fa fa-list-alt"></i> Resumen</h2>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th id="category"><i class="fa fa-layer-group"></i> Categor&iacute;a</th>
+                        <th id="quantity"><i class="fa fa-hashtag"></i> Cantidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><i class="fa fa-check-circle" style="color: #2dd19d;"></i> <span data-translate="identicalClasses">Clases id&eacute;nticas</span></td>
+                        <td class="match">{{ match_count }}</td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-exclamation-triangle" style="color: #ff7f73;"></i> <span data-translate="differentClasses">Clases con diferencias</span></td>
+                        <td class="mismatch">{{ mismatch_count }}</td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-folder-minus" style="color: #ffc061;"></i> <span data-translate="onlyLocal">Clases solo en local</span></td>
+                        <td class="not-in-local">{{ not_in_local_count }}</td>
+                    </tr>
+                    <tr>
+                        <td><i class="fa fa-cloud-download-alt" style="color: #6f85ff;"></i> <span data-translate="onlySalesforce">Clases solo en Salesforce</span></td>
+                        <td class="not-in-salesforce">{{ not_in_salesforce_count }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section-->
+
+    <section class="section-card">
+        <h2 id="details"><i class="fa fa-list"></i> Detalles</h2>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th data-translate="class">Clase</th>
+                        <th data-translate="status">Estado</th>
+                        <th data-translate="action">Acci&oacute;n</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result.ClassName }}</td>
+                        <td class="{{ result.Status|lower }}" data-status="{{ result.Status|lower }}" data-translate-status>
+                            {{ result.Status }}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                {% if result.Status == "Mismatch" %}
+                                <button data-translate="showDifferences"
+                                        onclick="toggleDiff('diff{{ loop.index }}')"
+                                        id="toggle-btn-{{ loop.index }}">
+                                    <i class="fa fa-eye"></i> Mostrar Diferencias
+                                </button>
+                                <button data-translate="nextDifference"
+                                        id="next-diff-btn-{{ loop.index }}"
+                                        onclick="goToNextDiff('diff{{ loop.index }}')"
+                                        style="display: none;">
+                                    <i class="fa fa-arrow-down"></i> Siguiente Diferencia
+                                </button>
+                                <button data-translate="close"
+                                        id="close-diff-btn-{{ loop.index }}"
+                                        onclick="toggleDiff('diff{{ loop.index }}')"
+                                        style="display: none;">
+                                    <i class="fa fa-times"></i> Cerrar
+                                </button>
+                                {% else %}
+                                <span style="opacity: 0.6;" data-translate="noDifferences">Sin diferencias</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% if result.Status == "Mismatch" %}
+                    <tr id="diff{{ loop.index }}" class="diff-container" style="display: none;">
+                        <td colspan="3">
+                            <h3 class="diff-title"><span data-translate="differenceIn">Diferencias en</span> <span class="diff-class">{{ result.ClassName }}</span></h3>
+                            <div class="editor-container" id="monaco-diff-editor-{{ loop.index }}"></div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 12px;">
+                                <button id="close-diff-btn-{{ loop.index }}"
+                                        onclick="toggleDiff('diff{{ loop.index }}')"
+                                        style="display: none;">
+                                    <i class="fa fa-times"></i> Cerrar
+                                </button>
+                                <button id="next-diff-btn-{{ loop.index }}"
+                                        onclick="goToNextDiff('diff{{ loop.index }}')"
+                                        style="display: none;">
+                                    <i class="fa fa-arrow-down"></i> Siguiente Diferencia
+                                </button>
+                            </div>
+
+                            <script type="application/json" id="data-original-{{ loop.index }}">
+                                {{ result.LocalVersion | tojson }}
+                            </script>
+                            <script type="application/json" id="data-modified-{{ loop.index }}">
+                                {{ result.SalesforceVersion | tojson }}
+                            </script>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 
-<div class="container">
-    <h1 id="title"><i class="fa fa-code"></i> Reporte de Comparación de Clases Apex</h1>
-
-    <!-- 🔥 Gráfico de Pie con Chart.js -->
-    <h2 id="summaryChart"><i class="fa fa-chart-pie"></i> Resumen Gráfico</h2>
-    <canvas id="statusChart"></canvas>
-
-    <script>
-        const ctx = document.getElementById('statusChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['Clases Idénticas', 'Clases con Diferencias', 'Solo en Local', 'Solo en Salesforce'],
-                datasets: [{
-                    data: [{{ match_count }}, {{ mismatch_count }}, {{ not_in_local_count }}, {{ not_in_salesforce_count }}],
-                    backgroundColor: ['#00ff00', '#ff3333', '#ffaa00', '#8888ff']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { color: '#ffffff' }
-                    }
-                }
-            }
-        });
-    </script>
-
-    <!-- 🔥 Tabla de Resumen Restaurada -->
-    <h2 id="summary"><i class="fa fa-list-alt"></i> Resumen</h2>
-    <table>
-        <thead>
-            <tr>
-                <th id="category"><i class="fa fa-layer-group"></i> Categoría</th>
-                <th id="quantity"><i class="fa fa-hashtag"></i> Cantidad</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><i class="fa fa-check-circle" style="color: #00ff00;"></i> Clases Idénticas</td>
-                <td class="match">{{ match_count }}</td>
-            </tr>
-            <tr>
-                <td><i class="fa fa-exclamation-triangle" style="color: #ff3333;"></i> Clases con Diferencias</td>
-                <td class="mismatch">{{ mismatch_count }}</td>
-            </tr>
-            <tr>
-                <td><i class="fa fa-folder-minus" style="color: #ffaa00;"></i> Clases Solo en Local</td>
-                <td class="not-in-local">{{ not_in_local_count }}</td>
-            </tr>
-            <tr>
-                <td><i class="fa fa-cloud-download-alt" style="color: #8888ff;"></i> Clases Solo en Salesforce</td>
-                <td class="not-in-salesforce">{{ not_in_salesforce_count }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <!-- 🔥 Tabla de Comparación -->
-    <h2><i class="fa fa-list"></i> Detalles</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Clase</th>
-                <th>Estado</th>
-                <th>Acción</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in results %}
-            <tr>
-                <td>{{ result.ClassName }}</td>
-                <td class="{{ result.Status|lower }}" data-status="{{ result.Status|lower }}" data-translate-status>
-                    {{ result.Status }}
-                </td>
-                <td>
-                    <div class="action-buttons">
-                        {% if result.Status == "Mismatch" %}
-                        <button data-translate="showDifferences"
-                                onclick="toggleDiff('diff{{ loop.index }}')"
-                                id="toggle-btn-{{ loop.index }}">
-                            <i class="fa fa-eye"></i> Mostrar Diferencias
-                        </button>
-                        <button data-translate="nextDifference"
-                                id="next-diff-btn-{{ loop.index }}"
-                                onclick="goToNextDiff('diff{{ loop.index }}')"
-                                style="display: none;">
-                            <i class="fa fa-arrow-down"></i> Siguiente Diferencia
-                        </button>
-                        <button data-translate="close"
-                                id="close-diff-btn-{{ loop.index }}"
-                                onclick="toggleDiff('diff{{ loop.index }}')"
-                                style="display: none;">
-                            <i class="fa fa-times"></i> Cerrar
-                        </button>
-                        {% else %}
-                        <span style="opacity: 0.5;">Sin diferencias</span>
-                        {% endif %}
-                    </div>
-                </td>
-            </tr>
-            {% if result.Status == "Mismatch" %}
-            <tr id="diff{{ loop.index }}" class="diff-container" style="display: none;">
-                <td colspan="3">
-                    <h2>Diferencias en: {{ result.ClassName }}</h2>
-                    <div id="monaco-diff-editor-{{ loop.index }}" class="editor-container" style="height: 500px;"></div>
-
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button id="close-diff-btn-{{ loop.index }}"
-                                onclick="toggleDiff('diff{{ loop.index }}')"
-                                style="display: none;">
-                            <i class="fa fa-times"></i> Cerrar
-                        </button>
-                        <button id="next-diff-btn-{{ loop.index }}"
-                                onclick="goToNextDiff('diff{{ loop.index }}')"
-                                style="display: none;">
-                            <i class="fa fa-arrow-down"></i> Siguiente Diferencia
-                        </button>
-                    </div>
-
-                    <!-- JSON con contenido original y modificado -->
-                    <script type="application/json" id="data-original-{{ loop.index }}">
-                        {{ result.LocalVersion | tojson }}
-                    </script>
-                    <script type="application/json" id="data-modified-{{ loop.index }}">
-                        {{ result.SalesforceVersion | tojson }}
-                    </script>
-                </td>
-            </tr>
-            {% endif %}
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
 <script>
     let diffEditors = {};
 
@@ -475,13 +735,13 @@
             if (changes.length > 0) {
                 diffEditors[index].currentDiffIndex++;
                 if (diffEditors[index].currentDiffIndex >= changes.length) {
-                    diffEditors[index].currentDiffIndex = 0; // Reinicia al inicio si pasa el último
+                    diffEditors[index].currentDiffIndex = 0; // Reinicia al inicio si pasa el Ãºltimo
                 }
 
                 const nextLine = changes[diffEditors[index].currentDiffIndex];
                 diffEditor.revealLineInCenter(nextLine);
 
-                // 🔹 Aplicar resaltado en la diferencia actual
+                // ðŸ”¹ Aplicar resaltado en la diferencia actual
                 highlightCurrentDifference(diffEditor, nextLine, index);
             } else {
                 alert("No se encontraron diferencias.");
@@ -495,7 +755,7 @@
             editor.getModifiedEditor().deltaDecorations(diffEditors[index].decorations, []);
         }
 
-        // Aplicar nueva decoración en la línea actual
+        // Aplicar nueva decoraciÃ³n en la lÃ­nea actual
         diffEditors[index].decorations = editor.getModifiedEditor().deltaDecorations([], [{
             range: new monaco.Range(lineNumber, 1, lineNumber, 1),
             options: {
@@ -527,10 +787,20 @@
             nextDifference: "Next Difference",
             close: "Close",
             differenceIn: "Differences in",
-            themeButton: "Dark Mode",
+            themeToggleDark: "Dark Mode",
+            themeToggleLight: "Light Mode",
             language: "Language:",
             match: "Match",
-            mismatch: "Mismatch"
+            mismatch: "Mismatch",
+            cardMatches: "Matches",
+            cardMismatches: "Differences",
+            cardLocal: "Only Local",
+            cardSalesforce: "Only Salesforce",
+            cardMatchesHint: "Classes identical in both environments",
+            cardMismatchesHint: "Classes with detected differences",
+            cardLocalHint: "Classes missing in Salesforce",
+            cardSalesforceHint: "Classes exclusive to Salesforce",
+            noDifferences: "No differences"
         },
         es: {
             title: "Reporte de Comparación de Clases Apex",
@@ -550,31 +820,42 @@
             nextDifference: "Siguiente Diferencia",
             close: "Cerrar",
             differenceIn: "Diferencias en",
-            themeButton: "Modo Oscuro",
+            themeToggleDark: "Modo Oscuro",
+            themeToggleLight: "Modo Claro",
             language: "Idioma:",
             match: "Coincide",
-            mismatch: "Diferente"
+            mismatch: "Diferente",
+            cardMatches: "Coincidencias",
+            cardMismatches: "Diferencias",
+            cardLocal: "Solo local",
+            cardSalesforce: "Solo Salesforce",
+            cardMatchesHint: "Clases idénticas en ambos entornos",
+            cardMismatchesHint: "Clases con divergencias detectadas",
+            cardLocalHint: "Clases ausentes en Salesforce",
+            cardSalesforceHint: "Clases exclusivas en la organización",
+            noDifferences: "Sin diferencias"
         }
     };
 
     document.addEventListener("DOMContentLoaded", function () {
         const languageSelect = document.getElementById("language-select");
 
-        // Cargar idioma guardado o usar inglés por defecto
-        const savedLanguage = localStorage.getItem("language") || "es";
-        languageSelect.value = savedLanguage;
-        loadLanguage(savedLanguage);
+        currentLanguage = localStorage.getItem("language") || "es";
+        languageSelect.value = currentLanguage;
+        loadLanguage(currentLanguage);
 
-        // Evento para cambiar de idioma
         languageSelect.addEventListener("change", function () {
-            const selectedLanguage = languageSelect.value;
-            localStorage.setItem("language", selectedLanguage);
-            loadLanguage(selectedLanguage);
+            currentLanguage = languageSelect.value;
+            localStorage.setItem("language", currentLanguage);
+            loadLanguage(currentLanguage);
         });
     });
 
     function loadLanguage(language) {
-        if (!translations[language]) return;
+        if (!translations[language]) {
+            return;
+        }
+        currentLanguage = language;
 
         const elementsToUpdate = {
             "title": "title",
@@ -582,13 +863,8 @@
             "summary": "summary",
             "category": "category",
             "quantity": "quantity",
-            "identicalClasses": "identicalClasses",
-            "differentClasses": "differentClasses",
-            "onlyLocal": "onlyLocal",
-            "onlySalesforce": "onlySalesforce",
             "details": "details",
-            "language-label": "language",
-            "theme-text": "themeButton"
+            "language-label": "language"
         };
 
         for (const [elementId, translationKey] of Object.entries(elementsToUpdate)) {
@@ -598,27 +874,39 @@
             }
         }
 
-        // Elementos repetitivos (botones, encabezados en tablas)
-        document.querySelectorAll("[data-translate]").forEach(el => {
+        document.querySelectorAll("[data-translate]").forEach((el) => {
             const key = el.getAttribute("data-translate");
             if (translations[language][key]) {
                 el.textContent = translations[language][key];
             }
         });
 
-        // Actualizar valores de Match/Mismatch
-        document.querySelectorAll("[data-translate-status]").forEach(el => {
-            const statusKey = el.getAttribute("data-status"); // "match" o "mismatch"
+        document.querySelectorAll("[data-translate-status]").forEach((el) => {
+            const statusKey = el.getAttribute("data-status");
             if (translations[language][statusKey]) {
                 el.textContent = translations[language][statusKey];
             }
         });
 
-        // Actualizar texto del botón de tema
-        document.getElementById("theme-text").textContent = translations[language].themeButton;
+        renderStatusChart(false, language);
+        setThemeLabel(language);
     }
+
+    window.addEventListener('resize', () => renderStatusChart(false, currentLanguage));
 </script>
 
 
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+

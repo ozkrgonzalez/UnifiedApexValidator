@@ -375,6 +375,20 @@ export async function ensureOrgAliasConnected(alias: string, logger: Logger): Pr
   return false;
 }
 
+export function formatGeneratedAt(date: Date): string
+{
+    // Ejemplo: "Oct 19, 2025, 11:53 PM"
+    return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    }).format(date);
+}
+
+
 
 
 
