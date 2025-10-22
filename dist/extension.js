@@ -89704,7 +89704,6 @@ async function generateWhereUsedReport(results, options) {
       await fs11.ensureDir(options.outputDir);
       savedPath = path16.join(options.outputDir, `where-is-used_${options.timestamp}.html`);
       await fs11.writeFile(savedPath, html, "utf8");
-      logger4.info(`Reporte Where is Used guardado en ${savedPath}`);
     } catch (err) {
       logger4.warn(`No se pudo guardar el reporte en disco: ${err.message}`);
     }

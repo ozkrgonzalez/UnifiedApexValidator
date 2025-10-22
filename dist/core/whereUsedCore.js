@@ -87,8 +87,8 @@ async function analyzeWhereUsedCore(options) {
     if (!classNames.size) {
         throw new Error('No fue posible determinar los nombres de clase Apex a partir de la selección.');
     }
-    logger.info(`Clases objetivo: ${Array.from(classNames).join(', ')}`);
-    logger.info(`Repositorio analizado: ${repoDir}`);
+    //logger.info(`Clases objetivo: ${Array.from(classNames).join(', ')}`);
+    //logger.info(`Repositorio analizado: ${repoDir}`);
     const usageMap = new Map();
     for (const cls of classNames) {
         usageMap.set(cls, {
@@ -237,7 +237,7 @@ function flowReferencesClass(xmlLower, className) {
     return apexActionPattern.test(xmlLower);
 }
 async function scanLwcUsage(searchRoot, classNames, usageMap, logger) {
-    logger.info(`Raíz para búsqueda LWC/Aura: ${searchRoot}`);
+    //logger.info(`Raíz para búsqueda LWC/Aura: ${searchRoot}`);
     const lwcFiles = await collectMatchingFiles(searchRoot, (relative) => {
         const normalized = relative.replace(/\\/g, '/');
         const lower = normalized.toLowerCase();
@@ -255,7 +255,7 @@ async function scanLwcUsage(searchRoot, classNames, usageMap, logger) {
     logger.info(`Escaneando ${lwcFiles.length} archivos LWC/Aura.`);
     const samplePaths = lwcFiles.slice(0, Math.min(lwcFiles.length, 5))
         .map((file) => path.relative(searchRoot, file) || path.basename(file));
-    logger.info(`Ejemplos LWC/Aura: ${samplePaths.join(', ')}`);
+    //logger.info(`Ejemplos LWC/Aura: ${samplePaths.join(', ')}`);
     for (const filePath of lwcFiles) {
         let content;
         try {
@@ -381,8 +381,8 @@ async function logLwcDirectories(baseDir, logger) {
     const auraRoot = path.join(baseDir, 'aura');
     const lwcExists = await pathExists(lwcRoot);
     const auraExists = await pathExists(auraRoot);
-    logger.warn(`Directorio LWC esperado: ${lwcRoot} (${lwcExists ? 'existe' : 'no existe'})`);
-    logger.warn(`Directorio Aura esperado: ${auraRoot} (${auraExists ? 'existe' : 'no existe'})`);
+    //logger.warn(`Directorio LWC esperado: ${lwcRoot} (${lwcExists ? 'existe' : 'no existe'})`);
+    //logger.warn(`Directorio Aura esperado: ${auraRoot} (${auraExists ? 'existe' : 'no existe'})`);
     if (lwcExists) {
         const samples = await listSubdirectories(lwcRoot, 5);
         if (samples.length) {
