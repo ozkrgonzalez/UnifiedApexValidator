@@ -567,8 +567,8 @@ var require_graceful_fs = __commonJS({
         }
       }
       var fs$writeFile = fs14.writeFile;
-      fs14.writeFile = writeFile5;
-      function writeFile5(path19, data, options, cb) {
+      fs14.writeFile = writeFile6;
+      function writeFile6(path19, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
         return go$writeFile(path19, data, options, cb);
@@ -1526,7 +1526,7 @@ var require_empty = __commonJS({
     var path19 = require("path");
     var mkdir = require_mkdirs();
     var remove3 = require_remove();
-    var emptyDir3 = u2(async function emptyDir4(dir) {
+    var emptyDir4 = u2(async function emptyDir5(dir) {
       let items;
       try {
         items = await fs13.readdir(dir);
@@ -1550,8 +1550,8 @@ var require_empty = __commonJS({
     module2.exports = {
       emptyDirSync,
       emptydirSync: emptyDirSync,
-      emptyDir: emptyDir3,
-      emptydir: emptyDir3
+      emptyDir: emptyDir4,
+      emptydir: emptyDir4
     };
   }
 });
@@ -1939,7 +1939,7 @@ var require_jsonfile = __commonJS({
       const str = stringify(obj, options);
       await universalify.fromCallback(fs13.writeFile)(file, str, options);
     }
-    var writeFile5 = universalify.fromPromise(_writeFile);
+    var writeFile6 = universalify.fromPromise(_writeFile);
     function writeFileSync4(file, obj, options = {}) {
       const fs13 = options.fs || _fs;
       const str = stringify(obj, options);
@@ -1948,7 +1948,7 @@ var require_jsonfile = __commonJS({
     module2.exports = {
       readFile: readFile5,
       readFileSync: readFileSync6,
-      writeFile: writeFile5,
+      writeFile: writeFile6,
       writeFileSync: writeFileSync4
     };
   }
@@ -88398,6 +88398,57 @@ function tokenize(value, options) {
 }
 
 // src/core/compareController.ts
+function normalizeForComparison(source) {
+  return source.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trim();
+}
+async function fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, logger6) {
+  const retrievedNames = /* @__PURE__ */ new Set();
+  if (!classNames.length) {
+    return retrievedNames;
+  }
+  await fs8.ensureDir(fallbackDir);
+  await fs8.emptyDir(fallbackDir);
+  const chunkSize = 100;
+  for (let i2 = 0; i2 < classNames.length; i2 += chunkSize) {
+    const chunk = classNames.slice(i2, i2 + chunkSize);
+    const inClause = chunk.map((name) => `'${name.replace(/'/g, "\\'")}'`).join(", ");
+    const query = `SELECT Name, Body FROM ApexClass WHERE Name IN (${inClause})`;
+    logger6.info(`\u{1FA84} Consulta fallback (Tooling API): ${query}`);
+    try {
+      const { stdout } = await execa(
+        "sf",
+        ["data", "query", "--query", query, "--target-org", orgAlias, "--use-tooling-api", "--json"],
+        { env: { ...process.env, FORCE_COLOR: "0" } }
+      );
+      const parsed = JSON.parse(stdout);
+      const records = parsed?.result?.records;
+      if (!Array.isArray(records) || records.length === 0) {
+        logger6.warn("\u26A0\uFE0F Fallback sin resultados para este bloque de clases.");
+        continue;
+      }
+      for (const record of records) {
+        const name = record?.Name;
+        const body = record?.Body;
+        if (typeof name !== "string" || typeof body !== "string") {
+          logger6.warn("\u26A0\uFE0F Registro de ApexClass sin Name o Body v\xE1lido, se omite.");
+          continue;
+        }
+        const targetPath = path14.join(fallbackDir, `${name}.cls`);
+        await fs8.writeFile(targetPath, body, "utf8");
+        retrievedNames.add(name);
+        logger6.info(`\u2705 Clase ${name} recuperada mediante fallback.`);
+      }
+    } catch (error) {
+      logger6.error(`\u274C Error ejecutando consulta fallback: ${error.message}`);
+      if (error.stdout) logger6.error(`\u{1F4C4} STDOUT: ${error.stdout}`);
+      if (error.stderr) logger6.error(`\u26A0\uFE0F STDERR: ${error.stderr}`);
+    }
+  }
+  if (!retrievedNames.size) {
+    logger6.error("\u274C Ninguna clase pudo recuperarse mediante fallback ApexClass.Body.");
+  }
+  return retrievedNames;
+}
 async function runCompareApexClasses(uri) {
   const logger6 = new Logger("compareController", true);
   logger6.info("\u{1F680} Iniciando Comparaci\xF3n de Clases...");
@@ -88453,6 +88504,11 @@ async function runCompareApexClasses(uri) {
   const tempDir = path14.join(getStorageRoot(), "temp", "compare");
   await fs8.ensureDir(tempDir);
   logger6.info(`\u{1F4C2} Carpeta temporal creada: ${tempDir}`);
+  const fallbackDir = path14.join(tempDir, "fallback");
+  let fallbackUsed = false;
+  let fallbackAttempted = false;
+  let fallbackWarned = false;
+  let fallbackRetrievedNames = /* @__PURE__ */ new Set();
   logger6.info(`\u2B07\uFE0F Recuperando ${classNames.length} clases desde org '${orgAlias}'...`);
   const retrieveCmd = [
     "project",
@@ -88478,8 +88534,17 @@ async function runCompareApexClasses(uri) {
     logger6.error(`\u274C Error en retrieve: ${err.message}`);
     if (err.stdout) logger6.error(`\u{1F4C4} STDOUT: ${err.stdout}`);
     if (err.stderr) logger6.error(`\u26A0\uFE0F STDERR: ${err.stderr}`);
-    vscode9.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
-    return;
+    fallbackAttempted = true;
+    fallbackRetrievedNames = await fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, logger6);
+    fallbackUsed = fallbackRetrievedNames.size > 0;
+    if (fallbackUsed) {
+      fallbackWarned = true;
+      logger6.warn("\u26A0\uFE0F Se us\xF3 fallback ApexClass.Body por error en retrieve.");
+      vscode9.window.showWarningMessage("No se pudo recuperar metadata; se consult\xF3 ApexClass.Body como alternativa.");
+    } else {
+      vscode9.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
+      return;
+    }
   }
   logger6.info(`\u{1F52C} Iniciando comparaci\xF3n de ${classNames.length} clases...`);
   const results = [];
@@ -88493,8 +88558,24 @@ async function runCompareApexClasses(uri) {
         retrievedPath = altPath;
       }
     }
+    let existsRemote = await fs8.pathExists(retrievedPath);
+    if (!existsRemote) {
+      if (!fallbackAttempted) {
+        fallbackAttempted = true;
+        fallbackRetrievedNames = await fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, logger6);
+        fallbackUsed = fallbackRetrievedNames.size > 0;
+        if (fallbackUsed && !fallbackWarned) {
+          fallbackWarned = true;
+          logger6.warn("\u26A0\uFE0F Se us\xF3 fallback ApexClass.Body para completar clases faltantes.");
+          vscode9.window.showWarningMessage("Algunas clases se consultaron usando ApexClass.Body porque no estaban disponibles v\xEDa retrieve.");
+        }
+      }
+      if (fallbackUsed && fallbackRetrievedNames.has(className)) {
+        retrievedPath = path14.join(fallbackDir, `${className}.cls`);
+        existsRemote = await fs8.pathExists(retrievedPath);
+      }
+    }
     const existsLocal = await fs8.pathExists(localPath);
-    const existsRemote = await fs8.pathExists(retrievedPath);
     logger6.info(`\u{1F9E9} Procesando clase: ${className}`);
     logger6.info(`\u{1F539} Local: ${existsLocal ? "\u2705" : "\u274C"} ${localPath}`);
     logger6.info(`\u{1F539} Remote: ${existsRemote ? "\u2705" : "\u274C"} ${retrievedPath}`);
@@ -88513,14 +88594,16 @@ async function runCompareApexClasses(uri) {
       results.push({ ClassName: className, Status: "Solo en Local" });
       continue;
     }
-    const localBody = await fs8.readFile(localPath, "utf8");
-    const remoteBody = await fs8.readFile(retrievedPath, "utf8");
-    if (localBody.trim() === remoteBody.trim()) {
+    const localBodyRaw = await fs8.readFile(localPath, "utf8");
+    const remoteBodyRaw = await fs8.readFile(retrievedPath, "utf8");
+    const localBody = normalizeForComparison(localBodyRaw);
+    const remoteBody = normalizeForComparison(remoteBodyRaw);
+    if (localBody === remoteBody) {
       logger6.info(`\u2705 ${className}: Match`);
       results.push({ ClassName: className, Status: "Match" });
     } else {
       logger6.info(`\u26A1 ${className}: Diferencias detectadas`);
-      const diff = diffLines(localBody, remoteBody).map((part) => {
+      const diff = diffLines(localBodyRaw, remoteBodyRaw).map((part) => {
         const sign = part.added ? "+" : part.removed ? "-" : " ";
         return part.value.split("\n").map((line) => `${sign} ${line}`).join("\n");
       }).join("\n");
@@ -88528,8 +88611,8 @@ async function runCompareApexClasses(uri) {
         ClassName: className,
         Status: "Mismatch",
         Differences: diff,
-        LocalVersion: localBody,
-        SalesforceVersion: remoteBody
+        LocalVersion: localBodyRaw,
+        SalesforceVersion: remoteBodyRaw
       });
     }
   }

@@ -6,6 +6,87 @@ import { execa } from 'execa';
 import { parseApexClassesFromPackage, getStorageRoot, Logger } from './utils';
 import { generateComparisonReport } from './reportGenerator';
 
+function normalizeForComparison(source: string): string
+{
+  return source
+  .replace(/^\uFEFF/, '')
+  .replace(/\r\n/g, '\n')
+  .replace(/[ \t]+$/gm, '')
+  .trim();
+}
+
+async function fallbackRetrieveApexClasses(
+  classNames: string[],
+  orgAlias: string,
+  fallbackDir: string,
+  logger: Logger
+): Promise<Set<string>>
+{
+  const retrievedNames = new Set<string>();
+  if (!classNames.length)
+  {
+    return retrievedNames;
+  }
+
+  await fs.ensureDir(fallbackDir);
+  await fs.emptyDir(fallbackDir);
+
+  const chunkSize = 100;
+  for (let i = 0; i < classNames.length; i += chunkSize)
+  {
+    const chunk = classNames.slice(i, i + chunkSize);
+    const inClause = chunk
+    .map(name => `'${name.replace(/'/g, "\\'")}'`)
+    .join(', ');
+    const query = `SELECT Name, Body FROM ApexClass WHERE Name IN (${inClause})`;
+    logger.info(`🪄 Consulta fallback (Tooling API): ${query}`);
+
+    try
+    {
+      const { stdout } = await execa('sf',
+      ['data', 'query', '--query', query, '--target-org', orgAlias, '--use-tooling-api', '--json'],
+      { env: { ...process.env, FORCE_COLOR: '0' } });
+      const parsed = JSON.parse(stdout);
+      const records = parsed?.result?.records;
+
+      if (!Array.isArray(records) || records.length === 0)
+      {
+        logger.warn('⚠️ Fallback sin resultados para este bloque de clases.');
+        continue;
+      }
+
+      for (const record of records)
+      {
+        const name = record?.Name;
+        const body = record?.Body;
+        if (typeof name !== 'string' || typeof body !== 'string')
+        {
+          logger.warn('⚠️ Registro de ApexClass sin Name o Body válido, se omite.');
+          continue;
+        }
+
+        const targetPath = path.join(fallbackDir, `${name}.cls`);
+        await fs.writeFile(targetPath, body, 'utf8');
+        retrievedNames.add(name);
+        logger.info(`✅ Clase ${name} recuperada mediante fallback.`);
+      }
+    }
+    catch (error: any)
+    {
+      logger.error(`❌ Error ejecutando consulta fallback: ${error.message}`);
+      if (error.stdout) logger.error(`📄 STDOUT: ${error.stdout}`);
+      if (error.stderr) logger.error(`⚠️ STDERR: ${error.stderr}`);
+    }
+  }
+
+  if (!retrievedNames.size)
+  {
+    logger.error('❌ Ninguna clase pudo recuperarse mediante fallback ApexClass.Body.');
+  }
+
+  return retrievedNames;
+}
+
 export async function runCompareApexClasses(uri?: vscode.Uri)
 {
   const logger = new Logger('compareController', true);
@@ -88,6 +169,12 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
   await fs.ensureDir(tempDir);
   logger.info(`📂 Carpeta temporal creada: ${tempDir}`);
 
+  const fallbackDir = path.join(tempDir, 'fallback');
+  let fallbackUsed = false;
+  let fallbackAttempted = false;
+  let fallbackWarned = false;
+  let fallbackRetrievedNames: Set<string> = new Set();
+
     // 🧭 Retrieve desde la org seleccionada
     logger.info(`⬇️ Recuperando ${classNames.length} clases desde org '${orgAlias}'...`);
 
@@ -115,8 +202,22 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
     logger.error(`❌ Error en retrieve: ${err.message}`);
     if (err.stdout) logger.error(`📄 STDOUT: ${err.stdout}`);
     if (err.stderr) logger.error(`⚠️ STDERR: ${err.stderr}`);
-    vscode.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
-    return;
+
+    fallbackAttempted = true;
+    fallbackRetrievedNames = await fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, logger);
+    fallbackUsed = fallbackRetrievedNames.size > 0;
+
+    if (fallbackUsed)
+    {
+      fallbackWarned = true;
+      logger.warn('⚠️ Se usó fallback ApexClass.Body por error en retrieve.');
+      vscode.window.showWarningMessage('No se pudo recuperar metadata; se consultó ApexClass.Body como alternativa.');
+    }
+    else
+    {
+      vscode.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
+      return;
+    }
     }
 
   // 🔬 Comparar clases
@@ -146,8 +247,32 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
             }
         }
 
+        let existsRemote = await fs.pathExists(retrievedPath);
+
+        if (!existsRemote)
+        {
+            if (!fallbackAttempted)
+            {
+                fallbackAttempted = true;
+                fallbackRetrievedNames = await fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, logger);
+                fallbackUsed = fallbackRetrievedNames.size > 0;
+
+                if (fallbackUsed && !fallbackWarned)
+                {
+                    fallbackWarned = true;
+                    logger.warn('⚠️ Se usó fallback ApexClass.Body para completar clases faltantes.');
+                    vscode.window.showWarningMessage('Algunas clases se consultaron usando ApexClass.Body porque no estaban disponibles vía retrieve.');
+                }
+            }
+
+            if (fallbackUsed && fallbackRetrievedNames.has(className))
+            {
+                retrievedPath = path.join(fallbackDir, `${className}.cls`);
+                existsRemote = await fs.pathExists(retrievedPath);
+            }
+        }
+
         const existsLocal = await fs.pathExists(localPath);
-        const existsRemote = await fs.pathExists(retrievedPath);
 
         logger.info(`🧩 Procesando clase: ${className}`);
         logger.info(`🔹 Local: ${existsLocal ? '✅' : '❌'} ${localPath}`);
@@ -171,15 +296,17 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
             continue;
         }
 
-        const localBody = await fs.readFile(localPath, 'utf8');
-        const remoteBody = await fs.readFile(retrievedPath, 'utf8');
+        const localBodyRaw = await fs.readFile(localPath, 'utf8');
+        const remoteBodyRaw = await fs.readFile(retrievedPath, 'utf8');
+        const localBody = normalizeForComparison(localBodyRaw);
+        const remoteBody = normalizeForComparison(remoteBodyRaw);
 
-        if (localBody.trim() === remoteBody.trim()) {
+        if (localBody === remoteBody) {
             logger.info(`✅ ${className}: Match`);
             results.push({ ClassName: className, Status: 'Match' });
         } else {
             logger.info(`⚡ ${className}: Diferencias detectadas`);
-            const diff = Diff.diffLines(localBody, remoteBody)
+            const diff = Diff.diffLines(localBodyRaw, remoteBodyRaw)
             .map(part => {
                 const sign = part.added ? '+' : part.removed ? '-' : ' ';
                 return part.value
@@ -193,8 +320,8 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
             ClassName: className,
             Status: 'Mismatch',
             Differences: diff,
-            LocalVersion: localBody,
-            SalesforceVersion: remoteBody
+            LocalVersion: localBodyRaw,
+            SalesforceVersion: remoteBodyRaw
             });
         }
     }
