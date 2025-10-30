@@ -27,7 +27,7 @@
     }
 
     .canvas {
-      max-width: 1080px;
+      max-width: 1320px;
       margin: 0 auto;
     }
 
@@ -198,6 +198,39 @@
       border: 1px solid var(--border);
       box-shadow: var(--shadow-small);
     }
+
+    .monaco-snippet {
+      position: relative;
+      min-height: 220px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #0b1622;
+    }
+
+    .monaco-editor-host {
+      width: 100%;
+      height: 100%;
+      min-height: 220px;
+    }
+
+    .monaco-snippet .monaco-editor,
+    .monaco-snippet .monaco-editor .overflow-guard {
+      border-radius: 12px;
+    }
+
+    .monaco-fallback {
+      padding: 16px;
+      border-radius: 12px;
+      background: #0b1622;
+      border: 1px solid var(--border);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+      max-height: 400px;
+      overflow: auto;
+      font-size: 0.9rem;
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+      white-space: pre;
+    }
   </style>
 </head>
 <body>
@@ -308,7 +341,11 @@
       <tr>
         <td>{{ dup.clases | replace(',', '<br>') | safe }}</td>
         <td>{{ dup.lines }}</td>
-        <td><pre>{{ dup.codeSnippet }}</pre></td>
+        <td>
+          <div class="monaco-snippet" data-language="{{ dup.language | default('java', true) }}">
+            <script type="text/plain" class="monaco-snippet-data">{{ dup.codeSnippet | escape }}</script>
+          </div>
+        </td>
       </tr>
       {% endfor %}
     </table>
@@ -351,6 +388,88 @@
       }
 
       search.addEventListener('input', filter);
+    })();
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+  <script>
+    (function () {
+      const containers = Array.from(document.querySelectorAll('.monaco-snippet'));
+      if (!containers.length) {
+        return;
+      }
+
+      function extractCode(container) {
+        const dataNode = container.querySelector('.monaco-snippet-data');
+        if (!dataNode) {
+          return '';
+        }
+
+        const payload = dataNode.textContent || '';
+        dataNode.remove();
+        return payload;
+      }
+
+      function renderFallback(container, code) {
+        const snippet = typeof code === 'string' ? code : extractCode(container);
+        const fallback = document.createElement('pre');
+        fallback.className = 'monaco-fallback';
+        fallback.textContent = snippet;
+        container.replaceWith(fallback);
+      }
+
+      if (typeof require === 'undefined') {
+        containers.forEach(function (container) {
+          renderFallback(container);
+        });
+        return;
+      }
+
+      const basePath = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs';
+      require.config({ paths: { vs: basePath } });
+      window.MonacoEnvironment = {
+        getWorkerUrl: function () {
+          const script = [
+            "self.MonacoEnvironment = { baseUrl: '" + basePath + "/' };",
+            "importScripts('" + basePath + "/worker/workerMain.js');"
+          ].join('\n');
+          return 'data:text/javascript;charset=utf-8,' + encodeURIComponent(script);
+        }
+      };
+
+      require(['vs/editor/editor.main'], function () {
+        containers.forEach(function (container) {
+          const code = extractCode(container);
+          const host = document.createElement('div');
+          host.className = 'monaco-editor-host';
+          container.appendChild(host);
+
+          const languageValue = container.dataset.language ? container.dataset.language.trim() : '';
+          const language = languageValue || 'java';
+
+          try {
+            monaco.editor.create(host, {
+              value: code,
+              language: language,
+              theme: 'vs-dark',
+              readOnly: true,
+              automaticLayout: true,
+              minimap: { enabled: false },
+              wordWrap: 'on',
+              scrollBeyondLastLine: false,
+              lineNumbersMinChars: 3
+            });
+          } catch (error) {
+            console.warn('No se pudo inicializar Monaco, se utiliza un bloque pre.', error);
+            container.removeChild(host);
+            renderFallback(container, code);
+          }
+        });
+      }, function (error) {
+        console.warn('No se pudo cargar Monaco.', error);
+        containers.forEach(function (container) {
+          renderFallback(container);
+        });
+      });
     })();
   </script>
 </body>

@@ -41,8 +41,57 @@ const vscode = __importStar(require("vscode"));
 const url_1 = require("url");
 const utils_1 = require("./utils");
 const logger = new utils_1.Logger('apexAllmanFormatter');
+patchWindowsBatSpawn();
 let prettierInstance = null;
 let apexPluginPathCache = null;
+let windowsBatSpawnPatched = false;
+function patchWindowsBatSpawn() {
+    if (process.platform !== 'win32') {
+        return;
+    }
+    const childProcess = require('child_process');
+    if (windowsBatSpawnPatched) {
+        return;
+    }
+    const originalSpawn = childProcess.spawn;
+    const originalSpawnSync = childProcess.spawnSync;
+    const spawnAny = originalSpawn;
+    const spawnSyncAny = originalSpawnSync;
+    const ensureShellTrue = (command, options) => typeof command === 'string' &&
+        command.toLowerCase().endsWith('.bat') &&
+        (!options || options.shell !== true);
+    const patchedSpawn = function patchedSpawn(...spawnArgs) {
+        const [command, maybeArgs, maybeOptions] = spawnArgs;
+        if (Array.isArray(maybeArgs)) {
+            if (ensureShellTrue(command, maybeOptions)) {
+                const patchedOptions = { ...(maybeOptions ?? {}), shell: true };
+                return spawnAny.call(this, command, maybeArgs, patchedOptions);
+            }
+        }
+        else if (ensureShellTrue(command, maybeArgs)) {
+            const patchedOptions = { ...(maybeArgs ?? {}), shell: true };
+            return spawnAny.call(this, command, patchedOptions);
+        }
+        return spawnAny.apply(this, spawnArgs);
+    };
+    const patchedSpawnSync = function patchedSpawnSync(...spawnArgs) {
+        const [command, maybeArgs, maybeOptions] = spawnArgs;
+        if (Array.isArray(maybeArgs)) {
+            if (ensureShellTrue(command, maybeOptions)) {
+                const patchedOptions = { ...(maybeOptions ?? {}), shell: true };
+                return spawnSyncAny.call(this, command, maybeArgs, patchedOptions);
+            }
+        }
+        else if (ensureShellTrue(command, maybeArgs)) {
+            const patchedOptions = { ...(maybeArgs ?? {}), shell: true };
+            return spawnSyncAny.call(this, command, patchedOptions);
+        }
+        return spawnSyncAny.apply(this, spawnArgs);
+    };
+    childProcess.spawn = patchedSpawn;
+    childProcess.spawnSync = patchedSpawnSync;
+    windowsBatSpawnPatched = true;
+}
 async function loadPrettier(hints = []) {
     if (prettierInstance) {
         return prettierInstance;

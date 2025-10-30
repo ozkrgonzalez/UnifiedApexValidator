@@ -19,6 +19,39 @@ const ignoredUnhandledPatterns: RegExp[] = [
   /CreateEmbeddingSupplier/i
 ];
 
+const ANSI_ESCAPE_REGEX = /\x1B\[[0-?]*[ -/]*[@-~]/g;
+
+export function parseSfJson(output?: string): any | undefined
+{
+  const text = (output || '').trim();
+  if (!text)
+  {
+    return undefined;
+  }
+
+  try
+  {
+    return JSON.parse(text);
+  }
+  catch
+  {
+    const cleaned = text.replace(ANSI_ESCAPE_REGEX, '');
+    if (!cleaned || cleaned === text)
+    {
+      return undefined;
+    }
+
+    try
+    {
+      return JSON.parse(cleaned);
+    }
+    catch
+    {
+      return undefined;
+    }
+  }
+}
+
 function shouldIgnoreUnhandled(reason: any): boolean
 {
   const message =
@@ -146,7 +179,7 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
 
   try
   {
-    logger.info(`📦 Leyendo package.xml desde: ${pkgPath}`);
+    //logger.info(`📦 Leyendo package.xml desde: ${pkgPath}`);
     const xml = await fs.readFile(pkgPath, 'utf8');
     const parser = new XMLParser({ ignoreAttributes: false });
     const json = parser.parse(xml);
@@ -164,7 +197,7 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
     const testClasses: string[] = [];
     const nonTestClasses: string[] = [];
 
-    logger.info(`📂 Buscando clases dentro de: ${repoDir}`);
+    //logger.info(`📂 Buscando clases dentro de: ${repoDir}`);
 
     for (const cls of members)
     {
@@ -226,6 +259,87 @@ export async function cleanUpFiles(paths: string[], logger?: Logger)
   }
 }
 
+export interface ConnectedOrgInfo
+{
+  alias?: string;
+  username: string;
+  orgId?: string;
+  isDefault?: boolean;
+}
+
+export async function getDefaultConnectedOrg(logger?: Logger): Promise<ConnectedOrgInfo | null>
+{
+  const sfPath = resolveSfCliPath();
+
+  try
+  {
+    const { stdout, stderr } = await execa(sfPath, ['org', 'list', '--json'], {
+      env: { ...process.env, FORCE_COLOR: '0' }
+    });
+
+    const payload = parseSfJson(stdout) ?? parseSfJson(stderr);
+    const result = payload?.result ?? payload;
+
+    if (!result)
+    {
+      logger?.warn('No se pudo interpretar la salida de "sf org list --json".');
+      return null;
+    }
+
+    const candidates: any[] = [];
+    if (Array.isArray(result.nonScratchOrgs)) candidates.push(...result.nonScratchOrgs);
+    if (Array.isArray(result.scratchOrgs)) candidates.push(...result.scratchOrgs);
+
+    const defaultUsername: string | undefined =
+      typeof result.defaultUsername === 'string' ? result.defaultUsername :
+      typeof result.defaultDevHubUsername === 'string' ? result.defaultDevHubUsername :
+      undefined;
+
+    let selected: any =
+      candidates.find((org) => org?.isDefaultUsername) ||
+      (defaultUsername ? candidates.find((org) => org?.username === defaultUsername) : undefined);
+
+    if (!selected && defaultUsername)
+    {
+      selected = { username: defaultUsername };
+    }
+
+    if (!selected && candidates.length === 1)
+    {
+      selected = candidates[0];
+    }
+
+    const username = typeof selected?.username === 'string'
+      ? selected.username.trim()
+      : typeof defaultUsername === 'string'
+        ? defaultUsername.trim()
+        : '';
+
+    if (!username)
+    {
+      logger?.warn('No se detectó una org con isDefaultUsername en Salesforce CLI.');
+      return null;
+    }
+
+    const alias = typeof selected?.alias === 'string' ? selected.alias.trim() : undefined;
+
+    logger?.info(`Se utilizará la org por defecto de Salesforce CLI: ${alias || username}.`);
+
+    return {
+      alias: alias || undefined,
+      username,
+      orgId: typeof selected?.orgId === 'string' ? selected.orgId : undefined,
+      isDefault: Boolean(selected?.isDefaultUsername)
+    };
+  }
+  catch (err: any)
+  {
+    const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
+    logger?.warn(`No se pudo obtener la org por defecto desde Salesforce CLI: ${reason}`);
+    return null;
+  }
+}
+
 export function resolveSfCliPath(): string
 {
   const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
@@ -269,7 +383,7 @@ export async function ensureOrgAliasConnected(alias: string, logger: Logger): Pr
   const trimmed = (alias || '').trim();
   if (!trimmed)
   {
-    vscode.window.showErrorMessage('Configura UnifiedApexValidator.sfOrgAlias antes de ejecutar el validador.');
+    vscode.window.showErrorMessage('No se detectó ninguna org conectada por defecto. Ejecuta "sf org login web" y vuelve a intentarlo.');
     return false;
   }
 
@@ -279,29 +393,58 @@ export async function ensureOrgAliasConnected(alias: string, logger: Logger): Pr
   {
     try
     {
-      const { stdout } = await execa(sfPath, ['org', 'display', '--json', '--target-org', trimmed], {
+      const { stdout, stderr } = await execa(sfPath, ['org', 'display', '--json', '--target-org', trimmed], {
         env: { ...process.env, FORCE_COLOR: '0' }
       });
-      const raw = stdout?.trim();
-      if (!raw) return false;
+      const info = parseSfJson(stdout) ?? parseSfJson(stderr);
+      if (!info)
+      {
+        logger.warn(`No se pudo interpretar la respuesta de Salesforce CLI para la org "${trimmed}".`);
+        return false;
+      }
 
-      const info = JSON.parse(raw);
-      const status: string =
-        info?.result?.connectedStatus ||
-        info?.result?.status ||
+      const status =
+        info?.result?.connectedStatus ??
+        info?.result?.status ??
         info?.result?.connected;
 
-      if (typeof status === 'string' && status.toLowerCase() === 'connected')
+      const isConnected =
+        (typeof status === 'string' && status.toLowerCase() === 'connected') ||
+        status === true ||
+        info?.result?.connected === true;
+
+      if (isConnected)
       {
-        logger.info(`Org "${trimmed}" detectada como conectada.`);
+        //logger.info(`Org "${trimmed}" detectada como conectada.`);
         return true;
       }
 
-      logger.warn(`Estado de la org "${trimmed}": ${status || 'desconocido'}.`);
+      const statusLabel =
+        typeof status === 'string'
+          ? status
+          : typeof status === 'boolean'
+            ? status ? 'connected' : 'disconnected'
+            : 'desconocido';
+
+      logger.warn(`Estado de la org "${trimmed}": ${statusLabel}.`);
       return false;
     }
     catch (err: any)
     {
+      const parsed = parseSfJson(err?.stdout) ?? parseSfJson(err?.stderr);
+      if (parsed?.result?.connectedStatus || parsed?.result?.connected)
+      {
+        const status =
+          parsed.result.connectedStatus ??
+          parsed.result.connected;
+
+        if ((typeof status === 'string' && status.toLowerCase() === 'connected') || status === true)
+        {
+          logger.info(`Org "${trimmed}" reportada como conectada.`);
+          return true;
+        }
+      }
+
       const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
       logger.warn(`No se pudo verificar la org "${trimmed}": ${reason}`);
       return false;
