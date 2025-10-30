@@ -89153,9 +89153,7 @@ async function generateApexDocChunked() {
   }
   const iaStatus = evaluateIaConfig();
   if (!iaStatus.ready) {
-    vscode12.window.showWarningMessage(
-      `Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(", ")}`
-    );
+    vscode12.window.showWarningMessage(`Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(", ")}`);
     return;
   }
   const logger6 = new Logger("GenerateApexDoc", true);
@@ -89543,8 +89541,54 @@ var path15 = __toESM(require("path"));
 var vscode13 = __toESM(require("vscode"));
 var import_url2 = require("url");
 var logger3 = new Logger("apexAllmanFormatter");
+patchWindowsBatSpawn();
 var prettierInstance = null;
 var apexPluginPathCache = null;
+var windowsBatSpawnPatched = false;
+function patchWindowsBatSpawn() {
+  if (process.platform !== "win32") {
+    return;
+  }
+  const childProcess = require("child_process");
+  if (windowsBatSpawnPatched) {
+    return;
+  }
+  const originalSpawn = childProcess.spawn;
+  const originalSpawnSync = childProcess.spawnSync;
+  const spawnAny = originalSpawn;
+  const spawnSyncAny = originalSpawnSync;
+  const ensureShellTrue = (command, options) => typeof command === "string" && command.toLowerCase().endsWith(".bat") && (!options || options.shell !== true);
+  const patchedSpawn = function patchedSpawn2(...spawnArgs) {
+    const [command, maybeArgs, maybeOptions] = spawnArgs;
+    if (Array.isArray(maybeArgs)) {
+      if (ensureShellTrue(command, maybeOptions)) {
+        const patchedOptions = { ...maybeOptions ?? {}, shell: true };
+        return spawnAny.call(this, command, maybeArgs, patchedOptions);
+      }
+    } else if (ensureShellTrue(command, maybeArgs)) {
+      const patchedOptions = { ...maybeArgs ?? {}, shell: true };
+      return spawnAny.call(this, command, patchedOptions);
+    }
+    return spawnAny.apply(this, spawnArgs);
+  };
+  const patchedSpawnSync = function patchedSpawnSync2(...spawnArgs) {
+    const [command, maybeArgs, maybeOptions] = spawnArgs;
+    if (Array.isArray(maybeArgs)) {
+      if (ensureShellTrue(command, maybeOptions)) {
+        const patchedOptions = { ...maybeOptions ?? {}, shell: true };
+        return spawnSyncAny.call(this, command, maybeArgs, patchedOptions);
+      }
+    } else if (ensureShellTrue(command, maybeArgs)) {
+      const patchedOptions = { ...maybeArgs ?? {}, shell: true };
+      return spawnSyncAny.call(this, command, patchedOptions);
+    }
+    return spawnSyncAny.apply(this, spawnArgs);
+  };
+  childProcess.spawn = patchedSpawn;
+  childProcess.spawnSync = patchedSpawnSync;
+  windowsBatSpawnPatched = true;
+  logger3.info("Parche aplicado para ejecutar .bat con shell=true en child_process.");
+}
 async function loadPrettier(hints = []) {
   if (prettierInstance) {
     return prettierInstance;

@@ -17,9 +17,7 @@ export async function generateApexDocChunked()
     const iaStatus = evaluateIaConfig();
     if (!iaStatus.ready)
     {
-        vscode.window.showWarningMessage(
-            `Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(', ')}`
-        );
+        vscode.window.showWarningMessage(`Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(', ')}`);
         return;
     }
 
@@ -136,7 +134,8 @@ export async function generateApexDocChunked()
                             const block = matches[i][0];
                             const blkPath = vscode.Uri.file(`${outputDir}/ApexDoc_Debug_${chunk.kind}_${chunk.name.replace(/[^a-zA-Z0-9_]/g, '_')}_${i}.txt`);
                             await vscode.workspace.fs.writeFile(blkPath, Buffer.from(block, 'utf8'));
-                        }
+                        }
+
                         let docBlock = matches[0][0];
                         if (chunk.kind === 'classHeader')
                         {
