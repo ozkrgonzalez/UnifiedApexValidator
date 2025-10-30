@@ -218,11 +218,6 @@
           "default": "MyDomain.sanboxname.sandbox.lightning.force.com",
           "description": "Salesforce Org Domain."
         },
-        "UnifiedApexValidator.sfOrgAlias": {
-          "type": "string",
-          "default": "MySanboxName",
-          "description": "Salesforce Org Alias."
-        },
         "UnifiedApexValidator.sfRepositoryDir": {
           "type": "string",
           "default": "",

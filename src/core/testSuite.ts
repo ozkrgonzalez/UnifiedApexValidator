@@ -1,8 +1,7 @@
-﻿import * as vscode from 'vscode';
-import * as path from 'path';
+﻿import * as path from 'path';
 import * as fs from 'fs-extra';
 import { execa } from 'execa';
-import { Logger, getStorageRoot, resolveSfCliPath } from './utils';
+import { Logger, getStorageRoot, resolveSfCliPath, getDefaultConnectedOrg, parseSfJson } from './utils';
 
 interface CoverageEntry
 {
@@ -36,13 +35,10 @@ export class TestSuite
 {
   private logger: Logger;
   private sfPath: string;
-  private orgAlias: string;
   private tempDir: string;
 
   constructor(workspaceRoot: string)
   {
-    const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
-    this.orgAlias = config.get<string>('sfOrgAlias') || 'DEVSEGC';
     this.tempDir = path.join(workspaceRoot, '.uav', 'temp');
 
     // Logger dedicado a TestSuite (no pisa el canal principal)
@@ -82,20 +78,28 @@ export class TestSuite
       });
 
       const { stdout, stderr } = await child;
-      const raw = (stdout || stderr || '').trim();
+      const parsed = parseSfJson(stdout) ?? parseSfJson(stderr);
+      if (parsed)
+      {
+        return parsed;
+      }
 
-      try
+      const raw = (stdout || stderr || '').trim();
+      if (raw)
       {
-        return JSON.parse(raw);
+        this.logger.warn(`Warning ${description} devolvio salida no JSON: ${raw}`);
       }
-      catch
-      {
-        const cleaned = raw.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
-        return JSON.parse(cleaned);
-      }
+      return {};
     }
     catch (err: any)
     {
+      const parsed = parseSfJson(err?.stdout) ?? parseSfJson(err?.stderr);
+      if (parsed)
+      {
+        this.logger.warn(`Warning ${description} finalizo con error pero entrego datos JSON.`);
+        return parsed;
+      }
+
       this.logger.error(`\u274C Error en ${description}: ${err.shortMessage || err.message}`);
       return {};
     }
@@ -104,9 +108,9 @@ export class TestSuite
   /**
    * Lanza las clases de prueba y obtiene el testRunId
    */
-  private async executeTests(testClasses: string[]): Promise<string | null>
+  private async executeTests(testClasses: string[], targetOrg: string): Promise<string | null>
   {
-    const command = [this.sfPath, 'apex', 'run', 'test', '--json', '--target-org', this.orgAlias, '--test-level', 'RunSpecifiedTests', '--code-coverage', '--class-names', ...testClasses];
+    const command = [this.sfPath, 'apex', 'run', 'test', '--json', '--target-org', targetOrg, '--test-level', 'RunSpecifiedTests', '--code-coverage', '--class-names', ...testClasses];
     const result = await this.runSfCommand(command, 'ejecucion de pruebas');
     const testRunId =
       result?.result?.testRunId ||
@@ -128,13 +132,13 @@ export class TestSuite
   /**
    * Espera a que el test run finalice
    */
-  private async waitForTestCompletion(testRunId: string): Promise<any>
+  private async waitForTestCompletion(testRunId: string, targetOrg: string): Promise<any>
   {
     this.logger.info(`⏳ Esperando finalización del testRunId ${testRunId}...`);
 
     for (let i = 0; i < 60; i++)
     {
-      const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', this.orgAlias, '--test-run-id', testRunId];
+      const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', targetOrg, '--test-run-id', testRunId];
 
       const result = await this.runSfCommand(command, `verificando estado (${i + 1}/60)`);
       const summary = result?.result?.summary || {};
@@ -159,7 +163,7 @@ export class TestSuite
   /**
    * Obtiene resultados y cobertura
    */
-  private async fetchTestResults(testRunId: string): Promise<any>
+  private async fetchTestResults(testRunId: string, targetOrg: string): Promise<any>
   {
     const baseFile = path.join(this.tempDir, `test-result-${testRunId}.json`);
     const coverageFile = path.join(this.tempDir, `test-result-${testRunId}-codecoverage.json`);
@@ -169,7 +173,7 @@ export class TestSuite
 
     for (let i = 0; i < 3; i++)
     {
-      const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', this.orgAlias, '--test-run-id', testRunId, '--code-coverage', '--output-dir', this.tempDir];
+      const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', targetOrg, '--test-run-id', testRunId, '--code-coverage', '--output-dir', this.tempDir];
 
       await this.runSfCommand(command, `obtencion cobertura (intento ${i + 1})`);
 
@@ -275,14 +279,29 @@ export class TestSuite
     }
 
     this.logger.info(`🧪 Ejecutando clases de prueba: ${testClasses.join(', ')}`);
-    const testRunId = await this.executeTests(testClasses);
+    const defaultOrg = await getDefaultConnectedOrg(this.logger);
+    if (!defaultOrg)
+    {
+      const message = 'No se detectó una org por defecto conectada en Salesforce CLI.';
+      this.logger.error(message);
+      return { error: message, coverage_data: [], test_results: [] };
+    }
+
+    const targetOrg = defaultOrg.alias || defaultOrg.username;
+    const displayOrg =
+      defaultOrg.alias && defaultOrg.alias !== defaultOrg.username
+        ? `${defaultOrg.alias} (${defaultOrg.username})`
+        : defaultOrg.username;
+
+    this.logger.info(`🌐 Usando la org por defecto: ${displayOrg}.`);
+    const testRunId = await this.executeTests(testClasses, targetOrg);
     if (!testRunId) return { error: 'No se pudo iniciar pruebas.', coverage_data: [], test_results: [] };
 
     this.logger.info(`🔍 Monitoreando progreso del testRunId ${testRunId}...`);
-    await this.waitForTestCompletion(testRunId);
+    await this.waitForTestCompletion(testRunId, targetOrg);
     this.logger.info('📈 Ejecución de pruebas finalizada. Obteniendo resultados y cobertura...');
 
-    const results = await this.fetchTestResults(testRunId);
+    const results = await this.fetchTestResults(testRunId, targetOrg);
     if (!results || Object.keys(results).length === 0)
     {
       this.logger.error('❌ No se pudieron obtener resultados del test run.');
@@ -323,3 +342,5 @@ export class TestSuite
     return { coverage_data: coverage, test_results: tests };
   }
 }
+
+

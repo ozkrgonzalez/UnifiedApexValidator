@@ -94,7 +94,7 @@ export async function generateReport(outputDir: string, data: any)
         // Guardar HTML principal
         const htmlFilePath = path.join(finalOutputDir, 'reporte_validaciones.html');
         await fs.writeFile(htmlFilePath, html, 'utf8');
-        logger.info('Reporte HTML generado correctamente.');
+        //logger.info('Reporte HTML generado correctamente.');
 
         // Generar HTML alternativo para PDF si existe
         let pdfHtmlPath = htmlFilePath;

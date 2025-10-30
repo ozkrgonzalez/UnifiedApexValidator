@@ -80,7 +80,6 @@ function patchWindowsBatSpawn(): void
     childProcess.spawnSync = patchedSpawnSync as typeof childProcess.spawnSync;
 
     windowsBatSpawnPatched = true;
-    logger.info('Parche aplicado para ejecutar .bat con shell=true en child_process.');
 }
 
 async function loadPrettier(hints: string[] = []): Promise<typeof import('prettier')>
