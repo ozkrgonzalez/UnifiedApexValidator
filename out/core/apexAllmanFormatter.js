@@ -91,7 +91,6 @@ function patchWindowsBatSpawn() {
     childProcess.spawn = patchedSpawn;
     childProcess.spawnSync = patchedSpawnSync;
     windowsBatSpawnPatched = true;
-    logger.info('Parche aplicado para ejecutar .bat con shell=true en child_process.');
 }
 async function loadPrettier(hints = []) {
     if (prettierInstance) {

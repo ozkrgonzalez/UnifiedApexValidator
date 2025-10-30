@@ -34,7 +34,6 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TestSuite = void 0;
-const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs-extra"));
 const execa_1 = require("execa");
@@ -45,11 +44,8 @@ const utils_1 = require("./utils");
 class TestSuite {
     logger;
     sfPath;
-    orgAlias;
     tempDir;
     constructor(workspaceRoot) {
-        const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
-        this.orgAlias = config.get('sfOrgAlias') || 'DEVSEGC';
         this.tempDir = path.join(workspaceRoot, '.uav', 'temp');
         // Logger dedicado a TestSuite (no pisa el canal principal)
         this.logger = new utils_1.Logger('TestSuite', false);
@@ -79,16 +75,22 @@ class TestSuite {
                 const text = data.toString().trim();
             });
             const { stdout, stderr } = await child;
+            const parsed = (0, utils_1.parseSfJson)(stdout) ?? (0, utils_1.parseSfJson)(stderr);
+            if (parsed) {
+                return parsed;
+            }
             const raw = (stdout || stderr || '').trim();
-            try {
-                return JSON.parse(raw);
+            if (raw) {
+                this.logger.warn(`Warning ${description} devolvio salida no JSON: ${raw}`);
             }
-            catch {
-                const cleaned = raw.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
-                return JSON.parse(cleaned);
-            }
+            return {};
         }
         catch (err) {
+            const parsed = (0, utils_1.parseSfJson)(err?.stdout) ?? (0, utils_1.parseSfJson)(err?.stderr);
+            if (parsed) {
+                this.logger.warn(`Warning ${description} finalizo con error pero entrego datos JSON.`);
+                return parsed;
+            }
             this.logger.error(`\u274C Error en ${description}: ${err.shortMessage || err.message}`);
             return {};
         }
@@ -96,8 +98,8 @@ class TestSuite {
     /**
      * Lanza las clases de prueba y obtiene el testRunId
      */
-    async executeTests(testClasses) {
-        const command = [this.sfPath, 'apex', 'run', 'test', '--json', '--target-org', this.orgAlias, '--test-level', 'RunSpecifiedTests', '--code-coverage', '--class-names', ...testClasses];
+    async executeTests(testClasses, targetOrg) {
+        const command = [this.sfPath, 'apex', 'run', 'test', '--json', '--target-org', targetOrg, '--test-level', 'RunSpecifiedTests', '--code-coverage', '--class-names', ...testClasses];
         const result = await this.runSfCommand(command, 'ejecucion de pruebas');
         const testRunId = result?.result?.testRunId ||
             result?.result?.summary?.testRunId ||
@@ -113,10 +115,10 @@ class TestSuite {
     /**
      * Espera a que el test run finalice
      */
-    async waitForTestCompletion(testRunId) {
+    async waitForTestCompletion(testRunId, targetOrg) {
         this.logger.info(`⏳ Esperando finalización del testRunId ${testRunId}...`);
         for (let i = 0; i < 60; i++) {
-            const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', this.orgAlias, '--test-run-id', testRunId];
+            const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', targetOrg, '--test-run-id', testRunId];
             const result = await this.runSfCommand(command, `verificando estado (${i + 1}/60)`);
             const summary = result?.result?.summary || {};
             const outcome = summary.outcome || 'Pendiente';
@@ -135,13 +137,13 @@ class TestSuite {
     /**
      * Obtiene resultados y cobertura
      */
-    async fetchTestResults(testRunId) {
+    async fetchTestResults(testRunId, targetOrg) {
         const baseFile = path.join(this.tempDir, `test-result-${testRunId}.json`);
         const coverageFile = path.join(this.tempDir, `test-result-${testRunId}-codecoverage.json`);
         fs.ensureDirSync(this.tempDir);
         this.logger.info(`\u{1F4E6} Recuperando resultados del test run ${testRunId}...`);
         for (let i = 0; i < 3; i++) {
-            const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', this.orgAlias, '--test-run-id', testRunId, '--code-coverage', '--output-dir', this.tempDir];
+            const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', targetOrg, '--test-run-id', testRunId, '--code-coverage', '--output-dir', this.tempDir];
             await this.runSfCommand(command, `obtencion cobertura (intento ${i + 1})`);
             if (fs.existsSync(baseFile)) {
                 const testResult = fs.readJsonSync(baseFile, { throws: false }) || {};
@@ -226,13 +228,24 @@ class TestSuite {
             return { error: 'No hay clases test para ejecutar.', coverage_data: [], test_results: [] };
         }
         this.logger.info(`🧪 Ejecutando clases de prueba: ${testClasses.join(', ')}`);
-        const testRunId = await this.executeTests(testClasses);
+        const defaultOrg = await (0, utils_1.getDefaultConnectedOrg)(this.logger);
+        if (!defaultOrg) {
+            const message = 'No se detectó una org por defecto conectada en Salesforce CLI.';
+            this.logger.error(message);
+            return { error: message, coverage_data: [], test_results: [] };
+        }
+        const targetOrg = defaultOrg.alias || defaultOrg.username;
+        const displayOrg = defaultOrg.alias && defaultOrg.alias !== defaultOrg.username
+            ? `${defaultOrg.alias} (${defaultOrg.username})`
+            : defaultOrg.username;
+        this.logger.info(`🌐 Usando la org por defecto: ${displayOrg}.`);
+        const testRunId = await this.executeTests(testClasses, targetOrg);
         if (!testRunId)
             return { error: 'No se pudo iniciar pruebas.', coverage_data: [], test_results: [] };
         this.logger.info(`🔍 Monitoreando progreso del testRunId ${testRunId}...`);
-        await this.waitForTestCompletion(testRunId);
+        await this.waitForTestCompletion(testRunId, targetOrg);
         this.logger.info('📈 Ejecución de pruebas finalizada. Obteniendo resultados y cobertura...');
-        const results = await this.fetchTestResults(testRunId);
+        const results = await this.fetchTestResults(testRunId, targetOrg);
         if (!results || Object.keys(results).length === 0) {
             this.logger.error('❌ No se pudieron obtener resultados del test run.');
             return { error: 'No se pudo obtener resultados.', coverage_data: [], test_results: [] };

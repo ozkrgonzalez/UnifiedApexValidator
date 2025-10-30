@@ -63283,7 +63283,7 @@ __export(extension_exports, {
   deactivate: () => deactivate
 });
 module.exports = __toCommonJS(extension_exports);
-var vscode16 = __toESM(require("vscode"));
+var vscode15 = __toESM(require("vscode"));
 var path18 = __toESM(require("path"));
 var fs12 = __toESM(require_lib());
 var import_child_process = require("child_process");
@@ -81586,6 +81586,26 @@ var processHandlersRegistered = false;
 var ignoredUnhandledPatterns = [
   /CreateEmbeddingSupplier/i
 ];
+var ANSI_ESCAPE_REGEX = /\x1B\[[0-?]*[ -/]*[@-~]/g;
+function parseSfJson(output) {
+  const text2 = (output || "").trim();
+  if (!text2) {
+    return void 0;
+  }
+  try {
+    return JSON.parse(text2);
+  } catch {
+    const cleaned = text2.replace(ANSI_ESCAPE_REGEX, "");
+    if (!cleaned || cleaned === text2) {
+      return void 0;
+    }
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      return void 0;
+    }
+  }
+}
 function shouldIgnoreUnhandled(reason) {
   const message = typeof reason === "string" ? reason : typeof reason?.message === "string" ? reason.message : "";
   return ignoredUnhandledPatterns.some((pattern) => pattern.test(message));
@@ -81671,7 +81691,6 @@ var Logger = class {
 async function parseApexClassesFromPackage(pkgPath, repoDir) {
   const logger6 = new Logger("PackageParser");
   try {
-    logger6.info(`\u{1F4E6} Leyendo package.xml desde: ${pkgPath}`);
     const xml = await fs.readFile(pkgPath, "utf8");
     const parser = new XMLParser({ ignoreAttributes: false });
     const json = parser.parse(xml);
@@ -81680,7 +81699,6 @@ async function parseApexClassesFromPackage(pkgPath, repoDir) {
     const members = Array.isArray(apexTypes.members) ? apexTypes.members : [apexTypes.members];
     const testClasses = [];
     const nonTestClasses = [];
-    logger6.info(`\u{1F4C2} Buscando clases dentro de: ${repoDir}`);
     for (const cls of members) {
       const matches = sync(`**/${cls}.cls`, { cwd: repoDir, absolute: true });
       if (!matches.length) {
@@ -81715,6 +81733,48 @@ async function cleanUpFiles(paths, logger6) {
     }
   }
 }
+async function getDefaultConnectedOrg(logger6) {
+  const sfPath = resolveSfCliPath();
+  try {
+    const { stdout, stderr } = await execa(sfPath, ["org", "list", "--json"], {
+      env: { ...process.env, FORCE_COLOR: "0" }
+    });
+    const payload = parseSfJson(stdout) ?? parseSfJson(stderr);
+    const result = payload?.result ?? payload;
+    if (!result) {
+      logger6?.warn('No se pudo interpretar la salida de "sf org list --json".');
+      return null;
+    }
+    const candidates = [];
+    if (Array.isArray(result.nonScratchOrgs)) candidates.push(...result.nonScratchOrgs);
+    if (Array.isArray(result.scratchOrgs)) candidates.push(...result.scratchOrgs);
+    const defaultUsername = typeof result.defaultUsername === "string" ? result.defaultUsername : typeof result.defaultDevHubUsername === "string" ? result.defaultDevHubUsername : void 0;
+    let selected = candidates.find((org) => org?.isDefaultUsername) || (defaultUsername ? candidates.find((org) => org?.username === defaultUsername) : void 0);
+    if (!selected && defaultUsername) {
+      selected = { username: defaultUsername };
+    }
+    if (!selected && candidates.length === 1) {
+      selected = candidates[0];
+    }
+    const username = typeof selected?.username === "string" ? selected.username.trim() : typeof defaultUsername === "string" ? defaultUsername.trim() : "";
+    if (!username) {
+      logger6?.warn("No se detect\xF3 una org con isDefaultUsername en Salesforce CLI.");
+      return null;
+    }
+    const alias = typeof selected?.alias === "string" ? selected.alias.trim() : void 0;
+    logger6?.info(`Se utilizar\xE1 la org por defecto de Salesforce CLI: ${alias || username}.`);
+    return {
+      alias: alias || void 0,
+      username,
+      orgId: typeof selected?.orgId === "string" ? selected.orgId : void 0,
+      isDefault: Boolean(selected?.isDefaultUsername)
+    };
+  } catch (err) {
+    const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
+    logger6?.warn(`No se pudo obtener la org por defecto desde Salesforce CLI: ${reason}`);
+    return null;
+  }
+}
 function resolveSfCliPath() {
   const config2 = vscode.workspace.getConfiguration("UnifiedApexValidator");
   const configured = config2.get("sfCliPath")?.trim();
@@ -81743,26 +81803,37 @@ function resolveSfCliPath() {
 async function ensureOrgAliasConnected(alias, logger6) {
   const trimmed = (alias || "").trim();
   if (!trimmed) {
-    vscode.window.showErrorMessage("Configura UnifiedApexValidator.sfOrgAlias antes de ejecutar el validador.");
+    vscode.window.showErrorMessage('No se detect\xF3 ninguna org conectada por defecto. Ejecuta "sf org login web" y vuelve a intentarlo.');
     return false;
   }
   const sfPath = resolveSfCliPath();
   const checkAlias = async () => {
     try {
-      const { stdout } = await execa(sfPath, ["org", "display", "--json", "--target-org", trimmed], {
+      const { stdout, stderr } = await execa(sfPath, ["org", "display", "--json", "--target-org", trimmed], {
         env: { ...process.env, FORCE_COLOR: "0" }
       });
-      const raw = stdout?.trim();
-      if (!raw) return false;
-      const info = JSON.parse(raw);
-      const status = info?.result?.connectedStatus || info?.result?.status || info?.result?.connected;
-      if (typeof status === "string" && status.toLowerCase() === "connected") {
-        logger6.info(`Org "${trimmed}" detectada como conectada.`);
+      const info = parseSfJson(stdout) ?? parseSfJson(stderr);
+      if (!info) {
+        logger6.warn(`No se pudo interpretar la respuesta de Salesforce CLI para la org "${trimmed}".`);
+        return false;
+      }
+      const status = info?.result?.connectedStatus ?? info?.result?.status ?? info?.result?.connected;
+      const isConnected2 = typeof status === "string" && status.toLowerCase() === "connected" || status === true || info?.result?.connected === true;
+      if (isConnected2) {
         return true;
       }
-      logger6.warn(`Estado de la org "${trimmed}": ${status || "desconocido"}.`);
+      const statusLabel = typeof status === "string" ? status : typeof status === "boolean" ? status ? "connected" : "disconnected" : "desconocido";
+      logger6.warn(`Estado de la org "${trimmed}": ${statusLabel}.`);
       return false;
     } catch (err) {
+      const parsed = parseSfJson(err?.stdout) ?? parseSfJson(err?.stderr);
+      if (parsed?.result?.connectedStatus || parsed?.result?.connected) {
+        const status = parsed.result.connectedStatus ?? parsed.result.connected;
+        if (typeof status === "string" && status.toLowerCase() === "connected" || status === true) {
+          logger6.info(`Org "${trimmed}" reportada como conectada.`);
+          return true;
+        }
+      }
       const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
       logger6.warn(`No se pudo verificar la org "${trimmed}": ${reason}`);
       return false;
@@ -82116,7 +82187,7 @@ function registerDependencyUpdater(context) {
 }
 
 // src/core/uavController.ts
-var vscode8 = __toESM(require("vscode"));
+var vscode7 = __toESM(require("vscode"));
 var path13 = __toESM(require("path"));
 var fs7 = __toESM(require_lib());
 
@@ -87433,17 +87504,13 @@ async function extractCpdSnippet(locations) {
 }
 
 // src/core/testSuite.ts
-var vscode5 = __toESM(require("vscode"));
 var path10 = __toESM(require("path"));
 var fs4 = __toESM(require_lib());
 var TestSuite = class {
   logger;
   sfPath;
-  orgAlias;
   tempDir;
   constructor(workspaceRoot) {
-    const config2 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
-    this.orgAlias = config2.get("sfOrgAlias") || "DEVSEGC";
     this.tempDir = path10.join(workspaceRoot, ".uav", "temp");
     this.logger = new Logger("TestSuite", false);
     this.tempDir = path10.join(getStorageRoot(), "temp");
@@ -87471,14 +87538,21 @@ var TestSuite = class {
         const text2 = data.toString().trim();
       });
       const { stdout, stderr } = await child;
-      const raw = (stdout || stderr || "").trim();
-      try {
-        return JSON.parse(raw);
-      } catch {
-        const cleaned = raw.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "");
-        return JSON.parse(cleaned);
+      const parsed = parseSfJson(stdout) ?? parseSfJson(stderr);
+      if (parsed) {
+        return parsed;
       }
+      const raw = (stdout || stderr || "").trim();
+      if (raw) {
+        this.logger.warn(`Warning ${description} devolvio salida no JSON: ${raw}`);
+      }
+      return {};
     } catch (err) {
+      const parsed = parseSfJson(err?.stdout) ?? parseSfJson(err?.stderr);
+      if (parsed) {
+        this.logger.warn(`Warning ${description} finalizo con error pero entrego datos JSON.`);
+        return parsed;
+      }
       this.logger.error(`\u274C Error en ${description}: ${err.shortMessage || err.message}`);
       return {};
     }
@@ -87486,8 +87560,8 @@ var TestSuite = class {
   /**
    * Lanza las clases de prueba y obtiene el testRunId
    */
-  async executeTests(testClasses) {
-    const command = [this.sfPath, "apex", "run", "test", "--json", "--target-org", this.orgAlias, "--test-level", "RunSpecifiedTests", "--code-coverage", "--class-names", ...testClasses];
+  async executeTests(testClasses, targetOrg) {
+    const command = [this.sfPath, "apex", "run", "test", "--json", "--target-org", targetOrg, "--test-level", "RunSpecifiedTests", "--code-coverage", "--class-names", ...testClasses];
     const result = await this.runSfCommand(command, "ejecucion de pruebas");
     const testRunId = result?.result?.testRunId || result?.result?.summary?.testRunId || null;
     if (!testRunId) {
@@ -87500,10 +87574,10 @@ var TestSuite = class {
   /**
    * Espera a que el test run finalice
    */
-  async waitForTestCompletion(testRunId) {
+  async waitForTestCompletion(testRunId, targetOrg) {
     this.logger.info(`\u23F3 Esperando finalizaci\xF3n del testRunId ${testRunId}...`);
     for (let i2 = 0; i2 < 60; i2++) {
-      const command = [this.sfPath, "apex", "get", "test", "--json", "--target-org", this.orgAlias, "--test-run-id", testRunId];
+      const command = [this.sfPath, "apex", "get", "test", "--json", "--target-org", targetOrg, "--test-run-id", testRunId];
       const result = await this.runSfCommand(command, `verificando estado (${i2 + 1}/60)`);
       const summary = result?.result?.summary || {};
       const outcome = summary.outcome || "Pendiente";
@@ -87522,13 +87596,13 @@ var TestSuite = class {
   /**
    * Obtiene resultados y cobertura
    */
-  async fetchTestResults(testRunId) {
+  async fetchTestResults(testRunId, targetOrg) {
     const baseFile = path10.join(this.tempDir, `test-result-${testRunId}.json`);
     const coverageFile = path10.join(this.tempDir, `test-result-${testRunId}-codecoverage.json`);
     fs4.ensureDirSync(this.tempDir);
     this.logger.info(`\u{1F4E6} Recuperando resultados del test run ${testRunId}...`);
     for (let i2 = 0; i2 < 3; i2++) {
-      const command = [this.sfPath, "apex", "get", "test", "--json", "--target-org", this.orgAlias, "--test-run-id", testRunId, "--code-coverage", "--output-dir", this.tempDir];
+      const command = [this.sfPath, "apex", "get", "test", "--json", "--target-org", targetOrg, "--test-run-id", testRunId, "--code-coverage", "--output-dir", this.tempDir];
       await this.runSfCommand(command, `obtencion cobertura (intento ${i2 + 1})`);
       if (fs4.existsSync(baseFile)) {
         const testResult = fs4.readJsonSync(baseFile, { throws: false }) || {};
@@ -87613,12 +87687,21 @@ var TestSuite = class {
       return { error: "No hay clases test para ejecutar.", coverage_data: [], test_results: [] };
     }
     this.logger.info(`\u{1F9EA} Ejecutando clases de prueba: ${testClasses.join(", ")}`);
-    const testRunId = await this.executeTests(testClasses);
+    const defaultOrg = await getDefaultConnectedOrg(this.logger);
+    if (!defaultOrg) {
+      const message = "No se detect\xF3 una org por defecto conectada en Salesforce CLI.";
+      this.logger.error(message);
+      return { error: message, coverage_data: [], test_results: [] };
+    }
+    const targetOrg = defaultOrg.alias || defaultOrg.username;
+    const displayOrg = defaultOrg.alias && defaultOrg.alias !== defaultOrg.username ? `${defaultOrg.alias} (${defaultOrg.username})` : defaultOrg.username;
+    this.logger.info(`\u{1F310} Usando la org por defecto: ${displayOrg}.`);
+    const testRunId = await this.executeTests(testClasses, targetOrg);
     if (!testRunId) return { error: "No se pudo iniciar pruebas.", coverage_data: [], test_results: [] };
     this.logger.info(`\u{1F50D} Monitoreando progreso del testRunId ${testRunId}...`);
-    await this.waitForTestCompletion(testRunId);
+    await this.waitForTestCompletion(testRunId, targetOrg);
     this.logger.info("\u{1F4C8} Ejecuci\xF3n de pruebas finalizada. Obteniendo resultados y cobertura...");
-    const results = await this.fetchTestResults(testRunId);
+    const results = await this.fetchTestResults(testRunId, targetOrg);
     if (!results || Object.keys(results).length === 0) {
       this.logger.error("\u274C No se pudieron obtener resultados del test run.");
       return { error: "No se pudo obtener resultados.", coverage_data: [], test_results: [] };
@@ -87650,24 +87733,24 @@ var TestSuite = class {
 // src/core/reportGenerator.ts
 var fs5 = __toESM(require_lib());
 var path11 = __toESM(require("path"));
-var vscode6 = __toESM(require("vscode"));
+var vscode5 = __toESM(require("vscode"));
 var nunjucks = __toESM(require_nunjucks());
 var child_process = __toESM(require("child_process"));
 var logger2 = new Logger("ReportGenerator", false);
 async function generateReport(outputDir, data) {
   try {
-    const config2 = vscode6.workspace.getConfiguration("UnifiedApexValidator");
-    const workspaceRoot = vscode6.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+    const config2 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
+    const workspaceRoot = vscode5.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
     const outputSetting = config2.get("outputDir")?.trim();
     if (!outputSetting) {
       const msg = '\xE2\x9D\u0152 No se ha configurado el par\xC3\xA1metro "UnifiedApexValidator.outputDir" en Settings.';
       logger2.error(msg);
-      vscode6.window.showErrorMessage(msg);
+      vscode5.window.showErrorMessage(msg);
       throw new Error(msg);
     }
     const finalOutputDir = path11.resolve(outputSetting);
     await fs5.ensureDir(finalOutputDir);
-    const currentExt = vscode6.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
+    const currentExt = vscode5.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
     const extensionPath = currentExt?.extensionPath || __dirname;
     if (!extensionPath) {
       throw new Error("No se pudo determinar la ruta de la extensi\xC3\xB3n.");
@@ -87705,7 +87788,6 @@ async function generateReport(outputDir, data) {
     const html = env3.render("reportTemplate.html", context);
     const htmlFilePath = path11.join(finalOutputDir, "reporte_validaciones.html");
     await fs5.writeFile(htmlFilePath, html, "utf8");
-    logger2.info("Reporte HTML generado correctamente.");
     let pdfHtmlPath = htmlFilePath;
     let pdfHtmlTempCreated = false;
     const pdfTemplatePath = path11.join(path11.dirname(templatePath), "reportTemplate_pdf.html");
@@ -87735,7 +87817,7 @@ async function generateReport(outputDir, data) {
   } catch (error) {
     const msg = `Error generando reporte: ${error.message}`;
     logger2.error(msg);
-    vscode6.window.showErrorMessage(msg);
+    vscode5.window.showErrorMessage(msg);
     throw error;
   }
 }
@@ -87796,9 +87878,9 @@ function formatIAResults(iaResults) {
 }
 async function generateComparisonReport(outputDir, orgAlias, comparisonResults) {
   try {
-    const config2 = vscode6.workspace.getConfiguration("UnifiedApexValidator");
-    const workspaceRoot = vscode6.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
-    const extension = vscode6.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
+    const config2 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
+    const workspaceRoot = vscode5.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+    const extension = vscode5.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
     const extensionPath = extension?.extensionPath || __dirname;
     let templatePath = path11.join(extensionPath, "dist", "resources", "templates", "class_comparison_report.html");
     if (!fs5.existsSync(templatePath)) {
@@ -87830,27 +87912,27 @@ async function generateComparisonReport(outputDir, orgAlias, comparisonResults) 
     const fileName = `compare_${orgAlias}_${(/* @__PURE__ */ new Date()).getTime()}.html`;
     const htmlFilePath = path11.join(outputDir, fileName);
     await fs5.writeFile(htmlFilePath, html, "utf8");
-    vscode6.window.showInformationMessage(`\xF0\u0178\u201C\u0160 Reporte HTML de comparaci\xC3\xB3n generado: ${htmlFilePath}`);
+    vscode5.window.showInformationMessage(`\xF0\u0178\u201C\u0160 Reporte HTML de comparaci\xC3\xB3n generado: ${htmlFilePath}`);
     return htmlFilePath;
   } catch (err) {
     const msg = `\xE2\x9D\u0152 Error generando reporte de comparaci\xC3\xB3n: ${err.message}`;
-    vscode6.window.showErrorMessage(msg);
+    vscode5.window.showErrorMessage(msg);
     throw err;
   }
 }
 
 // src/core/reportViewer.ts
-var vscode7 = __toESM(require("vscode"));
+var vscode6 = __toESM(require("vscode"));
 var fs6 = __toESM(require("fs"));
 var path12 = __toESM(require("path"));
 function getVSCodeThemeClass() {
-  const themeKind = vscode7.window.activeColorTheme.kind;
+  const themeKind = vscode6.window.activeColorTheme.kind;
   switch (themeKind) {
-    case vscode7.ColorThemeKind.Light:
+    case vscode6.ColorThemeKind.Light:
       return "vscode-light";
-    case vscode7.ColorThemeKind.Dark:
+    case vscode6.ColorThemeKind.Dark:
       return "vscode-dark";
-    case vscode7.ColorThemeKind.HighContrast:
+    case vscode6.ColorThemeKind.HighContrast:
       return "vscode-high-contrast";
     default:
       return "vscode-light";
@@ -87859,21 +87941,21 @@ function getVSCodeThemeClass() {
 function showReport(htmlPath, title = "Reporte de Validaci\xF3n Apex") {
   try {
     if (!fs6.existsSync(htmlPath)) {
-      vscode7.window.showErrorMessage(`No se encontr\xF3 el archivo: ${htmlPath}`);
+      vscode6.window.showErrorMessage(`No se encontr\xF3 el archivo: ${htmlPath}`);
       return;
     }
-    const panel = vscode7.window.createWebviewPanel(
+    const panel = vscode6.window.createWebviewPanel(
       "uavReport",
       title,
-      vscode7.ViewColumn.One,
+      vscode6.ViewColumn.One,
       {
         enableScripts: true,
         retainContextWhenHidden: true,
-        localResourceRoots: [vscode7.Uri.file(path12.dirname(htmlPath))]
+        localResourceRoots: [vscode6.Uri.file(path12.dirname(htmlPath))]
       }
     );
     const html = fs6.readFileSync(htmlPath, "utf8");
-    const dirUri = vscode7.Uri.file(path12.dirname(htmlPath));
+    const dirUri = vscode6.Uri.file(path12.dirname(htmlPath));
     const baseUri = panel.webview.asWebviewUri(dirUri);
     const themeClass = getVSCodeThemeClass();
     const content = html.replace(
@@ -87884,9 +87966,9 @@ function showReport(htmlPath, title = "Reporte de Validaci\xF3n Apex") {
       `$1<base href="${baseUri}/">`
     );
     panel.webview.html = content;
-    vscode7.window.showInformationMessage("\u{1F4CA} Reporte abierto en vista integrada.");
+    vscode6.window.showInformationMessage("\u{1F4CA} Reporte abierto en vista integrada.");
   } catch (err) {
-    vscode7.window.showErrorMessage(`Error al abrir el reporte: ${err.message}`);
+    vscode6.window.showErrorMessage(`Error al abrir el reporte: ${err.message}`);
   }
 }
 
@@ -87918,21 +88000,21 @@ async function runUAV(uri) {
   let tempPackagePath;
   let sourceUri;
   let packageUri;
-  await vscode8.window.withProgress(
+  await vscode7.window.withProgress(
     {
-      location: vscode8.ProgressLocation.Notification,
+      location: vscode7.ProgressLocation.Notification,
       title: "Unified Apex Validator",
       cancellable: true
     },
     async (progress) => {
       try {
-        sourceUri = uri && uri.scheme === "file" ? uri : vscode8.window.activeTextEditor?.document?.uri;
+        sourceUri = uri && uri.scheme === "file" ? uri : vscode7.window.activeTextEditor?.document?.uri;
         if (!sourceUri || sourceUri.scheme !== "file") {
           throw new Error("Selecciona un package.xml o una clase Apex (.cls) dentro del workspace.");
         }
-        const workspaceFolder = vscode8.workspace.getWorkspaceFolder(sourceUri) || vscode8.workspace.workspaceFolders?.[0];
+        const workspaceFolder = vscode7.workspace.getWorkspaceFolder(sourceUri) || vscode7.workspace.workspaceFolders?.[0];
         if (!workspaceFolder) throw new Error("No se detect\xF3 carpeta de proyecto");
-        const config2 = vscode8.workspace.getConfiguration("UnifiedApexValidator");
+        const config2 = vscode7.workspace.getConfiguration("UnifiedApexValidator");
         let repoDir = config2.get("sfRepositoryDir")?.trim() || "";
         if (!repoDir) {
           repoDir = workspaceFolder.uri.fsPath;
@@ -87957,7 +88039,7 @@ async function runUAV(uri) {
           ].join("\n");
           tempPackagePath = path13.join(tempDirWS, `package-${className}-${Date.now()}.xml`);
           await fs7.writeFile(tempPackagePath, packageXml, "utf8");
-          packageUri = vscode8.Uri.file(tempPackagePath);
+          packageUri = vscode7.Uri.file(tempPackagePath);
           logger6.info(`Generado package.xml temporal para la clase ${className}: ${tempPackagePath}`);
         }
         if (!fs7.existsSync(path13.join(repoDir, "sfdx-project.json"))) {
@@ -87984,10 +88066,17 @@ async function runUAV(uri) {
         } else {
           logger6.info(`\u{1F4C1} Repositorio configurado: ${repoDir}`);
         }
-        const sfOrgAlias = config2.get("sfOrgAlias")?.trim() || "DEVSEGC";
-        const aliasReady = await ensureOrgAliasConnected(sfOrgAlias, logger6);
+        const defaultOrg = await getDefaultConnectedOrg(logger6);
+        if (!defaultOrg) {
+          const message = 'No se detect\xF3 una org por defecto conectada en Salesforce CLI. Ejecuta "sf org login web" e intenta nuevamente.';
+          logger6.error(message);
+          vscode7.window.showErrorMessage(message);
+          return;
+        }
+        const targetOrg = defaultOrg.alias || defaultOrg.username;
+        const aliasReady = await ensureOrgAliasConnected(targetOrg, logger6);
         if (!aliasReady) {
-          logger6.warn(`\u26A0\uFE0F Se cancela la ejecuci\xF3n: la org "${sfOrgAlias}" no est\xE1 conectada.`);
+          logger6.warn(`\u26A0\uFE0F Se cancela la ejecuci\xF3n: la org "${targetOrg}" no est\xE1 conectada.`);
           return;
         }
         const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(pkgPath, repoDir);
@@ -88054,7 +88143,7 @@ async function runUAV(uri) {
           }
         );
         logger6.info(`\u2705 UAV completado. Reporte generado en: ${outputDir}`);
-        vscode8.window.showInformationMessage(`\u2705 UAV completado. Reporte generado en ${outputDir}.`);
+        vscode7.window.showInformationMessage(`\u2705 UAV completado. Reporte generado en ${outputDir}.`);
         const htmlReport = path13.join(outputDir, "reporte_validaciones.html");
         if (fs7.existsSync(htmlReport)) {
           showReport(htmlReport, "Reporte de Validaci\xF3n Apex");
@@ -88070,12 +88159,12 @@ async function runUAV(uri) {
         }
       } catch (err) {
         if (err.message.includes("No se encontraron clases Apex")) {
-          vscode8.window.showWarningMessage(err.message);
+          vscode7.window.showWarningMessage(err.message);
           const failedPath = packageUri?.fsPath || sourceUri?.fsPath || "N/A";
           logger6.warn(`\u26A0\uFE0F UAV finalizado sin ApexClass (${failedPath})`);
         } else {
           logger6.error(`\u274C Error en proceso UAV: ${err.message}`);
-          vscode8.window.showErrorMessage(`Error en UAV: ${err.message}`);
+          vscode7.window.showErrorMessage(`Error en UAV: ${err.message}`);
         }
       } finally {
         if (tempPackagePath) {
@@ -88095,7 +88184,7 @@ var FolderViewProvider = class {
     this.fileExtension = fileExtension;
     this.label = label;
   }
-  _onDidChangeTreeData = new vscode8.EventEmitter();
+  _onDidChangeTreeData = new vscode7.EventEmitter();
   onDidChangeTreeData = this._onDidChangeTreeData.event;
   refresh() {
     this._onDidChangeTreeData.fire();
@@ -88124,26 +88213,26 @@ var FolderViewProvider = class {
     }
   }
 };
-var FileItem = class extends vscode8.TreeItem {
+var FileItem = class extends vscode7.TreeItem {
   constructor(label, filePath, clickable) {
     super(label);
     this.label = label;
     this.filePath = filePath;
     this.clickable = clickable;
-    this.iconPath = new vscode8.ThemeIcon("file");
+    this.iconPath = new vscode7.ThemeIcon("file");
     this.tooltip = filePath;
     if (clickable) {
       this.command = {
         command: "uav.openFile",
         title: "Abrir archivo",
-        arguments: [vscode8.Uri.file(filePath)]
+        arguments: [vscode7.Uri.file(filePath)]
       };
     }
   }
 };
 
 // src/core/compareController.ts
-var vscode9 = __toESM(require("vscode"));
+var vscode8 = __toESM(require("vscode"));
 var path14 = __toESM(require("path"));
 var fs8 = __toESM(require_lib());
 
@@ -88452,14 +88541,14 @@ async function fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, lo
 async function runCompareApexClasses(uri) {
   const logger6 = new Logger("compareController", true);
   logger6.info("\u{1F680} Iniciando Comparaci\xF3n de Clases...");
-  const workspace15 = vscode9.workspace.workspaceFolders?.[0];
-  if (!workspace15) {
-    vscode9.window.showErrorMessage("No hay un workspace abierto.");
+  const workspace14 = vscode8.workspace.workspaceFolders?.[0];
+  if (!workspace14) {
+    vscode8.window.showErrorMessage("No hay un workspace abierto.");
     logger6.error("\u274C No se detect\xF3 workspace activo.");
     return;
   }
-  const baseDir = workspace15.uri.fsPath;
-  const settings = vscode9.workspace.getConfiguration("UnifiedApexValidator");
+  const baseDir = workspace14.uri.fsPath;
+  const settings = vscode8.workspace.getConfiguration("UnifiedApexValidator");
   const repoDir = settings.get("sfRepositoryDir") || "";
   const outputDir = settings.get("outputDir") || path14.join(baseDir, "output");
   logger6.info(`\u{1F4C1} Workspace: ${baseDir}`);
@@ -88475,12 +88564,12 @@ async function runCompareApexClasses(uri) {
     logger6.info(`\u{1F4D8} Comparando una sola clase: ${className}`);
     classNames = [className];
   } else {
-    vscode9.window.showWarningMessage("Abre un package.xml o un archivo .cls para comparar.");
+    vscode8.window.showWarningMessage("Abre un package.xml o un archivo .cls para comparar.");
     logger6.warn("\u26A0\uFE0F Comando ejecutado sin archivo .xml ni .cls v\xE1lido.");
     return;
   }
   if (classNames.length === 0) {
-    vscode9.window.showWarningMessage("No se encontraron clases Apex en el archivo seleccionado.");
+    vscode8.window.showWarningMessage("No se encontraron clases Apex en el archivo seleccionado.");
     logger6.warn("\u26A0\uFE0F No se encontraron clases Apex en el archivo.");
     return;
   }
@@ -88490,11 +88579,11 @@ async function runCompareApexClasses(uri) {
   });
   const orgList = JSON.parse(orgListJson).result.nonScratchOrgs.filter((o2) => o2.connectedStatus === "Connected").map((o2) => o2.alias || o2.username);
   if (!orgList.length) {
-    vscode9.window.showErrorMessage("No hay orgs conectadas.");
+    vscode8.window.showErrorMessage("No hay orgs conectadas.");
     logger6.error("\u274C No se encontraron orgs conectadas.");
     return;
   }
-  const orgAlias = await vscode9.window.showQuickPick(orgList, {
+  const orgAlias = await vscode8.window.showQuickPick(orgList, {
     placeHolder: "Selecciona la organizaci\xF3n contra la que comparar"
   });
   if (!orgAlias) {
@@ -88540,9 +88629,9 @@ async function runCompareApexClasses(uri) {
     if (fallbackUsed) {
       fallbackWarned = true;
       logger6.warn("\u26A0\uFE0F Se us\xF3 fallback ApexClass.Body por error en retrieve.");
-      vscode9.window.showWarningMessage("No se pudo recuperar metadata; se consult\xF3 ApexClass.Body como alternativa.");
+      vscode8.window.showWarningMessage("No se pudo recuperar metadata; se consult\xF3 ApexClass.Body como alternativa.");
     } else {
-      vscode9.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
+      vscode8.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
       return;
     }
   }
@@ -88567,7 +88656,7 @@ async function runCompareApexClasses(uri) {
         if (fallbackUsed && !fallbackWarned) {
           fallbackWarned = true;
           logger6.warn("\u26A0\uFE0F Se us\xF3 fallback ApexClass.Body para completar clases faltantes.");
-          vscode9.window.showWarningMessage("Algunas clases se consultaron usando ApexClass.Body porque no estaban disponibles v\xEDa retrieve.");
+          vscode8.window.showWarningMessage("Algunas clases se consultaron usando ApexClass.Body porque no estaban disponibles v\xEDa retrieve.");
         }
       }
       if (fallbackUsed && fallbackRetrievedNames.has(className)) {
@@ -88619,23 +88708,23 @@ async function runCompareApexClasses(uri) {
   logger6.info("\u{1F4CA} Generando reporte HTML de comparaci\xF3n...");
   const htmlReport = await generateComparisonReport(outputDir, orgAlias, results);
   const htmlContent = await fs8.readFile(htmlReport, "utf8");
-  const panel = vscode9.window.createWebviewPanel(
+  const panel = vscode8.window.createWebviewPanel(
     "uavComparisonReport",
     // ID interno
     `Comparaci\xF3n - ${orgAlias}`,
     // título visible
-    vscode9.ViewColumn.One,
+    vscode8.ViewColumn.One,
     // dónde se abre
     { enableScripts: true }
     // permitir JS (para el Monaco, etc.)
   );
   panel.webview.html = htmlContent;
-  vscode9.window.setStatusBarMessage(`\u2705 Reporte cargado en VS Code: ${path14.basename(htmlReport)}`, 5e3);
+  vscode8.window.setStatusBarMessage(`\u2705 Reporte cargado en VS Code: ${path14.basename(htmlReport)}`, 5e3);
   logger6.info(`\u2705 Reporte abierto dentro de VS Code.`);
 }
 
 // src/core/generateApexDocChunked.ts
-var vscode12 = __toESM(require("vscode"));
+var vscode11 = __toESM(require("vscode"));
 
 // src/core/apexAstParser.ts
 var fs9 = __toESM(require("fs"));
@@ -88956,14 +89045,14 @@ var ApexAstParser = class _ApexAstParser {
 };
 
 // src/core/aiDocChunkRunner.ts
-var vscode10 = __toESM(require("vscode"));
+var vscode9 = __toESM(require("vscode"));
 var AiDocChunkRunner = class _AiDocChunkRunner {
   static logger = new Logger("ApexDocChunkRunner", true);
   static async processChunk(docText, chunk) {
     const logger6 = _AiDocChunkRunner.logger;
     const iaClient = new IAAnalisis();
     logger6.info(`Processing chunk: ${chunk.kind} - ${chunk.name}`);
-    const cfg = vscode10.workspace.getConfiguration("UnifiedApexValidator");
+    const cfg = vscode9.workspace.getConfiguration("UnifiedApexValidator");
     const maxChars = cfg.get("maxIAClassChars") || 25e3;
     const languageSetting = (cfg.get("apexDocLanguage") || "spanish").toLowerCase();
     const docLanguage = languageSetting === "english" ? "english" : "spanish";
@@ -89104,7 +89193,7 @@ ${exampleBlock}
 };
 
 // src/core/patchApplier.ts
-var vscode11 = __toESM(require("vscode"));
+var vscode10 = __toESM(require("vscode"));
 var PatchApplier = class _PatchApplier {
   static logger = new Logger("PatchApplier", true);
   static applyInMemory(baseText, chunk, docBlock) {
@@ -89133,8 +89222,8 @@ var PatchApplier = class _PatchApplier {
     try {
       logger6.info("\u{1F50D} Opening final diff preview...");
       const leftUri = uri;
-      const rightDoc = await vscode11.workspace.openTextDocument({ content: modified, language: "apex" });
-      await vscode11.commands.executeCommand("vscode.diff", leftUri, rightDoc.uri, title);
+      const rightDoc = await vscode10.workspace.openTextDocument({ content: modified, language: "apex" });
+      await vscode10.commands.executeCommand("vscode.diff", leftUri, rightDoc.uri, title);
       logger6.info("\u{1FA84} Diff view opened successfully (left = original file, right = generated version).");
     } catch (err) {
       logger6.error(`\u274C Error opening diff view: ${err.message}`);
@@ -89144,14 +89233,14 @@ var PatchApplier = class _PatchApplier {
 
 // src/core/generateApexDocChunked.ts
 async function generateApexDocChunked() {
-  const editor = vscode12.window.activeTextEditor;
+  const editor = vscode11.window.activeTextEditor;
   if (!editor) {
-    vscode12.window.showErrorMessage("No hay ningun archivo abierto.");
+    vscode11.window.showErrorMessage("No hay ningun archivo abierto.");
     return;
   }
   const iaStatus = evaluateIaConfig();
   if (!iaStatus.ready) {
-    vscode12.window.showWarningMessage(`Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(", ")}`);
+    vscode11.window.showWarningMessage(`Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(", ")}`);
     return;
   }
   const logger6 = new Logger("GenerateApexDoc", true);
@@ -89159,7 +89248,7 @@ async function generateApexDocChunked() {
   const original = doc.getText();
   let working = original;
   const chunks = ApexAstParser.parseDocument(doc);
-  const traceAst = vscode12.workspace.getConfiguration("UnifiedApexValidator").get("traceAst") ?? false;
+  const traceAst = vscode11.workspace.getConfiguration("UnifiedApexValidator").get("traceAst") ?? false;
   logger6.info(`[GenerateApexDoc] Chunks detectados: ${chunks.length}`);
   if (traceAst) {
     for (const ch of chunks) {
@@ -89171,15 +89260,15 @@ async function generateApexDocChunked() {
   const missing = chunks.filter((c3) => c3.needsDoc);
   let fatalError;
   if (!missing.length) {
-    vscode12.window.showInformationMessage("Todos los elementos ya tienen ApexDoc.");
+    vscode11.window.showInformationMessage("Todos los elementos ya tienen ApexDoc.");
     return;
   }
   const progressOptions = {
-    location: vscode12.ProgressLocation.Notification,
+    location: vscode11.ProgressLocation.Notification,
     title: "Revisi\xF3n de ApexDoc generados",
     cancellable: true
   };
-  await vscode12.window.withProgress(progressOptions, async (progress, token) => {
+  await vscode11.window.withProgress(progressOptions, async (progress, token) => {
     const total = missing.length;
     let done = 0;
     const locateChunk = (source, snippet, hint) => {
@@ -89215,18 +89304,18 @@ async function generateApexDocChunked() {
       const result = await AiDocChunkRunner.processChunk(working, localChunk);
       if (result.ok && result.patchedText) {
         try {
-          const config2 = vscode12.workspace.getConfiguration("UnifiedApexValidator");
-          const outputDir = config2.get("outputDir") || vscode12.workspace.workspaceFolders?.[0]?.uri.fsPath || __dirname;
+          const config2 = vscode11.workspace.getConfiguration("UnifiedApexValidator");
+          const outputDir = config2.get("outputDir") || vscode11.workspace.workspaceFolders?.[0]?.uri.fsPath || __dirname;
           const safeName = `${chunk.kind}_${chunk.name.replace(/[^a-zA-Z0-9_]/g, "_")}.txt`;
-          const rawPath = vscode12.Uri.file(`${outputDir}/ApexDoc_Debug_${safeName}`);
-          await vscode12.workspace.fs.writeFile(rawPath, Buffer.from(result.patchedText, "utf8"));
+          const rawPath = vscode11.Uri.file(`${outputDir}/ApexDoc_Debug_${safeName}`);
+          await vscode11.workspace.fs.writeFile(rawPath, Buffer.from(result.patchedText, "utf8"));
           logger6.info(`Guardado bloque IA crudo para ${chunk.name} en ${rawPath.fsPath}`);
           const matches = [...result.patchedText.matchAll(/\/\*\*[\s\S]*?\*\//g)];
           if (matches.length > 0) {
             for (let i2 = 0; i2 < matches.length; i2++) {
               const block2 = matches[i2][0];
-              const blkPath = vscode12.Uri.file(`${outputDir}/ApexDoc_Debug_${chunk.kind}_${chunk.name.replace(/[^a-zA-Z0-9_]/g, "_")}_${i2}.txt`);
-              await vscode12.workspace.fs.writeFile(blkPath, Buffer.from(block2, "utf8"));
+              const blkPath = vscode11.Uri.file(`${outputDir}/ApexDoc_Debug_${chunk.kind}_${chunk.name.replace(/[^a-zA-Z0-9_]/g, "_")}_${i2}.txt`);
+              await vscode11.workspace.fs.writeFile(blkPath, Buffer.from(block2, "utf8"));
             }
             let docBlock = matches[0][0];
             if (chunk.kind === "classHeader") {
@@ -89261,25 +89350,25 @@ async function generateApexDocChunked() {
     }
   });
   if (fatalError) {
-    vscode12.window.showErrorMessage(`No se pudo generar ApexDoc: ${fatalError}`);
+    vscode11.window.showErrorMessage(`No se pudo generar ApexDoc: ${fatalError}`);
     return;
   }
   await PatchApplier.openFinalDiff(original, working, doc.uri, "Comparar documentacion generada (chunked)");
   let applyAnswer;
   while (!applyAnswer) {
-    applyAnswer = await vscode12.window.showInformationMessage(
+    applyAnswer = await vscode11.window.showInformationMessage(
       "Revisa el diff abierto. \xBFQuieres aplicar la documentacion generada al archivo?",
       "Aplicar",
       "Omitir"
     );
   }
   if (applyAnswer === "Aplicar") {
-    const targetEditor = await vscode12.window.showTextDocument(doc, { preview: false });
+    const targetEditor = await vscode11.window.showTextDocument(doc, { preview: false });
     const applied = await targetEditor.edit((editBuilder) => {
-      const start = new vscode12.Position(0, 0);
+      const start = new vscode11.Position(0, 0);
       const lastLine = doc.lineCount > 0 ? doc.lineAt(doc.lineCount - 1) : void 0;
       const end = lastLine ? lastLine.range.end : start;
-      editBuilder.replace(new vscode12.Range(start, end), working);
+      editBuilder.replace(new vscode11.Range(start, end), working);
     });
     if (applied) {
       logger6.info("Documentacion aplicada al archivo.");
@@ -89306,7 +89395,7 @@ function analyzeDocBlock(docBlock) {
   return { lines, closingLineIndex, indent };
 }
 function normalizeTags(settingKey, fallback) {
-  const config2 = vscode12.workspace.getConfiguration("UnifiedApexValidator");
+  const config2 = vscode11.workspace.getConfiguration("UnifiedApexValidator");
   const configured = config2.get(settingKey) ?? fallback;
   return configured.map((tag) => tag.startsWith("@") ? tag : `@${tag}`).map((tag) => tag.trim()).filter((tag, index, array) => tag.length > 1 && array.indexOf(tag) === index);
 }
@@ -89539,7 +89628,7 @@ function extractParamName(param) {
 // src/core/apexAllmanFormatter.ts
 var fs10 = __toESM(require("fs"));
 var path15 = __toESM(require("path"));
-var vscode13 = __toESM(require("vscode"));
+var vscode12 = __toESM(require("vscode"));
 var import_url2 = require("url");
 var logger3 = new Logger("apexAllmanFormatter");
 patchWindowsBatSpawn();
@@ -89588,7 +89677,6 @@ function patchWindowsBatSpawn() {
   childProcess.spawn = patchedSpawn;
   childProcess.spawnSync = patchedSpawnSync;
   windowsBatSpawnPatched = true;
-  logger3.info("Parche aplicado para ejecutar .bat con shell=true en child_process.");
 }
 async function loadPrettier(hints = []) {
   if (prettierInstance) {
@@ -89628,8 +89716,8 @@ function resolveModule(moduleName, additionalPaths = []) {
     searchPaths.add(hint);
     searchPaths.add(path15.join(hint, "node_modules"));
   }
-  if (vscode13.workspace.workspaceFolders) {
-    for (const folder of vscode13.workspace.workspaceFolders) {
+  if (vscode12.workspace.workspaceFolders) {
+    for (const folder of vscode12.workspace.workspaceFolders) {
       searchPaths.add(folder.uri.fsPath);
       searchPaths.add(path15.join(folder.uri.fsPath, "node_modules"));
     }
@@ -89740,7 +89828,7 @@ function gatherTargets(target, selected) {
   if (target) {
     return [target];
   }
-  const editor = vscode13.window.activeTextEditor;
+  const editor = vscode12.window.activeTextEditor;
   if (editor) {
     return [editor.document.uri];
   }
@@ -89752,7 +89840,7 @@ function collectFilesFromUri(uri) {
   if (stats.isDirectory()) {
     for (const entry of fs10.readdirSync(uri.fsPath)) {
       const childPath = path15.join(uri.fsPath, entry);
-      files.push(...collectFilesFromUri(vscode13.Uri.file(childPath)));
+      files.push(...collectFilesFromUri(vscode12.Uri.file(childPath)));
     }
   } else if (uri.fsPath.endsWith(".cls") || uri.fsPath.endsWith(".trigger")) {
     files.push(uri.fsPath);
@@ -89763,13 +89851,13 @@ async function formatApexAllman(target, selected) {
   logger3.info("Comando de formateo Allman invocado.");
   const targets = gatherTargets(target, selected);
   if (targets.length === 0) {
-    void vscode13.window.showInformationMessage("Selecciona un archivo Apex o una carpeta para aplicar el formato.");
+    void vscode12.window.showInformationMessage("Selecciona un archivo Apex o una carpeta para aplicar el formato.");
     return;
   }
   logger3.debug(`Targets recibidos: ${targets.map((t) => t.fsPath).join(", ") || "ninguno"}.`);
   const files = targets.flatMap(collectFilesFromUri);
   if (files.length === 0) {
-    void vscode13.window.showInformationMessage("No se encontraron archivos .cls o .trigger en la seleccion.");
+    void vscode12.window.showInformationMessage("No se encontraron archivos .cls o .trigger en la seleccion.");
     return;
   }
   logger3.info(`Archivos a procesar: ${files.length}.`);
@@ -89791,25 +89879,25 @@ async function formatApexAllman(target, selected) {
       }
     } catch (err) {
       logger3.error(`Error formateando ${filePath}: ${err?.message || err}`);
-      void vscode13.window.showErrorMessage(`Error formateando ${path15.basename(filePath)}: ${err.message}`);
+      void vscode12.window.showErrorMessage(`Error formateando ${path15.basename(filePath)}: ${err.message}`);
     }
   }
   if (updated === 0) {
-    void vscode13.window.showInformationMessage("No se realizaron cambios en los archivos seleccionados.");
+    void vscode12.window.showInformationMessage("No se realizaron cambios en los archivos seleccionados.");
     return;
   }
-  void vscode13.window.showInformationMessage(`Formato Allman aplicado a ${updated} archivo(s) Apex.`);
+  void vscode12.window.showInformationMessage(`Formato Allman aplicado a ${updated} archivo(s) Apex.`);
 }
 
 // src/core/whereUsedPanel.ts
-var vscode15 = __toESM(require("vscode"));
+var vscode14 = __toESM(require("vscode"));
 var path17 = __toESM(require("path"));
 
 // src/core/whereUsedReport.ts
 var path16 = __toESM(require("path"));
 var fs11 = __toESM(require_lib());
 var nunjucks2 = __toESM(require_nunjucks());
-var vscode14 = __toESM(require("vscode"));
+var vscode13 = __toESM(require("vscode"));
 var CATEGORY_DEFINITIONS = [
   { key: "Apex", icon: "\u{1F4D8}", label: "Apex" },
   { key: "Flows", icon: "\u26A1", label: "Flow" },
@@ -89839,7 +89927,7 @@ async function generateWhereUsedReport(results, options) {
   return { html, savedPath };
 }
 function resolveTemplatePath() {
-  const extension = vscode14.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
+  const extension = vscode13.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
   const basePath = extension?.extensionPath || path16.resolve(__dirname, "..");
   const distPath = path16.join(basePath, "dist", "resources", "templates", "whereUsed_template.html");
   if (fs11.existsSync(distPath)) {
@@ -89894,7 +89982,7 @@ async function showWhereUsedPanel(results) {
   const now = /* @__PURE__ */ new Date();
   const safeTimestamp = formatTimestampForFile(now);
   const displayTimestamp = formatTimestampForDisplay(now);
-  const config2 = vscode15.workspace.getConfiguration("UnifiedApexValidator");
+  const config2 = vscode14.workspace.getConfiguration("UnifiedApexValidator");
   let outputDir = config2.get("outputDir")?.trim();
   if (outputDir) {
     outputDir = path17.resolve(outputDir);
@@ -89906,10 +89994,10 @@ async function showWhereUsedPanel(results) {
     displayTimestamp,
     outputDir
   });
-  const panel = vscode15.window.createWebviewPanel(
+  const panel = vscode14.window.createWebviewPanel(
     "uav.whereIsUsed",
     `Where is Used \u2014 ${displayTimestamp}`,
-    vscode15.ViewColumn.Active,
+    vscode14.ViewColumn.Active,
     {
       enableScripts: true,
       retainContextWhenHidden: true
@@ -89933,7 +90021,7 @@ function formatTimestampForFile(date) {
 }
 function formatTimestampForDisplay(date) {
   try {
-    const formatter = new Intl.DateTimeFormat(vscode15.env.language || "en", {
+    const formatter = new Intl.DateTimeFormat(vscode14.env.language || "en", {
       dateStyle: "medium",
       timeStyle: "short"
     });
@@ -89943,14 +90031,14 @@ function formatTimestampForDisplay(date) {
   }
 }
 function getVSCodeThemeClass2() {
-  const themeKind = vscode15.window.activeColorTheme.kind;
+  const themeKind = vscode14.window.activeColorTheme.kind;
   switch (themeKind) {
-    case vscode15.ColorThemeKind.Light:
+    case vscode14.ColorThemeKind.Light:
       return "vscode-light";
-    case vscode15.ColorThemeKind.Dark:
+    case vscode14.ColorThemeKind.Dark:
       return "vscode-dark";
-    case vscode15.ColorThemeKind.HighContrast:
-    case vscode15.ColorThemeKind.HighContrastLight:
+    case vscode14.ColorThemeKind.HighContrast:
+    case vscode14.ColorThemeKind.HighContrastLight:
       return "vscode-high-contrast";
     default:
       return "vscode-light";
@@ -89969,57 +90057,57 @@ async function activate(context) {
   console.log("[UAV][extension] Unified Apex Validator activado.");
   console.log("[UAV][extension] globalStorageUri:", context.globalStorageUri.fsPath);
   const dependenciesProvider = new DependenciesProvider(context);
-  vscode16.window.registerTreeDataProvider("uav.dependenciesView", dependenciesProvider);
+  vscode15.window.registerTreeDataProvider("uav.dependenciesView", dependenciesProvider);
   context.subscriptions.push(
-    vscode16.commands.registerCommand("uav.dependenciesView.refresh", () => dependenciesProvider.refresh())
+    vscode15.commands.registerCommand("uav.dependenciesView.refresh", () => dependenciesProvider.refresh())
   );
   registerDependencyUpdater(context);
   const syncIaContext = () => {
     const iaStatus = evaluateIaConfig();
-    void vscode16.commands.executeCommand("setContext", "uav.iaReady", iaStatus.ready);
+    void vscode15.commands.executeCommand("setContext", "uav.iaReady", iaStatus.ready);
     if (!iaStatus.ready) {
       console.warn(`[UAV][extension] IA deshabilitada. Faltan parametros: ${iaStatus.missing.join(", ")}`);
     }
   };
   syncIaContext();
   context.subscriptions.push(
-    vscode16.workspace.onDidChangeConfiguration((event) => {
+    vscode15.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration("UnifiedApexValidator")) {
         syncIaContext();
         dependenciesProvider.refresh();
       }
     })
   );
-  const outputDir = vscode16.workspace.getConfiguration("UnifiedApexValidator").get("outputDir") || path18.join(context.globalStorageUri.fsPath, "output");
+  const outputDir = vscode15.workspace.getConfiguration("UnifiedApexValidator").get("outputDir") || path18.join(context.globalStorageUri.fsPath, "output");
   const logDir = path18.join(context.globalStorageUri.fsPath, ".uav", "logs");
-  await vscode16.workspace.fs.createDirectory(vscode16.Uri.file(outputDir));
-  await vscode16.workspace.fs.createDirectory(vscode16.Uri.file(logDir));
+  await vscode15.workspace.fs.createDirectory(vscode15.Uri.file(outputDir));
+  await vscode15.workspace.fs.createDirectory(vscode15.Uri.file(logDir));
   const reportsProvider = new FolderViewProvider(outputDir, "html|pdf", "Reportes");
-  vscode16.window.registerTreeDataProvider("uav.reportsView", reportsProvider);
+  vscode15.window.registerTreeDataProvider("uav.reportsView", reportsProvider);
   const logsProvider = new FolderViewProvider(logDir, "log", "Logs");
-  vscode16.window.registerTreeDataProvider("uav.logsView", logsProvider);
+  vscode15.window.registerTreeDataProvider("uav.logsView", logsProvider);
   context.subscriptions.push(
-    vscode16.commands.registerCommand("uav.reportsView.refresh", () => reportsProvider.refresh()),
-    vscode16.commands.registerCommand("uav.logsView.refresh", () => logsProvider.refresh()),
-    vscode16.commands.registerCommand(
+    vscode15.commands.registerCommand("uav.reportsView.refresh", () => reportsProvider.refresh()),
+    vscode15.commands.registerCommand("uav.logsView.refresh", () => logsProvider.refresh()),
+    vscode15.commands.registerCommand(
       "uav.reportsView.openFolder",
-      () => vscode16.env.openExternal(vscode16.Uri.file(outputDir))
+      () => vscode15.env.openExternal(vscode15.Uri.file(outputDir))
     ),
-    vscode16.commands.registerCommand(
+    vscode15.commands.registerCommand(
       "uav.logsView.openFolder",
-      () => vscode16.env.openExternal(vscode16.Uri.file(logDir))
+      () => vscode15.env.openExternal(vscode15.Uri.file(logDir))
     ),
-    vscode16.commands.registerCommand("uav.openFile", (uri) => vscode16.env.openExternal(uri))
+    vscode15.commands.registerCommand("uav.openFile", (uri) => vscode15.env.openExternal(uri))
   );
   setExtensionContext(context);
   console.log("[UAV][extension] Contexto registrado.");
   try {
-    await vscode16.workspace.fs.createDirectory(context.globalStorageUri);
+    await vscode15.workspace.fs.createDirectory(context.globalStorageUri);
     console.log("[UAV][extension] Carpeta global creada o existente.");
   } catch (err) {
     console.error("[UAV][extension] Error creando carpeta global:", err);
   }
-  const validateApexCmd = vscode16.commands.registerCommand(
+  const validateApexCmd = vscode15.commands.registerCommand(
     "UnifiedApexValidator.validateApex",
     async (uri) => {
       try {
@@ -90027,16 +90115,16 @@ async function activate(context) {
         await runUAV(uri);
       } catch (error) {
         console.error("[UAV][extension] Error ejecutando UAV:", error);
-        vscode16.window.showErrorMessage(`Error ejecutando UAV: ${error.message}`);
+        vscode15.window.showErrorMessage(`Error ejecutando UAV: ${error.message}`);
       }
     }
   );
-  const compareApexClassesCmd = vscode16.commands.registerCommand(
+  const compareApexClassesCmd = vscode15.commands.registerCommand(
     "UnifiedApexValidator.compareApexClasses",
     async (uri) => {
-      await vscode16.window.withProgress(
+      await vscode15.window.withProgress(
         {
-          location: vscode16.ProgressLocation.Notification,
+          location: vscode15.ProgressLocation.Notification,
           title: "Comparando clases Apex contra la organizaci\xF3n seleccionada...",
           cancellable: false
         },
@@ -90045,48 +90133,48 @@ async function activate(context) {
             await runCompareApexClasses(uri);
           } catch (err) {
             console.error("[UAV][extension] Error en comparaci\xF3n:", err);
-            vscode16.window.showErrorMessage(`\u274C Error al comparar clases: ${err.message}`);
+            vscode15.window.showErrorMessage(`\u274C Error al comparar clases: ${err.message}`);
           }
         }
       );
     }
   );
-  const generateApexDocChunkedCmd = vscode16.commands.registerCommand(
+  const generateApexDocChunkedCmd = vscode15.commands.registerCommand(
     "UnifiedApexValidator.generateApexDocChunked",
     async () => {
       try {
         await generateApexDocChunked();
       } catch (error) {
         console.error("[UAV][extension] Error en generaci\xF3n de ApexDoc:", error);
-        vscode16.window.showErrorMessage(`\u274C Error generando ApexDoc: ${error.message}`);
+        vscode15.window.showErrorMessage(`\u274C Error generando ApexDoc: ${error.message}`);
       }
     }
   );
-  const formatApexAllmanCmd = vscode16.commands.registerCommand(
+  const formatApexAllmanCmd = vscode15.commands.registerCommand(
     "UnifiedApexValidator.formatApexAllman",
     async (uri, uris) => {
-      const config2 = vscode16.workspace.getConfiguration("UnifiedApexValidator");
+      const config2 = vscode15.workspace.getConfiguration("UnifiedApexValidator");
       if (!(config2.get("enableAllmanFormatter") ?? true)) {
-        void vscode16.window.showInformationMessage("El formateador Allman est\xE1 deshabilitado en la configuraci\xF3n.");
+        void vscode15.window.showInformationMessage("El formateador Allman est\xE1 deshabilitado en la configuraci\xF3n.");
         return;
       }
       await formatApexAllman(uri, uris);
     }
   );
-  const whereIsUsedCmd = vscode16.commands.registerCommand(
+  const whereIsUsedCmd = vscode15.commands.registerCommand(
     "UnifiedApexValidator.whereIsUsed",
     async (uri, uris) => {
       const logger6 = new Logger("WhereIsUsed");
       const selectedUris = collectClsUris(uri, uris);
       if (!selectedUris.length) {
-        vscode16.window.showWarningMessage("Selecciona al menos una clase Apex (.cls) para analizar su uso.");
+        vscode15.window.showWarningMessage("Selecciona al menos una clase Apex (.cls) para analizar su uso.");
         return;
       }
       let success = false;
       try {
-        await vscode16.window.withProgress(
+        await vscode15.window.withProgress(
           {
-            location: vscode16.ProgressLocation.Notification,
+            location: vscode15.ProgressLocation.Notification,
             title: "Scanning project for class usage...",
             cancellable: false
           },
@@ -90107,10 +90195,10 @@ async function activate(context) {
       } catch (err) {
         const reason = err?.message || String(err);
         logger6.error(`Error generando Where is Used: ${reason}`);
-        vscode16.window.showErrorMessage(`Error generando Where is Used: ${reason}`);
+        vscode15.window.showErrorMessage(`Error generando Where is Used: ${reason}`);
       }
       if (success) {
-        vscode16.window.showInformationMessage("Where is Used report generated.");
+        vscode15.window.showInformationMessage("Where is Used report generated.");
       }
     }
   );
@@ -90136,7 +90224,7 @@ function collectClsUris(primary, multiSelect) {
     unique.set(lower, uri);
   }
   if (!unique.size) {
-    const activeUri = vscode16.window.activeTextEditor?.document?.uri;
+    const activeUri = vscode15.window.activeTextEditor?.document?.uri;
     if (activeUri && activeUri.scheme === "file") {
       const lower = activeUri.fsPath.toLowerCase();
       if (lower.endsWith(".cls")) {
@@ -90147,11 +90235,11 @@ function collectClsUris(primary, multiSelect) {
   return Array.from(unique.values());
 }
 async function resolveWhereUsedRepoDir(logger6) {
-  const workspaceFolder = vscode16.workspace.workspaceFolders?.[0];
+  const workspaceFolder = vscode15.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) {
     throw new Error("No se detect\uFFFD un workspace abierto.");
   }
-  const config2 = vscode16.workspace.getConfiguration("UnifiedApexValidator");
+  const config2 = vscode15.workspace.getConfiguration("UnifiedApexValidator");
   let repoDir = config2.get("sfRepositoryDir")?.trim() || "";
   if (!repoDir) {
     repoDir = workspaceFolder.uri.fsPath;
@@ -90239,7 +90327,7 @@ function runWhereIsUsedWorker(workerPath, payload, logger6) {
   });
 }
 function deactivate() {
-  vscode16.window.showInformationMessage("Unified Apex Validator desactivado.");
+  vscode15.window.showInformationMessage("Unified Apex Validator desactivado.");
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
