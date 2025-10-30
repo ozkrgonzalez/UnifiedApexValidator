@@ -194,11 +194,15 @@ export async function generateApexDocChunked()
 
     await PatchApplier.openFinalDiff(original, working, doc.uri, 'Comparar documentacion generada (chunked)');
 
-    const applyAnswer = await vscode.window.showInformationMessage(
-        'Revisa el diff abierto. ¿Quieres aplicar la documentacion generada al archivo?',
-        'Aplicar',
-        'Omitir'
-    );
+    let applyAnswer: string | undefined;
+    while (!applyAnswer)
+    {
+        applyAnswer = await vscode.window.showInformationMessage(
+            'Revisa el diff abierto. ¿Quieres aplicar la documentacion generada al archivo?',
+            'Aplicar',
+            'Omitir'
+        );
+    }
 
     if (applyAnswer === 'Aplicar')
     {

@@ -58,7 +58,7 @@ class AiDocChunkRunner {
                     'Document only the visible content, without inventing missing sections.\n';
             logger.warn(`Chunk truncated to ${maxChars} characters (original length: ${chunk.text.length})`);
         }
-        logger.info(`Fragment preview (${chunk.name}): ${snippet.slice(0, 200)}...`);
+        //logger.info(`Fragment preview (${chunk.name}): ${snippet.slice(0, 200)}...`);
         const contextHeader = AiDocChunkRunner.buildContextHeader(docText, chunk);
         const snippetWrapped = `/*__BEGIN_FRAGMENT__*/\n${snippet}\n/*__END_FRAGMENT__*/`;
         const exampleBlock = AiDocChunkRunner.indentExample(languageDirectives.example);
@@ -123,7 +123,7 @@ ${exampleBlock}
                 logger.warn(`Possible incomplete response for ${chunk.name}`);
             }
             const preview = out.substring(0, 400).replace(/\n/g, ' ');
-            logger.info(`Model responded (${out.length} chars): ${preview}...`);
+            //logger.info(`Model responded (${out.length} chars): ${preview}...`);
             return { ok: true, patchedText: out };
         }
         catch (e) {

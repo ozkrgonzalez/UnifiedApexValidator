@@ -88976,7 +88976,6 @@ var AiDocChunkRunner = class _AiDocChunkRunner {
       truncatedNotice = "\n\nNote: Only part of the code is shown due to size limit.\nDocument only the visible content, without inventing missing sections.\n";
       logger6.warn(`Chunk truncated to ${maxChars} characters (original length: ${chunk.text.length})`);
     }
-    logger6.info(`Fragment preview (${chunk.name}): ${snippet.slice(0, 200)}...`);
     const contextHeader = _AiDocChunkRunner.buildContextHeader(docText, chunk);
     const snippetWrapped = `/*__BEGIN_FRAGMENT__*/
 ${snippet}
@@ -89038,7 +89037,6 @@ ${exampleBlock}
         logger6.warn(`Possible incomplete response for ${chunk.name}`);
       }
       const preview = out.substring(0, 400).replace(/\n/g, " ");
-      logger6.info(`Model responded (${out.length} chars): ${preview}...`);
       return { ok: true, patchedText: out };
     } catch (e) {
       if (e instanceof IAConnectionError) {
@@ -89267,11 +89265,14 @@ async function generateApexDocChunked() {
     return;
   }
   await PatchApplier.openFinalDiff(original, working, doc.uri, "Comparar documentacion generada (chunked)");
-  const applyAnswer = await vscode12.window.showInformationMessage(
-    "Revisa el diff abierto. \xBFQuieres aplicar la documentacion generada al archivo?",
-    "Aplicar",
-    "Omitir"
-  );
+  let applyAnswer;
+  while (!applyAnswer) {
+    applyAnswer = await vscode12.window.showInformationMessage(
+      "Revisa el diff abierto. \xBFQuieres aplicar la documentacion generada al archivo?",
+      "Aplicar",
+      "Omitir"
+    );
+  }
   if (applyAnswer === "Aplicar") {
     const targetEditor = await vscode12.window.showTextDocument(doc, { preview: false });
     const applied = await targetEditor.edit((editBuilder) => {
