@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file. The format 
 ## [1.9.2] – 2025-10-20
 
 ### Added
-- Validation of the configured org alias (`sfOrgAlias`) ensures it is connected via Salesforce CLI and can launch `sf org login web` when missing.
+- Automatic detection of the Salesforce CLI default org (`sf org list --json`) with interactive login prompts when no default is available.
 - Automatic detection of missing Einstein GPT configuration before running ApexDoc generation or IA analysis (`evaluateIaConfig` shared logic).
 - VS Code context key (`uav.iaReady`) to hide/disable IA commands when credentials are incomplete.
 - Extended README documentation covering AI requirements and ApexDoc behaviour.
@@ -18,6 +18,9 @@ All notable changes to this project will be documented in this file. The format 
 
 ### Changed
 - Refactored all HTML report templates to adopt a consistent layout and color scheme, matching the new “Where is Used” design.
+- Duplicate-code fragments in the HTML report now render inside an embedded Monaco editor with a read-only dark theme and graceful fallbacks.
+- The PDF report swaps emoji glyphs for vector badges to ensure consistent output when fonts are missing.
+- `sfOrgAlias` setting removed; all commands reuse the default org configured in the Salesforce CLI.
 - Standardized header, typography, and badge elements across all generated reports.
 - Improved summary card sizing and readability (larger numbers, unified shadows, balanced spacing).
 - Enhanced search bar logic for better live filtering within the HTML reports.

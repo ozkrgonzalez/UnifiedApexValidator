@@ -61,7 +61,7 @@ async function generateWhereUsedReport(results, options) {
             await fs.ensureDir(options.outputDir);
             savedPath = path.join(options.outputDir, `where-is-used_${options.timestamp}.html`);
             await fs.writeFile(savedPath, html, 'utf8');
-            logger.info(`Reporte Where is Used guardado en ${savedPath}`);
+            //logger.info(`Reporte Where is Used guardado en ${savedPath}`);
         }
         catch (err) {
             logger.warn(`No se pudo guardar el reporte en disco: ${err.message}`);

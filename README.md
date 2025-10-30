@@ -43,7 +43,6 @@ You’ll find them under **Unified Apex Validator** in your VS Code settings.
 | `sfClientId` | Einstein GPT Connected App client id |
 | `sfClientSecret` | Einstein GPT Connected App client secret |
 | `sfDomain` | Salesforce domain (My Domain URL) |
-| `sfOrgAlias` | Org alias used for CLI commands |
 | `sfRepositoryDir` | Local repo path with your Apex code |
 | `sfCliPath` | Custom Salesforce CLI path (defaults to `sf`) |
 | `pmdPath` | Optional PMD binary path |
@@ -58,6 +57,9 @@ You’ll find them under **Unified Apex Validator** in your VS Code settings.
 | `classDocTags` | Required ApexDoc tags for classes |
 | `methodDocTags` | Required ApexDoc tags for methods |
 | `apexDocLanguage` | Language used by the AI ApexDoc generator (`spanish` or `english`) |
+
+UAV usa automáticamente la org marcada como `isDefaultUsername` en `sf org list --json`. Asegúrate de tener una org por defecto conectada (`sf org login web`) antes de ejecutar el validador.
+
 
 💡 *Dependencies view highlights missing GPT setup fields and disables AI commands until everything’s filled in.*
 
@@ -125,9 +127,10 @@ Checks Node.js, CLI, Java, wkhtmltopdf, Code Analyzer, and Einstein GPT configur
 - Run `sf --version` and `java -version`.
 - Update PATH or reinstall if needed.
 
-### 🚫 Org alias not connected
-- Confirm your alias in `sfOrgAlias` exists via `sf org list`.
-- If not, run `sf org login web --alias <alias>`.
+### 🚫 Default org not connected
+- Ejecuta `sf org list --json` y verifica que alguna org tenga `isDefaultUsername: true`.
+- Si no existe, ejecuta `sf org login web` y marca la org como predeterminada.
+- Una vez conectada, vuelve a lanzar el validador.
 
 ### 📄 No reports generated
 - The XML must contain `<name>ApexClass</name>`.

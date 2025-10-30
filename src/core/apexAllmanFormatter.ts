@@ -5,9 +5,82 @@ import { pathToFileURL } from 'url';
 import { Logger } from './utils';
 
 const logger = new Logger('apexAllmanFormatter');
+patchWindowsBatSpawn();
 
 let prettierInstance: (typeof import('prettier')) | null = null;
 let apexPluginPathCache: string | null = null;
+let windowsBatSpawnPatched = false;
+
+function patchWindowsBatSpawn(): void
+{
+    if (process.platform !== 'win32')
+    {
+        return;
+    }
+
+    const childProcess = require('child_process') as typeof import('child_process');
+    if (windowsBatSpawnPatched)
+    {
+        return;
+    }
+
+    const originalSpawn = childProcess.spawn;
+    const originalSpawnSync = childProcess.spawnSync;
+    const spawnAny = originalSpawn as unknown as (...innerArgs: any[]) => any;
+    const spawnSyncAny = originalSpawnSync as unknown as (...innerArgs: any[]) => any;
+
+    const ensureShellTrue = (command: any, options: any): boolean =>
+        typeof command === 'string' &&
+        command.toLowerCase().endsWith('.bat') &&
+        (!options || options.shell !== true);
+
+    const patchedSpawn = function patchedSpawn(this: unknown, ...spawnArgs: any[]): any
+    {
+        const [command, maybeArgs, maybeOptions] = spawnArgs;
+
+        if (Array.isArray(maybeArgs))
+        {
+            if (ensureShellTrue(command, maybeOptions))
+            {
+                const patchedOptions = { ...(maybeOptions ?? {}), shell: true };
+                return spawnAny.call(this, command, maybeArgs, patchedOptions);
+            }
+        }
+        else if (ensureShellTrue(command, maybeArgs))
+        {
+            const patchedOptions = { ...(maybeArgs ?? {}), shell: true };
+            return spawnAny.call(this, command, patchedOptions);
+        }
+
+        return spawnAny.apply(this, spawnArgs as any);
+    };
+
+    const patchedSpawnSync = function patchedSpawnSync(this: unknown, ...spawnArgs: any[]): any
+    {
+        const [command, maybeArgs, maybeOptions] = spawnArgs;
+
+        if (Array.isArray(maybeArgs))
+        {
+            if (ensureShellTrue(command, maybeOptions))
+            {
+                const patchedOptions = { ...(maybeOptions ?? {}), shell: true };
+                return spawnSyncAny.call(this, command, maybeArgs, patchedOptions);
+            }
+        }
+        else if (ensureShellTrue(command, maybeArgs))
+        {
+            const patchedOptions = { ...(maybeArgs ?? {}), shell: true };
+            return spawnSyncAny.call(this, command, patchedOptions);
+        }
+
+        return spawnSyncAny.apply(this, spawnArgs as any);
+    };
+
+    childProcess.spawn = patchedSpawn as typeof childProcess.spawn;
+    childProcess.spawnSync = patchedSpawnSync as typeof childProcess.spawnSync;
+
+    windowsBatSpawnPatched = true;
+}
 
 async function loadPrettier(hints: string[] = []): Promise<typeof import('prettier')>
 {

@@ -147,10 +147,17 @@ async function runUAV(uri) {
             else {
                 logger.info(`📁 Repositorio configurado: ${repoDir}`);
             }
-            const sfOrgAlias = config.get('sfOrgAlias')?.trim() || 'DEVSEGC';
-            const aliasReady = await (0, utils_1.ensureOrgAliasConnected)(sfOrgAlias, logger);
+            const defaultOrg = await (0, utils_1.getDefaultConnectedOrg)(logger);
+            if (!defaultOrg) {
+                const message = 'No se detectó una org por defecto conectada en Salesforce CLI. Ejecuta "sf org login web" e intenta nuevamente.';
+                logger.error(message);
+                vscode.window.showErrorMessage(message);
+                return;
+            }
+            const targetOrg = defaultOrg.alias || defaultOrg.username;
+            const aliasReady = await (0, utils_1.ensureOrgAliasConnected)(targetOrg, logger);
             if (!aliasReady) {
-                logger.warn(`⚠️ Se cancela la ejecución: la org "${sfOrgAlias}" no está conectada.`);
+                logger.warn(`⚠️ Se cancela la ejecución: la org "${targetOrg}" no está conectada.`);
                 return;
             }
             const { testClasses, nonTestClasses } = await (0, utils_1.parseApexClassesFromPackage)(pkgPath, repoDir);

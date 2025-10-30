@@ -2,7 +2,7 @@
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import MarkdownIt from 'markdown-it';
-import { Logger, parseApexClassesFromPackage, getStorageRoot, cleanUpFiles, getGlobalChannel, ensureOrgAliasConnected } from './utils';
+import { Logger, parseApexClassesFromPackage, getStorageRoot, cleanUpFiles, getGlobalChannel, ensureOrgAliasConnected, getDefaultConnectedOrg } from './utils';
 import { runValidator } from './validator';
 import { TestSuite } from './testSuite';
 import { IAAnalisis, evaluateIaConfig } from './IAAnalisis';
@@ -143,11 +143,20 @@ export async function runUAV(uri?: vscode.Uri)
                     logger.info(`📁 Repositorio configurado: ${repoDir}`);
                 }
 
-                const sfOrgAlias = config.get<string>('sfOrgAlias')?.trim() || 'DEVSEGC';
-                const aliasReady = await ensureOrgAliasConnected(sfOrgAlias, logger);
+                const defaultOrg = await getDefaultConnectedOrg(logger);
+                if (!defaultOrg)
+                {
+                    const message = 'No se detectó una org por defecto conectada en Salesforce CLI. Ejecuta "sf org login web" e intenta nuevamente.';
+                    logger.error(message);
+                    vscode.window.showErrorMessage(message);
+                    return;
+                }
+
+                const targetOrg = defaultOrg.alias || defaultOrg.username;
+                const aliasReady = await ensureOrgAliasConnected(targetOrg, logger);
                 if (!aliasReady)
                 {
-                    logger.warn(`⚠️ Se cancela la ejecución: la org "${sfOrgAlias}" no está conectada.`);
+                    logger.warn(`⚠️ Se cancela la ejecución: la org "${targetOrg}" no está conectada.`);
                     return;
                 }
 
