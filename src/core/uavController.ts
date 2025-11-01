@@ -7,8 +7,8 @@ import { runValidator } from './validator';
 import { TestSuite } from './testSuite';
 import { IAAnalisis, evaluateIaConfig } from './IAAnalisis';
 import { generateReport } from './reportGenerator';
-import { execa } from 'execa';
 import { showReport } from './reportViewer';
+import { localize } from '../i18n';
 
 export async function runUAV(uri?: vscode.Uri)
 {
@@ -37,16 +37,16 @@ export async function runUAV(uri?: vscode.Uri)
         const mainLog = path.join(logDir, 'Validator.log');
         if (await fs.pathExists(mainLog)) await fs.writeFile(mainLog, '');
 
-        console.log(`[UAV][Controller] Limpieza previa completada en ${storageRoot}`);
+        console.log(localize('log.uavController.preCleanupDone', '[UAV][Controller] Pre-run cleanup completed at {0}', storageRoot)); // Localized string
     }
     catch (err)
     {
-        console.warn('[UAV][Controller] ⚠️ No se pudo limpiar logs/temp antes de la ejecución:', err);
+        console.warn(localize('log.uavController.preCleanupFailed', '[UAV][Controller] ⚠️ Could not clean logs/temp before execution.'), err); // Localized string
     }
 
     // 🚀 Ahora sí, crear el logger principal
     const logger = new Logger('UAVController', true);
-    logger.info('🚀 Iniciando ejecución del Unified Apex Validator...');
+    logger.info(localize('log.uavController.start', '🚀 Starting Unified Apex Validator run...')); // Localized string
 
     let tempPackagePath: string | undefined;
     let sourceUri: vscode.Uri | undefined;
@@ -55,7 +55,7 @@ export async function runUAV(uri?: vscode.Uri)
     await vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
-            title: 'Unified Apex Validator',
+            title: localize('progress.uavController.title', 'Unified Apex Validator'), // Localized string
             cancellable: true
         },
         async (progress) =>
@@ -65,12 +65,12 @@ export async function runUAV(uri?: vscode.Uri)
                 sourceUri = uri && uri.scheme === 'file' ? uri : vscode.window.activeTextEditor?.document?.uri;
                 if (!sourceUri || sourceUri.scheme !== 'file')
                 {
-                    throw new Error('Selecciona un package.xml o una clase Apex (.cls) dentro del workspace.');
+                    throw new Error(localize('error.uavController.selectSource', 'Select a package.xml or Apex (.cls) file within the workspace.')); // Localized string
                 }
 
                 const workspaceFolder = vscode.workspace.getWorkspaceFolder(sourceUri) || vscode.workspace.workspaceFolders?.[0];
 
-                if (!workspaceFolder) throw new Error('No se detectó carpeta de proyecto');
+                if (!workspaceFolder) throw new Error(localize('error.uavController.noWorkspace', 'No workspace folder detected.')); // Localized string
 
                 const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
                 let repoDir = config.get<string>('sfRepositoryDir')?.trim() || '';
@@ -78,7 +78,7 @@ export async function runUAV(uri?: vscode.Uri)
                 if (!repoDir)
                 {
                     repoDir = workspaceFolder.uri.fsPath;
-                    logger.warn('⚠️ sfRepositoryDir no configurado. Usando raíz del workspace.');
+                    logger.warn(localize('log.uavController.repoDirFallbackWorkspace', '⚠️ sfRepositoryDir not configured. Using workspace root.')); // Localized string
                 }
 
                 packageUri = sourceUri;
@@ -96,7 +96,7 @@ export async function runUAV(uri?: vscode.Uri)
                         `        <members>${className}</members>`,
                         '        <name>ApexClass</name>',
                         '    </types>',
-                        '    <version>59.0</version>',
+                        '    <version>64.0</version>',
                         '</Package>',
                         ''
                     ].join('\n');
@@ -104,13 +104,13 @@ export async function runUAV(uri?: vscode.Uri)
                     tempPackagePath = path.join(tempDirWS, `package-${className}-${Date.now()}.xml`);
                     await fs.writeFile(tempPackagePath, packageXml, 'utf8');
                     packageUri = vscode.Uri.file(tempPackagePath);
-                    logger.info(`Generado package.xml temporal para la clase ${className}: ${tempPackagePath}`);
+                    logger.info(localize('log.uavController.tempPackageCreated', 'Generated temporary package.xml for class {0}: {1}', className, tempPackagePath)); // Localized string
                 }
 
                 // Validar estructura minima del repo
                 if (!fs.existsSync(path.join(repoDir, 'sfdx-project.json')))
                 {
-                    logger.warn('⚠️ No se encontró sfdx-project.json. Ajustando repoDir al workspace raíz.');
+                    logger.warn(localize('log.uavController.noSfdxProject', '⚠️ sfdx-project.json not found. Falling back to workspace root for repoDir.')); // Localized string
                     repoDir = workspaceFolder.uri.fsPath;
                 }
 
@@ -125,28 +125,28 @@ export async function runUAV(uri?: vscode.Uri)
 
                 if (!content.includes('<name>ApexClass</name>'))
                 {
-                    const msg = '❌ No se encontraron clases Apex en este XML.';
+                    const msg = localize('error.uavController.noApexClasses', '❌ No Apex classes were found in this XML.'); // Localized string
                     logger.error(msg);
                     throw new Error(msg);
                 }
 
                 // Paso 1: Parsear package.xml
-                progress.report({ message: 'Analizando package.xml...' });
-                logger.info('📦 Analizando package.xml...');
+                progress.report({ message: localize('progress.uavController.analyzingPackage', 'Analyzing package.xml...') }); // Localized string
+                logger.info(localize('log.uavController.analyzingPackage', '📦 Analyzing package.xml...')); // Localized string
                 if (!repoDir)
                 {
                     repoDir = path.join(workspaceFolder.uri.fsPath, 'force-app', 'main', 'default', 'classes');
-                    logger.warn(`⚠️ sfRepositoryDir no configurado. Usando ruta por defecto: ${repoDir}`);
+                    logger.warn(localize('log.uavController.repoDirFallbackDefault', '⚠️ sfRepositoryDir not configured. Using default path: {0}', repoDir)); // Localized string
                 }
                 else
                 {
-                    logger.info(`📁 Repositorio configurado: ${repoDir}`);
+                    logger.info(localize('log.uavController.repoDirConfigured', '📁 Repository configured: {0}', repoDir)); // Localized string
                 }
 
                 const defaultOrg = await getDefaultConnectedOrg(logger);
                 if (!defaultOrg)
                 {
-                    const message = 'No se detectó una org por defecto conectada en Salesforce CLI. Ejecuta "sf org login web" e intenta nuevamente.';
+                    const message = localize('error.uavController.noDefaultOrg', 'No default org connected in Salesforce CLI. Run "sf org login web" and try again.'); // Localized string
                     logger.error(message);
                     vscode.window.showErrorMessage(message);
                     return;
@@ -156,20 +156,20 @@ export async function runUAV(uri?: vscode.Uri)
                 const aliasReady = await ensureOrgAliasConnected(targetOrg, logger);
                 if (!aliasReady)
                 {
-                    logger.warn(`⚠️ Se cancela la ejecución: la org "${targetOrg}" no está conectada.`);
+                    logger.warn(localize('log.uavController.orgNotConnected', '⚠️ Execution cancelled: org "{0}" is not connected.', targetOrg)); // Localized string
                     return;
                 }
 
                 const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(pkgPath, repoDir);
 
                 // 2️⃣ Validación estática (Code Analyzer + PMD)
-                logger.info('🧠 Llamando a runValidator...');
+                logger.info(localize('log.uavController.runValidator', '🧠 Invoking runValidator...')); // Localized string
                 const { codeAnalyzerResults, pmdResults } = await runValidator(packageUri!, progress, repoDir);
 
                 // 3️⃣ Ejecución de pruebas Apex
-                progress.report({ message: 'Ejecutando pruebas Apex...' });
+                progress.report({ message: localize('progress.uavController.runningTests', 'Running Apex tests...') }); // Localized string
 
-                logger.info('🧪 Ejecutando pruebas Apex...');
+                logger.info(localize('log.uavController.runningTests', '🧪 Executing Apex tests...')); // Localized string
                 const testSuite = new TestSuite(workspaceFolder.uri.fsPath);
                 const testResults = await testSuite.runTestSuite(testClasses, nonTestClasses);
 
@@ -184,8 +184,8 @@ export async function runUAV(uri?: vscode.Uri)
                     const sfGptPrompt = config.get<string>('iaPromptTemplate') ?? 'Analiza la clase {class_name}:\n{truncated_body}';
                     const sfGptMaxChar = config.get<number>('maxIAClassChars') ?? 25000;
 
-                    progress.report({ message: 'Ejecutando analisis IA...' });
-                    logger.info('Ejecutando analisis de IA con Einstein GPT...');
+                    progress.report({ message: localize('progress.uavController.runningAi', 'Running AI analysis...') }); // Localized string
+                    logger.info(localize('log.uavController.runningAi', 'Running AI analysis with Einstein GPT...')); // Localized string
                     const ia = new IAAnalisis();
 
                     for (const cls of nonTestClasses)
@@ -194,20 +194,20 @@ export async function runUAV(uri?: vscode.Uri)
 
                         if (!fs.existsSync(clsPath))
                         {
-                            logger.warn(`Clase no encontrada: ${clsPath}`);
+                            logger.warn(localize('log.uavController.classMissing', 'Class not found: {0}', clsPath)); // Localized string
                             continue;
                         }
 
                         try
                         {
-                            logger.info(`Enviando clase a IA: ${cls}`);
+                            logger.info(localize('log.uavController.sendingClassToAi', 'Sending class to AI: {0}', cls)); // Localized string
                             const content = await fs.readFile(clsPath, 'utf8');
 
                             const truncated = content.length > sfGptMaxChar ? content.slice(0, sfGptMaxChar) : content;
 
                             if (content.length > sfGptMaxChar)
                             {
-                                logger.warn(`Clase ${cls} truncada a ${sfGptMaxChar} caracteres para analisis.`);
+                                logger.warn(localize('log.uavController.classTruncated', 'Class {0} truncated to {1} characters for analysis.', cls, sfGptMaxChar)); // Localized string
                             }
 
                             const prompt = sfGptPrompt
@@ -228,24 +228,24 @@ export async function runUAV(uri?: vscode.Uri)
                         catch (err)
                         {
                             const message = err instanceof Error ? err.message : String(err);
-                            logger.warn(`IA fallo para ${cls}: ${message}`);
+                            logger.warn(localize('log.uavController.aiFailed', 'AI analysis failed for {0}: {1}', cls, message)); // Localized string
                         }
                     }
 
-                    logger.info(`Analisis IA finalizado - clases procesadas: ${iaResults.length}`);
+                    logger.info(localize('log.uavController.aiCompleted', 'AI analysis finished - classes processed: {0}', iaResults.length)); // Localized string
                 }
                 else if (skipIASetting)
                 {
-                    logger.info('Analisis IA omitido por configuracion (skipIAAnalysis=true).');
+                    logger.info(localize('log.uavController.aiSkippedSetting', 'AI analysis skipped by configuration (skipIAAnalysis=true).')); // Localized string
                 }
                 else
                 {
-                    logger.info(`IA deshabilitada - faltan parametros: ${iaStatus.missing.join(', ')}`);
+                    logger.info(localize('log.uavController.aiDisabledParams', 'AI analysis disabled - missing parameters: {0}', iaStatus.missing.join(', '))); // Localized string
                 }
 
                 // 5️⃣ Generar reportes
-                progress.report({ message: 'Generando reportes...' });
-                logger.info('📊 Generando reportes...');
+                progress.report({ message: localize('progress.uavController.generatingReports', 'Generating reports...') }); // Localized string
+                logger.info(localize('log.uavController.generatingReports', '📊 Generating reports...')); // Localized string
                 const outputDir = config.get<string>('outputDir')?.trim() || path.join(storageRoot, 'output');
                 await fs.ensureDir(outputDir);
                 await generateReport(outputDir,
@@ -256,18 +256,18 @@ export async function runUAV(uri?: vscode.Uri)
                     iaResults
                 });
 
-                logger.info(`✅ UAV completado. Reporte generado en: ${outputDir}`);
-                vscode.window.showInformationMessage(`✅ UAV completado. Reporte generado en ${outputDir}.`);
+                logger.info(localize('log.uavController.runCompleted', '✅ UAV completed. Report saved at: {0}', outputDir)); // Localized string
+                vscode.window.showInformationMessage(localize('info.uavController.runCompleted', '✅ UAV completed. Report generated in {0}.', outputDir)); // Localized string
 
                 // 👀 Abrir el reporte en vista integrada dentro de VS Code
                 const htmlReport = path.join(outputDir, 'reporte_validaciones.html');
                 if (fs.existsSync(htmlReport))
                 {
-                    showReport(htmlReport, 'Reporte de Validación Apex');
+                    showReport(htmlReport, localize('ui.reportViewer.validationTitle', 'Apex Validation Report')); // Localized string
                 }
                 else
                 {
-                    logger.warn(`⚠️ No se encontró el reporte HTML en ${htmlReport}`);
+                    logger.warn(localize('log.uavController.reportMissing', '⚠️ HTML report not found at {0}', htmlReport)); // Localized string
                 }
 
                 // 🧹 Limpieza final si corresponde
@@ -275,26 +275,27 @@ export async function runUAV(uri?: vscode.Uri)
                 if (!keepLogFiles)
                 {
                     await cleanUpFiles([tempDir, logDir], logger);
-                    logger.info('🧼 Archivos temporales y logs eliminados tras ejecución exitosa.');
+                    logger.info(localize('log.uavController.cleanupDone', '🧼 Temporary files and logs removed after successful execution.')); // Localized string
                 }
                 else
                 {
-                    logger.info('✅ Ejecución exitosa. Se conservaron los logs por configuración.');
+                    logger.info(localize('log.uavController.logsKept', '✅ Successful execution. Logs kept per configuration.')); // Localized string
                 }
 
             }
             catch (err: any)
             {
-                if (err.message.includes('No se encontraron clases Apex'))
+                const noApexMessage = localize('error.uavController.noApexClasses', '❌ No Apex classes were found in this XML.'); // Localized string
+                if (err.message.includes(noApexMessage))
                 {
                     vscode.window.showWarningMessage(err.message);
                     const failedPath = packageUri?.fsPath || sourceUri?.fsPath || 'N/A';
-                    logger.warn(`⚠️ UAV finalizado sin ApexClass (${failedPath})`);
+                    logger.warn(localize('log.uavController.noApexInPackage', '⚠️ UAV finished without ApexClass ({0})', failedPath)); // Localized string
                 }
                 else
                 {
-                    logger.error(`❌ Error en proceso UAV: ${err.message}`);
-                    vscode.window.showErrorMessage(`Error en UAV: ${err.message}`);
+                    logger.error(localize('log.uavController.runFailed', '❌ Error during UAV run: {0}', err.message)); // Localized string
+                    vscode.window.showErrorMessage(localize('error.uavController.runFailed', 'Error in UAV: {0}', err.message)); // Localized string
                 }
             }
             finally
@@ -307,7 +308,7 @@ export async function runUAV(uri?: vscode.Uri)
                     }
                     catch (cleanupErr)
                     {
-                        logger.warn(`No se pudo limpiar el package temporal (${tempPackagePath}): ${cleanupErr}`);
+                        logger.warn(localize('log.uavController.tempPackageCleanupFailed', 'Could not clean temporary package ({0}): {1}', tempPackagePath, String(cleanupErr))); // Localized string
                     }
                 }
             }
@@ -340,7 +341,7 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
     {
         try {
             if (!this.folderPath || !(await fs.pathExists(this.folderPath))) {
-                return [new FileItem(`No se encontró carpeta: ${this.folderPath}`, '', false)];
+                return [new FileItem(localize('ui.folderView.notFound', 'Folder not found: {0}', this.folderPath), '', false)]; // Localized string
             }
 
             const files = await fs.readdir(this.folderPath, { withFileTypes: true });
@@ -355,15 +356,15 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
                 .map(f => new FileItem(f.name, path.join(this.folderPath, f.name), true));
 
             if (!filtered.length) {
-                return [new FileItem('Sin archivos disponibles', '', false)];
+                return [new FileItem(localize('ui.folderView.empty', 'No files available'), '', false)]; // Localized string
             }
 
             return filtered;
         }
         catch (err)
         {
-            console.error(`[UAV][${this.label}] Error leyendo archivos:`, err);
-            return [new FileItem('Error leyendo carpeta', '', false)];
+            console.error(localize('log.folderView.readError', '[UAV][{0}] Error reading files:', this.label), err); // Localized string
+            return [new FileItem(localize('ui.folderView.error', 'Error reading folder'), '', false)]; // Localized string
         }
     }
 }
@@ -384,7 +385,7 @@ class FileItem extends vscode.TreeItem
         {
             this.command = {
                 command: 'uav.openFile',
-                title: 'Abrir archivo',
+                title: localize('command.openFile.title', 'Open file'), // Localized string
                 arguments: [vscode.Uri.file(filePath)]
             };
         }

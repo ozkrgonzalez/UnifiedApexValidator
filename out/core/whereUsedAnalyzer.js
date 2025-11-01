@@ -38,6 +38,7 @@ const path = __importStar(require("path"));
 const fs = __importStar(require("fs-extra"));
 const vscode = __importStar(require("vscode"));
 const utils_1 = require("./utils");
+const i18n_1 = require("../i18n");
 const whereUsedCore_1 = require("./whereUsedCore");
 async function analyzeWhereUsed(targets) {
     const logger = new utils_1.Logger('WhereUsedAnalyzer');
@@ -45,7 +46,7 @@ async function analyzeWhereUsed(targets) {
     const repoDir = await resolveRepositoryDir(workspaceFolder, logger);
     const classNames = (0, whereUsedCore_1.collectClassNames)(targets);
     if (!classNames.size) {
-        throw new Error('No fue posible determinar los nombres de clase Apex a partir de la selección.');
+        throw new Error((0, i18n_1.localize)('error.whereUsedAnalyzer.noClassNames', 'Unable to derive Apex class names from the selection.'));
     }
     logger.info(`Clases objetivo: ${Array.from(classNames).join(', ')}`);
     logger.info(`Repositorio analizado: ${repoDir}`);
@@ -70,7 +71,7 @@ function resolveWorkspaceFolder(targets) {
     }
     const fallback = vscode.workspace.workspaceFolders?.[0];
     if (!fallback) {
-        throw new Error('No se detectó un workspace abierto.');
+        throw new Error('No workspace folder detected.');
     }
     return fallback;
 }
@@ -79,11 +80,11 @@ async function resolveRepositoryDir(workspaceFolder, logger) {
     let repoDir = config.get('sfRepositoryDir')?.trim() || '';
     if (!repoDir) {
         repoDir = workspaceFolder.uri.fsPath;
-        logger.warn('sfRepositoryDir no configurado. Se usará la raíz del workspace.');
+        logger.warn((0, i18n_1.localize)('log.whereUsedAnalyzer.repoDefault', 'sfRepositoryDir not configured. Using workspace root.'));
     }
     repoDir = path.resolve(repoDir);
     if (!(await fs.pathExists(repoDir))) {
-        throw new Error(`La ruta configurada no existe: ${repoDir}`);
+        throw new Error((0, i18n_1.localize)('error.whereUsedAnalyzer.repoMissing', 'Configured repository path does not exist: {0}', repoDir));
     }
     return repoDir;
 }

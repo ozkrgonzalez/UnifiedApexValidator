@@ -37,6 +37,7 @@ exports.collectClassNames = collectClassNames;
 exports.analyzeWhereUsedCore = analyzeWhereUsedCore;
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
+const i18n_1 = require("../i18n");
 const IGNORE_DIRECTORIES = new Set([
     'node_modules',
     '.sfdx',
@@ -78,14 +79,14 @@ async function analyzeWhereUsedCore(options) {
     const logger = options.logger ?? silentLogger;
     const repoDir = path.resolve(options.repoDir);
     if (!options.classIdentifiers?.length) {
-        throw new Error('No se recibieron clases Apex para analizar.');
+        throw new Error((0, i18n_1.localize)('error.whereUsedCore.noClasses', 'No Apex classes were provided for analysis.'));
     }
     if (!(await pathExists(repoDir))) {
-        throw new Error(`La ruta configurada no existe: ${repoDir}`);
+        throw new Error((0, i18n_1.localize)('error.whereUsedCore.repoMissing', 'Configured repository path does not exist: {0}', repoDir));
     }
     const classNames = collectClassNames(options.classIdentifiers);
     if (!classNames.size) {
-        throw new Error('No fue posible determinar los nombres de clase Apex a partir de la selección.');
+        throw new Error((0, i18n_1.localize)('error.whereUsedCore.noClassNames', 'Unable to derive Apex class names from the selection.'));
     }
     //logger.info(`Clases objetivo: ${Array.from(classNames).join(', ')}`);
     //logger.info(`Repositorio analizado: ${repoDir}`);
@@ -105,7 +106,7 @@ async function analyzeWhereUsedCore(options) {
     await scanFlowUsage(searchRoot, classNames, usageMap, logger);
     await scanLwcUsage(searchRoot, classNames, usageMap, logger);
     await scanMetadataUsage(searchRoot, classNames, usageMap, logger);
-    logger.info('Análisis completado. Preparando resultados.');
+    logger.info((0, i18n_1.localize)('log.whereUsedCore.analysisComplete', 'Analysis complete. Preparing results.'));
     const results = [];
     for (const cls of classNames) {
         const buckets = usageMap.get(cls);
@@ -127,14 +128,14 @@ async function analyzeWhereUsedCore(options) {
 }
 async function scanApexUsage(repoDir, classNames, usageMap, logger) {
     const apexFiles = await collectMatchingFiles(repoDir, (relative) => relative.endsWith('.cls'));
-    logger.info(`Escaneando ${apexFiles.length} clases Apex en busca de referencias.`);
+    logger.info((0, i18n_1.localize)('log.whereUsedCore.scanningApex', 'Scanning {0} Apex classes for references.', apexFiles.length));
     for (const filePath of apexFiles) {
         let content;
         try {
             content = await fsPromises.readFile(filePath, 'utf8');
         }
         catch (err) {
-            logger.warn(`No se pudo leer ${filePath}: ${err.message}`);
+            logger.warn((0, i18n_1.localize)('log.whereUsedCore.readFileError', 'Could not read {0}: {1}', filePath, err.message));
             continue;
         }
         const normalized = content.replace(/\r\n/g, '\n');
@@ -172,14 +173,14 @@ async function scanTriggerUsage(searchRoot, classNames, usageMap, logger) {
         }
         return normalized.endsWith('.trigger');
     });
-    logger.info(`Escaneando ${triggerFiles.length} triggers.`);
+    logger.info((0, i18n_1.localize)('log.whereUsedCore.scanningTriggers', 'Scanning {0} triggers.', triggerFiles.length));
     for (const filePath of triggerFiles) {
         let content;
         try {
             content = await fsPromises.readFile(filePath, 'utf8');
         }
         catch (err) {
-            logger.warn(`No se pudo leer ${filePath}: ${err.message}`);
+            logger.warn((0, i18n_1.localize)('log.whereUsedCore.readFileError', 'Could not read {0}: {1}', filePath, err.message));
             continue;
         }
         const normalized = content.replace(/\r\n/g, '\n');
@@ -201,14 +202,14 @@ async function scanFlowUsage(searchRoot, classNames, usageMap, logger) {
     if (!flowFiles.length) {
         return;
     }
-    logger.info(`Escaneando ${flowFiles.length} Flows.`);
+    logger.info((0, i18n_1.localize)('log.whereUsedCore.scanningFlows', 'Scanning {0} Flows.', flowFiles.length));
     for (const filePath of flowFiles) {
         let xml;
         try {
             xml = await fsPromises.readFile(filePath, 'utf8');
         }
         catch (err) {
-            logger.warn(`No se pudo leer ${filePath}: ${err.message}`);
+            logger.warn((0, i18n_1.localize)('log.whereUsedCore.readFileError', 'Could not read {0}: {1}', filePath, err.message));
             continue;
         }
         const flowName = extractFlowLabel(xml) ||
@@ -222,8 +223,54 @@ async function scanFlowUsage(searchRoot, classNames, usageMap, logger) {
     }
 }
 function extractFlowLabel(xml) {
-    const match = xml.match(/<label>([^<]+)<\/label>/i);
-    return match ? match[1].trim() : null;
+    const sanitized = xml.replace(/<!--[\s\S]*?-->/g, '');
+    const tagRegex = /<([^>]+)>/gi;
+    const stack = [];
+    let match;
+    while ((match = tagRegex.exec(sanitized)) !== null) {
+        const raw = match[1]?.trim();
+        if (!raw) {
+            continue;
+        }
+        if (raw.startsWith('?') || raw.startsWith('!')) {
+            continue;
+        }
+        const isClosing = raw.startsWith('/');
+        const isSelfClosing = raw.endsWith('/');
+        const normalized = raw.replace(/^[/?]+/, '').replace(/\/$/, '');
+        const tagName = normalized.split(/\s+/)[0]?.toLowerCase();
+        if (!tagName) {
+            continue;
+        }
+        if (isClosing) {
+            const closingName = tagName;
+            while (stack.length && stack[stack.length - 1] !== closingName) {
+                stack.pop();
+            }
+            if (stack.length) {
+                stack.pop();
+            }
+            continue;
+        }
+        const parent = stack[stack.length - 1];
+        if (tagName === 'label' && parent === 'flow') {
+            const endIndex = sanitized.indexOf('</label>', tagRegex.lastIndex);
+            if (endIndex !== -1) {
+                const value = sanitized.slice(tagRegex.lastIndex, endIndex).trim();
+                if (value) {
+                    return value;
+                }
+            }
+        }
+        if (!isSelfClosing) {
+            stack.push(tagName);
+        }
+    }
+    const fallbackMatch = sanitized.match(/<fullname>([^<]+)<\/fullname>/i);
+    if (fallbackMatch?.[1]) {
+        return fallbackMatch[1].trim();
+    }
+    return null;
 }
 function flowReferencesClass(xmlLower, className) {
     const lowerClass = className.toLowerCase();
@@ -234,10 +281,28 @@ function flowReferencesClass(xmlLower, className) {
         return true;
     }
     const apexActionPattern = new RegExp(`apexaction[^>]*${escapeRegExp(lowerClass)}`, 'i');
-    return apexActionPattern.test(xmlLower);
+    if (apexActionPattern.test(xmlLower)) {
+        return true;
+    }
+    const actionCallsPattern = /<actioncalls>([\s\S]*?)<\/actioncalls>/gi;
+    let actionMatch;
+    while ((actionMatch = actionCallsPattern.exec(xmlLower)) !== null) {
+        const actionBlock = actionMatch[1];
+        if (!actionBlock)
+            continue;
+        if (!/<actiontype>\s*apex\s*<\/actiontype>/i.test(actionBlock)) {
+            continue;
+        }
+        const nameMatch = actionBlock.match(/<actionname>([^<]+)<\/actionname>/i);
+        const actionName = nameMatch?.[1]?.trim();
+        if (actionName && actionName === lowerClass) {
+            return true;
+        }
+    }
+    return false;
 }
 async function scanLwcUsage(searchRoot, classNames, usageMap, logger) {
-    //logger.info(`Raíz para búsqueda LWC/Aura: ${searchRoot}`);
+    //logger.info(`RaÃ­z para bÃºsqueda LWC/Aura: ${searchRoot}`);
     const lwcFiles = await collectMatchingFiles(searchRoot, (relative) => {
         const normalized = relative.replace(/\\/g, '/');
         const lower = normalized.toLowerCase();
@@ -249,10 +314,10 @@ async function scanLwcUsage(searchRoot, classNames, usageMap, logger) {
     });
     if (!lwcFiles.length) {
         await logLwcDirectories(searchRoot, logger);
-        logger.info('Escaneando 0 archivos LWC/Aura.');
+        logger.info((0, i18n_1.localize)('log.whereUsedCore.scanningZeroLwc', 'Scanning 0 LWC/Aura files.'));
         return;
     }
-    logger.info(`Escaneando ${lwcFiles.length} archivos LWC/Aura.`);
+    logger.info((0, i18n_1.localize)('log.whereUsedCore.scanningLwc', 'Scanning {0} LWC/Aura files.', lwcFiles.length));
     const samplePaths = lwcFiles.slice(0, Math.min(lwcFiles.length, 5))
         .map((file) => path.relative(searchRoot, file) || path.basename(file));
     //logger.info(`Ejemplos LWC/Aura: ${samplePaths.join(', ')}`);
@@ -262,14 +327,22 @@ async function scanLwcUsage(searchRoot, classNames, usageMap, logger) {
             content = await fsPromises.readFile(filePath, 'utf8');
         }
         catch (err) {
-            logger.warn(`No se pudo leer ${filePath}: ${err.message}`);
+            logger.warn((0, i18n_1.localize)('log.whereUsedCore.readFileError', 'Could not read {0}: {1}', filePath, err.message));
             continue;
         }
         const relativePath = path.relative(searchRoot, filePath) || path.basename(filePath);
         const importMatches = content.match(/@salesforce\/apex\/[A-Za-z0-9_.]+\.[A-Za-z_]\w*/g);
-        if (importMatches?.length) {
-            logger.info(`LWC "${relativePath}" contiene imports Apex: ${importMatches.join(', ')}`);
-        }
+        /*if (importMatches?.length)
+        {
+            logger.info(
+                localize(
+                    'log.whereUsedCore.lwcImports',
+                    'LWC "{0}" contains Apex imports: {1}',
+                    relativePath,
+                    importMatches.join(', ')
+                )
+            );
+        }*/
         const componentName = deriveLwcComponentName(filePath);
         if (!componentName) {
             continue;
@@ -277,7 +350,9 @@ async function scanLwcUsage(searchRoot, classNames, usageMap, logger) {
         for (const cls of classNames) {
             if (referencesInLwc(content, cls)) {
                 usageMap.get(cls)?.LWC.add(componentName);
-                logger.info(`LWC "${componentName}" referencia ${cls}.`);
+                /*logger.info(
+                    localize('log.whereUsedCore.lwcReferencesClass', 'LWC "{0}" references {1}.', componentName, cls)
+                );*/
             }
         }
     }
@@ -304,14 +379,14 @@ async function scanMetadataUsage(searchRoot, classNames, usageMap, logger) {
     if (!metadataFiles.length) {
         return;
     }
-    logger.info(`Escaneando ${metadataFiles.length} archivos de metadatos.`);
+    logger.info((0, i18n_1.localize)('log.whereUsedCore.scanningMetadata', 'Scanning {0} metadata files.', metadataFiles.length));
     for (const filePath of metadataFiles) {
         let content;
         try {
             content = await fsPromises.readFile(filePath, 'utf8');
         }
         catch (err) {
-            logger.warn(`No se pudo leer ${filePath}: ${err.message}`);
+            logger.warn((0, i18n_1.localize)('log.whereUsedCore.readFileError', 'Could not read {0}: {1}', filePath, err.message));
             continue;
         }
         const displayName = path.basename(filePath);
@@ -386,13 +461,13 @@ async function logLwcDirectories(baseDir, logger) {
     if (lwcExists) {
         const samples = await listSubdirectories(lwcRoot, 5);
         if (samples.length) {
-            logger.warn(`Componentes LWC detectados: ${samples.join(', ')}`);
+            logger.warn((0, i18n_1.localize)('log.whereUsedCore.lwcComponents', 'LWC components detected: {0}', samples.join(', ')));
         }
     }
     if (auraExists) {
         const samples = await listSubdirectories(auraRoot, 5);
         if (samples.length) {
-            logger.warn(`Bundles Aura detectados: ${samples.join(', ')}`);
+            logger.warn((0, i18n_1.localize)('log.whereUsedCore.auraBundles', 'Aura bundles detected: {0}', samples.join(', ')));
         }
     }
 }
