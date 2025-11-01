@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Where is Used</title>
+    <title data-i18n-key="page-title">Where is Used</title>
     <style>
         :root {
             color-scheme: light dark;
@@ -107,6 +107,37 @@
             color: inherit;
             font-size: 0.95rem;
             outline: none;
+        }
+
+        .language-switcher {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            box-shadow: var(--shadow-small);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        body.vscode-light .language-switcher {
+            border-color: rgba(16, 33, 61, 0.06);
+        }
+
+        .language-switcher span {
+            font-size: 1rem;
+        }
+
+        .language-select {
+            background: transparent;
+            border: none;
+            color: inherit;
+            font: inherit;
+            outline: none;
+        }
+
+        .language-select option {
+            color: #000;
         }
 
         .stats {
@@ -215,8 +246,8 @@
         .category-grid {
             display: grid;
             gap: 20px;
-            padding: 0 28px 24px 28px;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            padding: 0 20px 24px 20px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         }
 
         .category-card {
@@ -255,6 +286,9 @@
 
         .category-card li {
             list-style: disc;
+            margin-left: 1rem;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .empty {
@@ -291,8 +325,8 @@
 <body class="vscode-light">
     <div class="canvas">
         <header>
-            <h1>Where is Used</h1>
-            <p>Reporte generado el {{ generatedAt }} — {{ totalClasses }} clases analizadas, {{ totalReferences }} referencias encontradas.</p>
+            <h1 data-i18n-key="header-title">Where is Used</h1>
+            <p id="report-summary" data-i18n-key="header-summary" data-generated-at="{{ generatedAt }}" data-total-classes="{{ totalClasses }}" data-total-references="{{ totalReferences }}">Reporte generado el {{ generatedAt }} — {{ totalClasses }} clases analizadas, {{ totalReferences }} referencias encontradas.</p>
         </header>
 
         <div class="toolbar">
@@ -300,13 +334,20 @@
                 <span>🔍</span>
                 <input id="class-filter" type="search" placeholder="Filtrar por nombre de clase..." aria-label="Buscar clase">
             </label>
-            <div class="badge">Actualizado {{ generatedAt }}</div>
+            <div class="language-switcher">
+                <span aria-hidden="true">🌐</span>
+                <select id="language-select" class="language-select" aria-label="Selector de idioma">
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <div class="badge" id="last-updated" data-generated-at="{{ generatedAt }}">Actualizado {{ generatedAt }}</div>
         </div>
 
         <section class="stats">
             {% for summary in categoryTotals %}
             <article class="stat-card">
-                <h3>{{ summary.icon }} {{ summary.label }}</h3>
+                <h3>{{ summary.icon }} <span data-i18n-category="{{ summary.key }}">{{ summary.label }}</span></h3>
                 <strong>{{ summary.count }}</strong>
             </article>
             {% endfor %}
@@ -319,7 +360,7 @@
                     <div class="class-title">
                         <span class="class-name">{{ entry.className }}</span>
                         <div class="class-meta">
-                            <span class="badge">Total: {{ entry.totalCount }}</span>
+                            <span class="badge"><span data-i18n-key="total-label">Total</span>: {{ entry.totalCount }}</span>
                         </div>
                     </div>
                     <span aria-hidden="true">▾</span>
@@ -328,7 +369,7 @@
                     {% for bucket in entry.categories %}
                     <article class="category-card" data-empty="{{ 'true' if bucket.count == 0 else 'false' }}">
                         <h4>
-                            <span>{{ bucket.icon }} {{ bucket.label }}</span>
+                            <span>{{ bucket.icon }} <span data-i18n-category="{{ bucket.key }}">{{ bucket.label }}</span></span>
                             <span class="badge">{{ bucket.count }}</span>
                         </h4>
                         {% if bucket.count %}
@@ -338,7 +379,7 @@
                             {% endfor %}
                         </ul>
                         {% else %}
-                        <p class="empty">Sin referencias.</p>
+                        <p class="empty" data-i18n-key="empty-state">Sin referencias.</p>
                         {% endif %}
                     </article>
                     {% endfor %}
@@ -347,16 +388,150 @@
             {% endfor %}
         </section>
 
-        <p id="no-results" class="no-results">No se encontraron clases que coincidan con el filtro.</p>
+        <p id="no-results" class="no-results" data-i18n-key="no-results">No se encontraron clases que coincidan con el filtro.</p>
     </div>
 
     <script>
         (function () {
             const filter = document.getElementById('class-filter');
             const cards = Array.from(document.querySelectorAll('details.class-card'));
-            const emptyState = document.getElementById('no-results');
+            const noResults = document.getElementById('no-results');
+            const languageSelect = document.getElementById('language-select');
+            const htmlElement = document.documentElement;
+            const pageTitle = document.querySelector('title[data-i18n-key="page-title"]');
+            const headerTitle = document.querySelector('[data-i18n-key="header-title"]');
+            const headerSummary = document.getElementById('report-summary');
+            const lastUpdated = document.getElementById('last-updated');
+            const LOCAL_STORAGE_KEY = 'uavReportLanguage';
+
+            const translations = {
+                es: {
+                    'page-title': 'Dónde se usa',
+                    'header-title': 'Dónde se usa',
+                    'header-summary': 'Reporte generado el {date} — {classes} clases analizadas, {references} referencias encontradas.',
+                    'badge-updated': 'Actualizado {date}',
+                    'total-label': 'Total',
+                    'empty-state': 'Sin referencias.',
+                    'no-results': 'No se encontraron clases que coincidan con el filtro.',
+                    'search-placeholder': 'Filtrar por nombre de clase...',
+                    'search-aria': 'Buscar clase',
+                    'language-selector': 'Selector de idioma'
+                },
+                en: {
+                    'page-title': 'Where is Used',
+                    'header-title': 'Where is Used',
+                    'header-summary': 'Report generated on {date} — {classes} classes analyzed, {references} references found.',
+                    'badge-updated': 'Updated {date}',
+                    'total-label': 'Total',
+                    'empty-state': 'No references.',
+                    'no-results': 'No classes match the current filter.',
+                    'search-placeholder': 'Filter by class name...',
+                    'search-aria': 'Search class',
+                    'language-selector': 'Language selector'
+                }
+            };
+
+            const categoryTranslations = {
+                Apex: { es: 'Apex', en: 'Apex' },
+                Flows: { es: 'Flujos', en: 'Flows' },
+                LWC: { es: 'LWC', en: 'LWC' },
+                Triggers: { es: 'Disparadores', en: 'Triggers' },
+                Metadata: { es: 'Metadatos', en: 'Metadata' }
+            };
+
+            function readStoredLanguage() {
+                try {
+                    return localStorage.getItem(LOCAL_STORAGE_KEY);
+                }
+                catch (_err) {
+                    return null;
+                }
+            }
+
+            function storeLanguage(value) {
+                try {
+                    localStorage.setItem(LOCAL_STORAGE_KEY, value);
+                }
+                catch (_err) {
+                    // noop
+                }
+            }
+
+            function applyLanguage(lang) {
+                const strings = translations[lang] || translations.es;
+
+                htmlElement.lang = lang;
+
+                if (pageTitle) {
+                    pageTitle.textContent = strings['page-title'];
+                }
+
+                if (headerTitle) {
+                    headerTitle.textContent = strings['header-title'];
+                }
+
+                if (headerSummary) {
+                    const date = headerSummary.dataset.generatedAt || '';
+                    const classes = headerSummary.dataset.totalClasses || '';
+                    const references = headerSummary.dataset.totalReferences || '';
+                    headerSummary.textContent = strings['header-summary']
+                        .replace('{date}', date)
+                        .replace('{classes}', classes)
+                        .replace('{references}', references);
+                }
+
+                if (lastUpdated) {
+                    const date = lastUpdated.dataset.generatedAt || headerSummary?.dataset.generatedAt || '';
+                    lastUpdated.textContent = strings['badge-updated'].replace('{date}', date);
+                }
+
+                document.querySelectorAll('[data-i18n-key="total-label"]').forEach((element) => {
+                    element.textContent = strings['total-label'];
+                });
+
+                document.querySelectorAll('[data-i18n-key="empty-state"]').forEach((element) => {
+                    element.textContent = strings['empty-state'];
+                });
+
+                if (noResults) {
+                    noResults.textContent = strings['no-results'];
+                }
+
+                if (filter) {
+                    filter.placeholder = strings['search-placeholder'];
+                    filter.setAttribute('aria-label', strings['search-aria']);
+                }
+
+                if (languageSelect) {
+                    languageSelect.setAttribute('aria-label', strings['language-selector']);
+                }
+
+                document.querySelectorAll('[data-i18n-category]').forEach((element) => {
+                    const key = element.dataset.i18nCategory;
+                    const translation = categoryTranslations[key]?.[lang];
+                    if (translation) {
+                        element.textContent = translation;
+                    }
+                });
+            }
+
+            const initialLanguage = readStoredLanguage() || 'es';
+            applyLanguage(initialLanguage);
+
+            if (languageSelect) {
+                languageSelect.value = initialLanguage;
+                languageSelect.addEventListener('change', (event) => {
+                    const selected = event.target.value || 'es';
+                    applyLanguage(selected);
+                    storeLanguage(selected);
+                });
+            }
 
             function applyFilter() {
+                if (!filter) {
+                    return;
+                }
+
                 const value = filter.value.trim().toLowerCase();
                 let matches = 0;
 
@@ -369,10 +544,14 @@
                     }
                 }
 
-                emptyState.style.display = matches ? 'none' : 'block';
+                if (noResults) {
+                    noResults.style.display = matches ? 'none' : 'block';
+                }
             }
 
-            filter.addEventListener('input', applyFilter);
+            if (filter) {
+                filter.addEventListener('input', applyFilter);
+            }
         }());
     </script>
 </body>

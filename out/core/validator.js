@@ -39,30 +39,28 @@ const fs = __importStar(require("fs-extra"));
 const path = __importStar(require("path"));
 const execa_1 = require("execa");
 const utils_1 = require("./utils");
+const i18n_1 = require("../i18n");
 let logger;
 /**
- * Ejecuta análisis estático de código (Salesforce Code Analyzer v5: PMD + CPD)
+ * Runs static analysis (Salesforce Code Analyzer v5: PMD + CPD)
  */
 async function runValidator(uri, progress, repoDir) {
-    console.log('[UAV][Validator] runValidator() inicializado');
+    console.log((0, i18n_1.localize)('log.validator.init', '[UAV][Validator] runValidator() initialized'));
     logger = new utils_1.Logger('Validator', true);
-    //logger.info('🧠 Iniciando análisis estático (runValidator)');
     try {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri) || vscode.workspace.workspaceFolders?.[0];
         if (!workspaceFolder)
-            throw new Error('No se detectó carpeta de proyecto');
+            throw new Error((0, i18n_1.localize)('error.validator.noWorkspace', 'No workspace folder detected.'));
         const pkgPath = uri.fsPath;
-        progress.report({ message: 'Leyendo package.xml...' });
+        progress.report({ message: (0, i18n_1.localize)('progress.validator.readingPackage', 'Reading package.xml...') });
         const { testClasses, nonTestClasses } = await (0, utils_1.parseApexClassesFromPackage)(pkgPath, repoDir);
-        logger.info(`🧩 Clases detectadas: tests=${testClasses.length}, normales=${nonTestClasses.length}`);
+        logger.info((0, i18n_1.localize)('log.validator.detectedClasses', 'Classes detected: tests={0}, non-tests={1}', testClasses.length, nonTestClasses.length));
         if (!nonTestClasses.length) {
-            logger.warn('⚠️ No se detectaron clases Apex no-test, omitiendo Code Analyzer.');
+            logger.warn((0, i18n_1.localize)('log.validator.noNonTestClasses', 'No non-test Apex classes detected; skipping Code Analyzer.'));
             return { testClasses, nonTestClasses, codeAnalyzerResults: [], pmdResults: [] };
         }
-        // 🔹 PMD interno (Salesforce Code Analyzer)
         const { codeAnalyzerResults, pmdResults } = await runCodeAnalyzer(nonTestClasses, repoDir);
-        logger.info(`✅ Code Analyzer completado: ${codeAnalyzerResults.length} violaciones, ${pmdResults.length} duplicaciones.`);
-        //logger.info('🏁 runValidator completado correctamente.');
+        logger.info((0, i18n_1.localize)('log.validator.analyzerSummary', 'Code Analyzer completed: {0} violations, {1} duplications.', codeAnalyzerResults.length, pmdResults.length));
         return {
             testClasses,
             nonTestClasses,
@@ -71,29 +69,41 @@ async function runValidator(uri, progress, repoDir) {
         };
     }
     catch (err) {
-        logger.error(`❌ Error en runValidator: ${err.message}`);
+        logger.error((0, i18n_1.localize)('log.validator.error', 'Error in runValidator: {0}', err.message));
         return { testClasses: [], nonTestClasses: [], codeAnalyzerResults: [], pmdResults: [] };
     }
 }
 /**
- * Ejecuta Salesforce Code Analyzer (PMD + CPD) embebido
+ * Runs Salesforce Code Analyzer (PMD + CPD)
  */
 async function runCodeAnalyzer(classes, repoDir) {
-    logger.info(`🧠 Analizando ${classes.length} clases con Code Analyzer (PMD + CPD)...`);
+    logger.info((0, i18n_1.localize)('log.validator.analyzingClasses', 'Analyzing {0} classes with Code Analyzer (PMD + CPD)...', classes.length));
     const storageRoot = (0, utils_1.getStorageRoot)();
     const tempDir = path.join(storageRoot, 'temp');
     await fs.ensureDir(tempDir);
-    // 🧭 Detectar raíz del workspace (donde está sfdx-project.json)
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || path.resolve(repoDir, '../../../..');
-    // 🗂️ Archivo de configuración embebido en la extensión (compatible con build)
     const embeddedConfig = path.resolve(__dirname, 'resources', 'templates', 'code-analyzer.yml');
     const outputFile = path.join(tempDir, 'code_analyzer_output.json');
     const execLog = path.join(tempDir, 'code_analyzer_exec.log');
-    // 🎯 Target absoluto para todas las clases Apex
     const targetGlob = path.join(workspaceRoot, 'force-app', 'main', 'default', 'classes', '**', '*.cls');
-    const cmd = ['sf', 'code-analyzer', 'run', '--workspace', workspaceRoot, '--rule-selector', 'pmd:apex', '--rule-selector', 'cpd', '--config-file', embeddedConfig, '--target', targetGlob, '--output-file', outputFile];
+    const cmd = [
+        'sf',
+        'code-analyzer',
+        'run',
+        '--workspace',
+        workspaceRoot,
+        '--rule-selector',
+        'pmd:apex',
+        '--rule-selector',
+        'cpd',
+        '--config-file',
+        embeddedConfig,
+        '--target',
+        targetGlob,
+        '--output-file',
+        outputFile
+    ];
     try {
-        // 🚀 Sin shell, para que maneje espacios correctamente en macOS y Windows
         const subprocess = (0, execa_1.execa)(cmd[0], cmd.slice(1), {
             cwd: workspaceRoot,
             env: { FORCE_COLOR: '0' },
@@ -102,12 +112,12 @@ async function runCodeAnalyzer(classes, repoDir) {
             shell: false
         });
         const { all, exitCode } = await subprocess;
-        await fs.writeFile(execLog, all || '(sin salida)', 'utf8');
+        await fs.writeFile(execLog, all || (0, i18n_1.localize)('log.validator.noOutput', '(no output)'), 'utf8');
         if (exitCode !== 0 && exitCode !== undefined) {
-            logger.error(`❌ Code Analyzer terminó con código ${exitCode}`);
+            logger.error((0, i18n_1.localize)('log.validator.analyzerExitCode', 'Code Analyzer finished with exit code {0}', exitCode));
         }
         if (!(await fs.pathExists(outputFile))) {
-            logger.warn('⚠️ El Code Analyzer no generó el archivo de salida');
+            logger.warn((0, i18n_1.localize)('log.validator.outputMissing', 'Code Analyzer did not produce an output file.'));
             return { codeAnalyzerResults: [], pmdResults: [] };
         }
         const json = JSON.parse(await fs.readFile(outputFile, 'utf8'));
@@ -117,27 +127,26 @@ async function runCodeAnalyzer(classes, repoDir) {
             json.runs?.flatMap((r) => r.results) ||
             [];
         const filtered = await filterAnalyzerFindings(violations, classes);
-        // 🔹 separar hallazgos PMD y CPD
-        const codeAnalyzerResults = filtered.filter(f => f.tipo === 'PMD');
+        const codeAnalyzerResults = filtered.filter((f) => f.tipo === 'PMD');
         const pmdResults = filtered
-            .filter(f => f.tipo === 'CPD')
-            .map(f => ({
+            .filter((f) => f.tipo === 'CPD')
+            .map((f) => ({
             tokens: parseInt((f.descripcion.match(/(\d+)\s+tokens/) || [])[1] || '0', 10),
             lines: parseInt((f.descripcion.match(/(\d+)\s+lines/) || [])[1] || '0', 10),
             clases: f.archivos,
             codeSnippet: f.codeSnippet
         }));
-        logger.info(`🏁 Code Analyzer finalizado: ${filtered.length} hallazgos relevantes.`);
+        logger.info((0, i18n_1.localize)('log.validator.analyzerFindings', 'Code Analyzer finished: {0} relevant findings.', filtered.length));
         return { codeAnalyzerResults, pmdResults };
     }
     catch (err) {
-        logger.error(`❌ Error ejecutando Code Analyzer: ${err.message}`);
+        logger.error((0, i18n_1.localize)('log.validator.analyzerError', 'Error running Code Analyzer: {0}', err.message));
         await fs.appendFile(execLog, `\n[ERROR] ${err.stack || err.message}`);
         return { codeAnalyzerResults: [], pmdResults: [] };
     }
 }
 /**
- * Filtra hallazgos de PMD/CPD para clases del package.xml
+ * Filters PMD/CPD findings for package classes
  */
 async function filterAnalyzerFindings(findings, apexClasses) {
     const results = [];
@@ -146,9 +155,8 @@ async function filterAnalyzerFindings(findings, apexClasses) {
         const locs = f.locations || [];
         if (!Array.isArray(locs) || locs.length === 0)
             continue;
-        // 🔹 Determinar si alguna de las ubicaciones pertenece al package.xml
         const involvedClasses = locs.map((l) => path.basename(l.file || '').replace(/\.cls$/, ''));
-        const hasRelevantClass = involvedClasses.some(cls => apexClasses.includes(cls));
+        const hasRelevantClass = involvedClasses.some((cls) => apexClasses.includes(cls));
         if (!hasRelevantClass)
             continue;
         const primary = locs[f.primaryLocationIndex || 0] || locs[0];
@@ -159,9 +167,9 @@ async function filterAnalyzerFindings(findings, apexClasses) {
                 tipo: 'PMD',
                 clase: baseName,
                 linea: primary.startLine || 0,
-                regla: f.rule || 'Desconocido',
+                regla: f.rule || (0, i18n_1.localize)('log.validator.ruleUnknown', 'Unknown'),
                 severidad: f.severity || 'N/A',
-                descripcion: f.message || 'Sin descripción',
+                descripcion: f.message || (0, i18n_1.localize)('log.validator.descriptionMissing', 'No description provided'),
                 recurso: Array.isArray(f.resources) && f.resources.length > 0 ? f.resources[0] : null
             });
         }
@@ -171,7 +179,7 @@ async function filterAnalyzerFindings(findings, apexClasses) {
                 tipo: 'CPD',
                 clase: baseName,
                 regla: f.rule || 'DetectCopyPasteForApex',
-                descripcion: f.message || 'Duplicación detectada',
+                descripcion: f.message || (0, i18n_1.localize)('log.validator.duplicationDetected', 'Duplication detected'),
                 severidad: f.severity || 'N/A',
                 lineas: `${primary.startLine}-${primary.endLine}`,
                 archivos: locs
@@ -189,8 +197,7 @@ async function filterAnalyzerFindings(findings, apexClasses) {
     return results;
 }
 /**
- * Extrae el fragmento completo reportado por CPD según startLine y endLine.
- * Usa solo el primer archivo del grupo duplicado.
+ * Extracts the full snippet reported by CPD based on startLine/endLine.
  */
 async function extractCpdSnippet(locations) {
     if (!locations || locations.length === 0)
@@ -202,7 +209,7 @@ async function extractCpdSnippet(locations) {
     try {
         const exists = await fs.pathExists(filePath);
         if (!exists) {
-            logger.warn(`⚠️ Archivo no encontrado para snippet CPD: ${filePath}`);
+            logger.warn((0, i18n_1.localize)('log.validator.cpdFileMissing', 'File not found for CPD snippet: {0}', filePath));
             return '';
         }
         const content = await fs.readFile(filePath, 'utf8');
@@ -213,7 +220,7 @@ async function extractCpdSnippet(locations) {
         return snippet.trim();
     }
     catch (err) {
-        logger.warn(`⚠️ Error al leer fragmento CPD: ${err.message}`);
+        logger.warn((0, i18n_1.localize)('log.validator.cpdSnippetError', 'Error reading CPD snippet: {0}', err.message));
         return '';
     }
 }

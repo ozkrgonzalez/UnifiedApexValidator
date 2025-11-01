@@ -38,6 +38,7 @@ const path = __importStar(require("path"));
 const fs = __importStar(require("fs-extra"));
 const execa_1 = require("execa");
 const utils_1 = require("./utils");
+const i18n_1 = require("../i18n");
 /**
  * Modulo TestSuite
  */
@@ -81,17 +82,17 @@ class TestSuite {
             }
             const raw = (stdout || stderr || '').trim();
             if (raw) {
-                this.logger.warn(`Warning ${description} devolvio salida no JSON: ${raw}`);
+                this.logger.warn((0, i18n_1.localize)('log.testSuite.nonJsonOutput', 'Warning {0} returned non-JSON output: {1}', description, raw)); // Localized string
             }
             return {};
         }
         catch (err) {
             const parsed = (0, utils_1.parseSfJson)(err?.stdout) ?? (0, utils_1.parseSfJson)(err?.stderr);
             if (parsed) {
-                this.logger.warn(`Warning ${description} finalizo con error pero entrego datos JSON.`);
+                this.logger.warn((0, i18n_1.localize)('log.testSuite.jsonProvidedOnError', 'Warning {0} finished with an error but returned JSON data.', description)); // Localized string
                 return parsed;
             }
-            this.logger.error(`\u274C Error en ${description}: ${err.shortMessage || err.message}`);
+            this.logger.error((0, i18n_1.localize)('log.testSuite.commandError', '❌ Error during {0}: {1}', description, err.shortMessage || err.message)); // Localized string
             return {};
         }
     }
@@ -100,15 +101,15 @@ class TestSuite {
      */
     async executeTests(testClasses, targetOrg) {
         const command = [this.sfPath, 'apex', 'run', 'test', '--json', '--target-org', targetOrg, '--test-level', 'RunSpecifiedTests', '--code-coverage', '--class-names', ...testClasses];
-        const result = await this.runSfCommand(command, 'ejecucion de pruebas');
+        const result = await this.runSfCommand(command, (0, i18n_1.localize)('label.testSuite.runTests', 'test execution')); // Localized string
         const testRunId = result?.result?.testRunId ||
             result?.result?.summary?.testRunId ||
             null;
         if (!testRunId) {
-            this.logger.error('❌ No se obtuvo testRunId del resultado.');
+            this.logger.error((0, i18n_1.localize)('error.testSuite.noTestRunId', '❌ The test run did not return a testRunId.')); // Localized string
         }
         else {
-            this.logger.info(`🚀 TestRun iniciado correctamente (ID: ${testRunId}).`);
+            this.logger.info((0, i18n_1.localize)('log.testSuite.testRunStarted', '🚀 Test run started successfully (ID: {0}).', testRunId)); // Localized string
         }
         return testRunId;
     }
@@ -116,22 +117,22 @@ class TestSuite {
      * Espera a que el test run finalice
      */
     async waitForTestCompletion(testRunId, targetOrg) {
-        this.logger.info(`⏳ Esperando finalización del testRunId ${testRunId}...`);
+        this.logger.info((0, i18n_1.localize)('log.testSuite.waitingForCompletion', '⏳ Waiting for testRunId {0} to complete...', testRunId)); // Localized string
         for (let i = 0; i < 60; i++) {
             const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', targetOrg, '--test-run-id', testRunId];
-            const result = await this.runSfCommand(command, `verificando estado (${i + 1}/60)`);
+            const result = await this.runSfCommand(command, (0, i18n_1.localize)('label.testSuite.checkingStatus', 'checking status ({0}/60)', i + 1)); // Localized string
             const summary = result?.result?.summary || {};
-            const outcome = summary.outcome || 'Pendiente';
+            const outcome = summary.outcome || (0, i18n_1.localize)('label.testSuite.pending', 'Pending'); // Localized string
             const ran = Number(summary.testsRan || 0);
             const passing = Number(summary.passing || 0);
             const failing = Number(summary.failing || 0);
             if (ran === passing + failing && ran > 0) {
-                this.logger.info(`✅ Ejecución completada para TestRun ${testRunId}.`);
+                this.logger.info((0, i18n_1.localize)('log.testSuite.executionCompleted', '✅ Execution completed for testRun {0}.', testRunId)); // Localized string
                 return result;
             }
             await new Promise((r) => setTimeout(r, 10000));
         }
-        this.logger.warn('⚠️ Tiempo de espera agotado. Devolviendo resultado parcial.');
+        this.logger.warn((0, i18n_1.localize)('log.testSuite.waitTimeout', '⚠️ Timeout exceeded. Returning partial result.')); // Localized string
         return {};
     }
     /**
@@ -141,10 +142,10 @@ class TestSuite {
         const baseFile = path.join(this.tempDir, `test-result-${testRunId}.json`);
         const coverageFile = path.join(this.tempDir, `test-result-${testRunId}-codecoverage.json`);
         fs.ensureDirSync(this.tempDir);
-        this.logger.info(`\u{1F4E6} Recuperando resultados del test run ${testRunId}...`);
+        this.logger.info((0, i18n_1.localize)('log.testSuite.fetchingResults', '📦 Retrieving test run results for {0}...', testRunId)); // Localized string
         for (let i = 0; i < 3; i++) {
             const command = [this.sfPath, 'apex', 'get', 'test', '--json', '--target-org', targetOrg, '--test-run-id', testRunId, '--code-coverage', '--output-dir', this.tempDir];
-            await this.runSfCommand(command, `obtencion cobertura (intento ${i + 1})`);
+            await this.runSfCommand(command, (0, i18n_1.localize)('label.testSuite.fetchCoverageAttempt', 'fetching coverage (attempt {0})', i + 1)); // Localized string
             if (fs.existsSync(baseFile)) {
                 const testResult = fs.readJsonSync(baseFile, { throws: false }) || {};
                 const coverageSummary = testResult?.coverage?.coverage || [];
@@ -156,7 +157,7 @@ class TestSuite {
             }
             await new Promise((r) => setTimeout(r, 10000));
         }
-        this.logger.error('❌ No se pudieron obtener resultados tras varios intentos.');
+        this.logger.error((0, i18n_1.localize)('error.testSuite.resultsAttemptsFailed', '❌ Could not retrieve results after multiple attempts.')); // Localized string
         return {};
     }
     /**
@@ -224,13 +225,13 @@ class TestSuite {
      */
     async runTestSuite(testClasses, apexClasses) {
         if (!testClasses?.length) {
-            this.logger.warn('⚠️ No se detectaron clases de prueba en el package.xml.');
-            return { error: 'No hay clases test para ejecutar.', coverage_data: [], test_results: [] };
+            this.logger.warn((0, i18n_1.localize)('log.testSuite.noTestClassesInPackage', '⚠️ No test classes were detected in package.xml.')); // Localized string
+            return { error: (0, i18n_1.localize)('error.testSuite.noTestClasses', 'There are no test classes to run.'), coverage_data: [], test_results: [] }; // Localized string
         }
-        this.logger.info(`🧪 Ejecutando clases de prueba: ${testClasses.join(', ')}`);
+        this.logger.info((0, i18n_1.localize)('log.testSuite.runningTestClasses', '🧪 Running test classes: {0}', testClasses.join(', '))); // Localized string
         const defaultOrg = await (0, utils_1.getDefaultConnectedOrg)(this.logger);
         if (!defaultOrg) {
-            const message = 'No se detectó una org por defecto conectada en Salesforce CLI.';
+            const message = (0, i18n_1.localize)('error.testSuite.noDefaultOrg', 'No default org connected in Salesforce CLI.'); // Localized string
             this.logger.error(message);
             return { error: message, coverage_data: [], test_results: [] };
         }
@@ -238,19 +239,19 @@ class TestSuite {
         const displayOrg = defaultOrg.alias && defaultOrg.alias !== defaultOrg.username
             ? `${defaultOrg.alias} (${defaultOrg.username})`
             : defaultOrg.username;
-        this.logger.info(`🌐 Usando la org por defecto: ${displayOrg}.`);
+        this.logger.info((0, i18n_1.localize)('log.testSuite.usingDefaultOrg', '🌐 Using default org: {0}.', displayOrg)); // Localized string
         const testRunId = await this.executeTests(testClasses, targetOrg);
         if (!testRunId)
-            return { error: 'No se pudo iniciar pruebas.', coverage_data: [], test_results: [] };
-        this.logger.info(`🔍 Monitoreando progreso del testRunId ${testRunId}...`);
+            return { error: (0, i18n_1.localize)('error.testSuite.testsNotStarted', 'Tests could not be started.'), coverage_data: [], test_results: [] }; // Localized string
+        this.logger.info((0, i18n_1.localize)('log.testSuite.monitoringProgress', '🔍 Monitoring progress for testRunId {0}...', testRunId)); // Localized string
         await this.waitForTestCompletion(testRunId, targetOrg);
-        this.logger.info('📈 Ejecución de pruebas finalizada. Obteniendo resultados y cobertura...');
+        this.logger.info((0, i18n_1.localize)('log.testSuite.runCompleted', '📈 Test execution finished. Retrieving results and coverage...')); // Localized string
         const results = await this.fetchTestResults(testRunId, targetOrg);
         if (!results || Object.keys(results).length === 0) {
-            this.logger.error('❌ No se pudieron obtener resultados del test run.');
-            return { error: 'No se pudo obtener resultados.', coverage_data: [], test_results: [] };
+            this.logger.error((0, i18n_1.localize)('error.testSuite.noResults', '❌ Could not retrieve test run results.')); // Localized string
+            return { error: (0, i18n_1.localize)('error.testSuite.resultsUnavailable', 'Results could not be retrieved.'), coverage_data: [], test_results: [] }; // Localized string
         }
-        this.logger.info('📝 Procesando datos de cobertura y resultados individuales...');
+        this.logger.info((0, i18n_1.localize)('log.testSuite.processingData', '📝 Processing coverage data and individual results...')); // Localized string
         const testResult = results.testResult || {};
         const coverageSummary = results.coverageSummary || [];
         const coverageDetail = results.coverageDetail || {};
@@ -265,15 +266,15 @@ class TestSuite {
         const passed = tests.filter((t) => t.outcome === 'Pass').length;
         const failed = tests.filter((t) => t.outcome === 'Fail').length;
         const skipped = tests.filter((t) => t.outcome === 'Skip').length;
-        this.logger.info(`📋 Resumen: ${passed} pasados, ${failed} fallidos, ${skipped} omitidos, total ${total}.`);
+        this.logger.info((0, i18n_1.localize)('log.testSuite.summary', '📋 Summary: {0} passed, {1} failed, {2} skipped, {3} total.', passed, failed, skipped, total)); // Localized string
         for (const test of tests) {
             const statusIcon = test.outcome === 'Pass' ? '✅' : test.outcome === 'Fail' ? '❌' : '⚠️';
-            this.logger.info(`${statusIcon} ${test.class_name}.${test.method_name} → ${test.outcome}`);
+            this.logger.info((0, i18n_1.localize)('log.testSuite.testOutcome', '{0} {1}.{2} \u2192 {3}', statusIcon, test.class_name, test.method_name, test.outcome)); // Localized string
             if (test.outcome === 'Fail' && test.message) {
-                this.logger.warn(`   💬 Motivo: ${test.message}`);
+                this.logger.warn((0, i18n_1.localize)('log.testSuite.failureReason', '   💬 Reason: {0}', test.message)); // Localized string
             }
         }
-        this.logger.info('🎉 Fin de la ejecución de pruebas Apex.');
+        this.logger.info((0, i18n_1.localize)('log.testSuite.testsFinished', '🎉 Apex test execution completed.')); // Localized string
         return { coverage_data: coverage, test_results: tests };
     }
 }

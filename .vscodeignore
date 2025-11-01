@@ -1,5 +1,6 @@
 # Excluir node_modules completamente (ya está todo en el bundle)
 node_modules/**
+!node_modules/vscode-nls/**
 
 # Excluir archivos de desarrollo y configuración
 .vscode/**

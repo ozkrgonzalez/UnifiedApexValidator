@@ -7,6 +7,9 @@ const distResourcesDir = path.join(distDir, 'resources');
 const distCoreDir = path.join(distDir, 'core');
 const srcResourcesDir = path.join(projectRoot, 'src', 'resources');
 const outCoreDir = path.join(projectRoot, 'out', 'core');
+const i18nDir = path.join(projectRoot, 'i18n');
+const distI18nDir = path.join(distDir, 'i18n');
+const outI18nModule = path.join(projectRoot, 'out', 'i18n.js');
 
 function ensureDir(dirPath) {
     if (!fs.existsSync(dirPath)) {
@@ -55,6 +58,14 @@ function copyWhereUsedCoreFiles() {
 ensureDir(distDir);
 ensureDir(distResourcesDir);
 ensureDir(distCoreDir);
+ensureDir(distI18nDir);
 
 copyRecursive(srcResourcesDir, distResourcesDir);
+copyRecursive(i18nDir, distI18nDir);
 copyWhereUsedCoreFiles();
+
+if (fs.existsSync(outI18nModule)) {
+    fs.copyFileSync(outI18nModule, path.join(distDir, 'i18n.js'));
+} else {
+    console.warn('[copyResources] out/i18n.js not found; skipping copy.');
+}

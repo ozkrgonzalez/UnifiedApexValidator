@@ -38,6 +38,7 @@ const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
 const utils_1 = require("./utils");
 const whereUsedReport_1 = require("./whereUsedReport");
+const i18n_1 = require("../i18n");
 const logger = new utils_1.Logger('WhereUsedPanel');
 async function showWhereUsedPanel(results) {
     const now = new Date();
@@ -63,7 +64,7 @@ async function showWhereUsedPanel(results) {
     const themeClass = getVSCodeThemeClass();
     panel.webview.html = applyThemeClass(html, themeClass);
     if (savedPath) {
-        logger.info(`Reporte guardado en ${savedPath}`);
+        logger.info((0, i18n_1.localize)('info.whereUsedPanel.savedAt', 'Report Saved at: {0}', savedPath));
     }
 }
 function formatTimestampForFile(date) {
