@@ -37,9 +37,9 @@ exports.ApexAstParser = void 0;
 const fs = __importStar(require("fs"));
 const apex_parser_1 = require("@apexdevtools/apex-parser");
 const antlr4ts_1 = require("antlr4ts");
+const utils_1 = require("./utils");
 let vscodeModule;
 try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-assignment
     vscodeModule = require('vscode');
 }
 catch {
@@ -102,6 +102,13 @@ class ApexAstParser {
         const parser = new apex_parser_1.ApexParser(tokenStream);
         const config = vscodeModule?.workspace.getConfiguration('UnifiedApexValidator');
         const traceAst = config?.get('traceAst') ?? false;
+        const traceLogger = traceAst ? new utils_1.Logger('ApexAstParser') : undefined;
+        const traceInfo = traceLogger
+            ? (message) => traceLogger.info(message)
+            : (_message) => undefined;
+        const traceWarn = traceLogger
+            ? (message) => traceLogger.warn(message)
+            : (_message) => undefined;
         const syntaxErrors = [];
         const chunks = [];
         const extract = (start, end) => code.substring(start, end);
@@ -184,7 +191,7 @@ class ApexAstParser {
                     return fn.apply(node, args);
             }
             catch (err) {
-                console.warn(`[ApexAST] getName call failed for ${method}: ${err.message}`);
+                traceWarn(`[ApexAST] getName call failed for ${method}: ${err.message}`);
             }
             return undefined;
         };
@@ -266,7 +273,7 @@ class ApexAstParser {
                     : start;
             const end = Math.min((stopIdx ?? start) + 1, code.length);
             if (traceAst)
-                console.log(`[ApexAST][Depth:${depth}] -> ${type} (${start}-${end})`);
+                traceInfo(`[ApexAST][Depth:${depth}] -> ${type} (${start}-${end})`);
             try {
                 const text = extract(start, end);
                 switch (type) {
@@ -276,7 +283,7 @@ class ApexAstParser {
                         const isInner = parentType === 'MemberDeclarationContext' ||
                             parentType === 'TriggerMemberDeclarationContext';
                         if (traceAst)
-                            console.log(`[ApexAST] Class found: ${className} (inner=${isInner})`);
+                            traceInfo(`[ApexAST] Class found: ${className} (inner=${isInner})`);
                         chunks.push({
                             kind: isInner ? 'innerClass' : 'classHeader',
                             name: className,
@@ -290,8 +297,7 @@ class ApexAstParser {
                     }
                     case 'FieldDeclarationContext': {
                         const fieldName = extractFirstVariableName(node) ?? getName(node);
-                        if (traceAst)
-                            console.log(`[ApexAST] Field found: ${fieldName}`);
+                        traceInfo(`[ApexAST] Field found: ${fieldName}`);
                         chunks.push({
                             kind: 'field',
                             name: fieldName,
@@ -304,8 +310,7 @@ class ApexAstParser {
                         break;
                     }
                     case 'ConstructorDeclarationContext':
-                        if (traceAst)
-                            console.log(`[ApexAST] Constructor found: ${getName(node)}`);
+                        traceInfo(`[ApexAST] Constructor found: ${getName(node)}`);
                         chunks.push({
                             kind: 'constructor',
                             name: getName(node),
@@ -318,8 +323,7 @@ class ApexAstParser {
                         break;
                     case 'MethodDeclarationContext': {
                         const methodName = getIdText(node) ?? getName(node);
-                        if (traceAst)
-                            console.log(`[ApexAST] Method found: ${methodName}`);
+                        traceInfo(`[ApexAST] Method found: ${methodName}`);
                         chunks.push({
                             kind: 'method',
                             name: methodName,
@@ -333,8 +337,7 @@ class ApexAstParser {
                     }
                     case 'PropertyDeclarationContext': {
                         const propertyName = getIdText(node) ?? getName(node);
-                        if (traceAst)
-                            console.log(`[ApexAST] Property found: ${propertyName}`);
+                        traceInfo(`[ApexAST] Property found: ${propertyName}`);
                         chunks.push({
                             kind: 'field',
                             name: propertyName,
@@ -349,8 +352,7 @@ class ApexAstParser {
                 }
             }
             catch (err) {
-                if (traceAst)
-                    console.warn(`[ApexAST] Error parsing node ${type}: ${err.message}`);
+                traceWarn(`[ApexAST] Error parsing node ${type}: ${err.message}`);
             }
             for (const key of Object.keys(node)) {
                 const val = node[key];
@@ -366,24 +368,24 @@ class ApexAstParser {
                     traverse(val, depth + 1);
                 }
             }
-            if (traceAst && depth === 0)
-                console.log(`[ApexAST] Finalizo recorrido raiz con ${chunks.length} chunks`);
+            if (depth === 0)
+                traceInfo(`[ApexAST] Finalizo recorrido raiz con ${chunks.length} chunks`);
         };
         traverse(ast);
         chunks.sort((a, b) => a.start - b.start);
         if (traceAst) {
             if (syntaxErrors.length) {
-                console.warn('[ApexAST] Syntax errors detectados:');
+                traceWarn('[ApexAST] Syntax errors detectados:');
                 for (const err of syntaxErrors) {
-                    console.warn(`  ! ${err}`);
+                    traceWarn(`  ! ${err}`);
                 }
             }
-            console.log('\n[ApexAST] Resumen de chunks detectados:');
+            traceInfo('\n[ApexAST] Resumen de chunks detectados:');
             for (const ch of chunks) {
                 const status = ch.needsDoc ? 'sin doc' : 'con doc';
-                console.log(`  - ${ch.kind.padEnd(14)} ${ch.name.padEnd(60)} (${ch.start}-${ch.end})  ${status}`);
+                traceInfo(`  - ${ch.kind.padEnd(14)} ${ch.name.padEnd(60)} (${ch.start}-${ch.end})  ${status}`);
             }
-            console.log(`[ApexAST] Total: ${chunks.length} elementos`);
+            traceInfo(`[ApexAST] Total: ${chunks.length} elementos`);
         }
         return chunks;
     }

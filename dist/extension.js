@@ -84,54 +84,54 @@ var require_polyfills = __commonJS({
     }
     var chdir;
     module2.exports = patch;
-    function patch(fs13) {
+    function patch(fs14) {
       if (constants4.hasOwnProperty("O_SYMLINK") && process.version.match(/^v0\.6\.[0-2]|^v0\.5\./)) {
-        patchLchmod(fs13);
+        patchLchmod(fs14);
       }
-      if (!fs13.lutimes) {
-        patchLutimes(fs13);
+      if (!fs14.lutimes) {
+        patchLutimes(fs14);
       }
-      fs13.chown = chownFix(fs13.chown);
-      fs13.fchown = chownFix(fs13.fchown);
-      fs13.lchown = chownFix(fs13.lchown);
-      fs13.chmod = chmodFix(fs13.chmod);
-      fs13.fchmod = chmodFix(fs13.fchmod);
-      fs13.lchmod = chmodFix(fs13.lchmod);
-      fs13.chownSync = chownFixSync(fs13.chownSync);
-      fs13.fchownSync = chownFixSync(fs13.fchownSync);
-      fs13.lchownSync = chownFixSync(fs13.lchownSync);
-      fs13.chmodSync = chmodFixSync(fs13.chmodSync);
-      fs13.fchmodSync = chmodFixSync(fs13.fchmodSync);
-      fs13.lchmodSync = chmodFixSync(fs13.lchmodSync);
-      fs13.stat = statFix(fs13.stat);
-      fs13.fstat = statFix(fs13.fstat);
-      fs13.lstat = statFix(fs13.lstat);
-      fs13.statSync = statFixSync(fs13.statSync);
-      fs13.fstatSync = statFixSync(fs13.fstatSync);
-      fs13.lstatSync = statFixSync(fs13.lstatSync);
-      if (fs13.chmod && !fs13.lchmod) {
-        fs13.lchmod = function(path19, mode, cb) {
+      fs14.chown = chownFix(fs14.chown);
+      fs14.fchown = chownFix(fs14.fchown);
+      fs14.lchown = chownFix(fs14.lchown);
+      fs14.chmod = chmodFix(fs14.chmod);
+      fs14.fchmod = chmodFix(fs14.fchmod);
+      fs14.lchmod = chmodFix(fs14.lchmod);
+      fs14.chownSync = chownFixSync(fs14.chownSync);
+      fs14.fchownSync = chownFixSync(fs14.fchownSync);
+      fs14.lchownSync = chownFixSync(fs14.lchownSync);
+      fs14.chmodSync = chmodFixSync(fs14.chmodSync);
+      fs14.fchmodSync = chmodFixSync(fs14.fchmodSync);
+      fs14.lchmodSync = chmodFixSync(fs14.lchmodSync);
+      fs14.stat = statFix(fs14.stat);
+      fs14.fstat = statFix(fs14.fstat);
+      fs14.lstat = statFix(fs14.lstat);
+      fs14.statSync = statFixSync(fs14.statSync);
+      fs14.fstatSync = statFixSync(fs14.fstatSync);
+      fs14.lstatSync = statFixSync(fs14.lstatSync);
+      if (fs14.chmod && !fs14.lchmod) {
+        fs14.lchmod = function(path20, mode, cb) {
           if (cb) process.nextTick(cb);
         };
-        fs13.lchmodSync = function() {
+        fs14.lchmodSync = function() {
         };
       }
-      if (fs13.chown && !fs13.lchown) {
-        fs13.lchown = function(path19, uid, gid, cb) {
+      if (fs14.chown && !fs14.lchown) {
+        fs14.lchown = function(path20, uid, gid, cb) {
           if (cb) process.nextTick(cb);
         };
-        fs13.lchownSync = function() {
+        fs14.lchownSync = function() {
         };
       }
       if (platform2 === "win32") {
-        fs13.rename = typeof fs13.rename !== "function" ? fs13.rename : (function(fs$rename) {
+        fs14.rename = typeof fs14.rename !== "function" ? fs14.rename : (function(fs$rename) {
           function rename(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
             fs$rename(from, to, function CB(er) {
               if (er && (er.code === "EACCES" || er.code === "EPERM" || er.code === "EBUSY") && Date.now() - start < 6e4) {
                 setTimeout(function() {
-                  fs13.stat(to, function(stater, st) {
+                  fs14.stat(to, function(stater, st) {
                     if (stater && stater.code === "ENOENT")
                       fs$rename(from, to, CB);
                     else
@@ -147,9 +147,9 @@ var require_polyfills = __commonJS({
           }
           if (Object.setPrototypeOf) Object.setPrototypeOf(rename, fs$rename);
           return rename;
-        })(fs13.rename);
+        })(fs14.rename);
       }
-      fs13.read = typeof fs13.read !== "function" ? fs13.read : (function(fs$read) {
+      fs14.read = typeof fs14.read !== "function" ? fs14.read : (function(fs$read) {
         function read(fd, buffer, offset, length, position, callback_) {
           var callback;
           if (callback_ && typeof callback_ === "function") {
@@ -157,22 +157,22 @@ var require_polyfills = __commonJS({
             callback = function(er, _, __) {
               if (er && er.code === "EAGAIN" && eagCounter < 10) {
                 eagCounter++;
-                return fs$read.call(fs13, fd, buffer, offset, length, position, callback);
+                return fs$read.call(fs14, fd, buffer, offset, length, position, callback);
               }
               callback_.apply(this, arguments);
             };
           }
-          return fs$read.call(fs13, fd, buffer, offset, length, position, callback);
+          return fs$read.call(fs14, fd, buffer, offset, length, position, callback);
         }
         if (Object.setPrototypeOf) Object.setPrototypeOf(read, fs$read);
         return read;
-      })(fs13.read);
-      fs13.readSync = typeof fs13.readSync !== "function" ? fs13.readSync : /* @__PURE__ */ (function(fs$readSync) {
+      })(fs14.read);
+      fs14.readSync = typeof fs14.readSync !== "function" ? fs14.readSync : /* @__PURE__ */ (function(fs$readSync) {
         return function(fd, buffer, offset, length, position) {
           var eagCounter = 0;
           while (true) {
             try {
-              return fs$readSync.call(fs13, fd, buffer, offset, length, position);
+              return fs$readSync.call(fs14, fd, buffer, offset, length, position);
             } catch (er) {
               if (er.code === "EAGAIN" && eagCounter < 10) {
                 eagCounter++;
@@ -182,11 +182,11 @@ var require_polyfills = __commonJS({
             }
           }
         };
-      })(fs13.readSync);
-      function patchLchmod(fs14) {
-        fs14.lchmod = function(path19, mode, callback) {
-          fs14.open(
-            path19,
+      })(fs14.readSync);
+      function patchLchmod(fs15) {
+        fs15.lchmod = function(path20, mode, callback) {
+          fs15.open(
+            path20,
             constants4.O_WRONLY | constants4.O_SYMLINK,
             mode,
             function(err, fd) {
@@ -194,80 +194,80 @@ var require_polyfills = __commonJS({
                 if (callback) callback(err);
                 return;
               }
-              fs14.fchmod(fd, mode, function(err2) {
-                fs14.close(fd, function(err22) {
+              fs15.fchmod(fd, mode, function(err2) {
+                fs15.close(fd, function(err22) {
                   if (callback) callback(err2 || err22);
                 });
               });
             }
           );
         };
-        fs14.lchmodSync = function(path19, mode) {
-          var fd = fs14.openSync(path19, constants4.O_WRONLY | constants4.O_SYMLINK, mode);
+        fs15.lchmodSync = function(path20, mode) {
+          var fd = fs15.openSync(path20, constants4.O_WRONLY | constants4.O_SYMLINK, mode);
           var threw = true;
           var ret;
           try {
-            ret = fs14.fchmodSync(fd, mode);
+            ret = fs15.fchmodSync(fd, mode);
             threw = false;
           } finally {
             if (threw) {
               try {
-                fs14.closeSync(fd);
+                fs15.closeSync(fd);
               } catch (er) {
               }
             } else {
-              fs14.closeSync(fd);
+              fs15.closeSync(fd);
             }
           }
           return ret;
         };
       }
-      function patchLutimes(fs14) {
-        if (constants4.hasOwnProperty("O_SYMLINK") && fs14.futimes) {
-          fs14.lutimes = function(path19, at, mt, cb) {
-            fs14.open(path19, constants4.O_SYMLINK, function(er, fd) {
+      function patchLutimes(fs15) {
+        if (constants4.hasOwnProperty("O_SYMLINK") && fs15.futimes) {
+          fs15.lutimes = function(path20, at, mt, cb) {
+            fs15.open(path20, constants4.O_SYMLINK, function(er, fd) {
               if (er) {
                 if (cb) cb(er);
                 return;
               }
-              fs14.futimes(fd, at, mt, function(er2) {
-                fs14.close(fd, function(er22) {
+              fs15.futimes(fd, at, mt, function(er2) {
+                fs15.close(fd, function(er22) {
                   if (cb) cb(er2 || er22);
                 });
               });
             });
           };
-          fs14.lutimesSync = function(path19, at, mt) {
-            var fd = fs14.openSync(path19, constants4.O_SYMLINK);
+          fs15.lutimesSync = function(path20, at, mt) {
+            var fd = fs15.openSync(path20, constants4.O_SYMLINK);
             var ret;
             var threw = true;
             try {
-              ret = fs14.futimesSync(fd, at, mt);
+              ret = fs15.futimesSync(fd, at, mt);
               threw = false;
             } finally {
               if (threw) {
                 try {
-                  fs14.closeSync(fd);
+                  fs15.closeSync(fd);
                 } catch (er) {
                 }
               } else {
-                fs14.closeSync(fd);
+                fs15.closeSync(fd);
               }
             }
             return ret;
           };
-        } else if (fs14.futimes) {
-          fs14.lutimes = function(_a2, _b, _c, cb) {
+        } else if (fs15.futimes) {
+          fs15.lutimes = function(_a2, _b, _c, cb) {
             if (cb) process.nextTick(cb);
           };
-          fs14.lutimesSync = function() {
+          fs15.lutimesSync = function() {
           };
         }
       }
       function chmodFix(orig) {
         if (!orig) return orig;
         return function(target, mode, cb) {
-          return orig.call(fs13, target, mode, function(er) {
+          return orig.call(fs14, target, mode, function(er) {
             if (chownErOk(er)) er = null;
             if (cb) cb.apply(this, arguments);
           });
@@ -277,7 +277,7 @@ var require_polyfills = __commonJS({
         if (!orig) return orig;
         return function(target, mode) {
           try {
-            return orig.call(fs13, target, mode);
+            return orig.call(fs14, target, mode);
           } catch (er) {
             if (!chownErOk(er)) throw er;
           }
@@ -286,7 +286,7 @@ var require_polyfills = __commonJS({
       function chownFix(orig) {
         if (!orig) return orig;
         return function(target, uid, gid, cb) {
-          return orig.call(fs13, target, uid, gid, function(er) {
+          return orig.call(fs14, target, uid, gid, function(er) {
             if (chownErOk(er)) er = null;
             if (cb) cb.apply(this, arguments);
           });
@@ -296,7 +296,7 @@ var require_polyfills = __commonJS({
         if (!orig) return orig;
         return function(target, uid, gid) {
           try {
-            return orig.call(fs13, target, uid, gid);
+            return orig.call(fs14, target, uid, gid);
           } catch (er) {
             if (!chownErOk(er)) throw er;
           }
@@ -316,13 +316,13 @@ var require_polyfills = __commonJS({
             }
             if (cb) cb.apply(this, arguments);
           }
-          return options ? orig.call(fs13, target, options, callback) : orig.call(fs13, target, callback);
+          return options ? orig.call(fs14, target, options, callback) : orig.call(fs14, target, callback);
         };
       }
       function statFixSync(orig) {
         if (!orig) return orig;
         return function(target, options) {
-          var stats = options ? orig.call(fs13, target, options) : orig.call(fs13, target);
+          var stats = options ? orig.call(fs14, target, options) : orig.call(fs14, target);
           if (stats) {
             if (stats.uid < 0) stats.uid += 4294967296;
             if (stats.gid < 0) stats.gid += 4294967296;
@@ -351,16 +351,16 @@ var require_legacy_streams = __commonJS({
   "node_modules/graceful-fs/legacy-streams.js"(exports2, module2) {
     var Stream2 = require("stream").Stream;
     module2.exports = legacy;
-    function legacy(fs13) {
+    function legacy(fs14) {
       return {
         ReadStream,
         WriteStream
       };
-      function ReadStream(path19, options) {
-        if (!(this instanceof ReadStream)) return new ReadStream(path19, options);
+      function ReadStream(path20, options) {
+        if (!(this instanceof ReadStream)) return new ReadStream(path20, options);
         Stream2.call(this);
         var self2 = this;
-        this.path = path19;
+        this.path = path20;
         this.fd = null;
         this.readable = true;
         this.paused = false;
@@ -394,7 +394,7 @@ var require_legacy_streams = __commonJS({
           });
           return;
         }
-        fs13.open(this.path, this.flags, this.mode, function(err, fd) {
+        fs14.open(this.path, this.flags, this.mode, function(err, fd) {
           if (err) {
             self2.emit("error", err);
             self2.readable = false;
@@ -405,10 +405,10 @@ var require_legacy_streams = __commonJS({
           self2._read();
         });
       }
-      function WriteStream(path19, options) {
-        if (!(this instanceof WriteStream)) return new WriteStream(path19, options);
+      function WriteStream(path20, options) {
+        if (!(this instanceof WriteStream)) return new WriteStream(path20, options);
         Stream2.call(this);
-        this.path = path19;
+        this.path = path20;
         this.fd = null;
         this.writable = true;
         this.flags = "w";
@@ -433,7 +433,7 @@ var require_legacy_streams = __commonJS({
         this.busy = false;
         this._queue = [];
         if (this.fd === null) {
-          this._open = fs13.open;
+          this._open = fs14.open;
           this._queue.push([this._open, this.path, this.flags, this.mode, void 0]);
           this.flush();
         }
@@ -468,7 +468,7 @@ var require_clone = __commonJS({
 // node_modules/graceful-fs/graceful-fs.js
 var require_graceful_fs = __commonJS({
   "node_modules/graceful-fs/graceful-fs.js"(exports2, module2) {
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var polyfills = require_polyfills();
     var legacy = require_legacy_streams();
     var clone = require_clone();
@@ -500,12 +500,12 @@ var require_graceful_fs = __commonJS({
         m = "GFS4: " + m.split(/\n/).join("\nGFS4: ");
         console.error(m);
       };
-    if (!fs13[gracefulQueue]) {
+    if (!fs14[gracefulQueue]) {
       queue = global[gracefulQueue] || [];
-      publishQueue(fs13, queue);
-      fs13.close = (function(fs$close) {
+      publishQueue(fs14, queue);
+      fs14.close = (function(fs$close) {
         function close(fd, cb) {
-          return fs$close.call(fs13, fd, function(err) {
+          return fs$close.call(fs14, fd, function(err) {
             if (!err) {
               resetQueue();
             }
@@ -517,48 +517,48 @@ var require_graceful_fs = __commonJS({
           value: fs$close
         });
         return close;
-      })(fs13.close);
-      fs13.closeSync = (function(fs$closeSync) {
+      })(fs14.close);
+      fs14.closeSync = (function(fs$closeSync) {
         function closeSync(fd) {
-          fs$closeSync.apply(fs13, arguments);
+          fs$closeSync.apply(fs14, arguments);
           resetQueue();
         }
         Object.defineProperty(closeSync, previousSymbol, {
           value: fs$closeSync
         });
         return closeSync;
-      })(fs13.closeSync);
+      })(fs14.closeSync);
       if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || "")) {
         process.on("exit", function() {
-          debug(fs13[gracefulQueue]);
-          require("assert").equal(fs13[gracefulQueue].length, 0);
+          debug(fs14[gracefulQueue]);
+          require("assert").equal(fs14[gracefulQueue].length, 0);
         });
       }
     }
     var queue;
     if (!global[gracefulQueue]) {
-      publishQueue(global, fs13[gracefulQueue]);
+      publishQueue(global, fs14[gracefulQueue]);
     }
-    module2.exports = patch(clone(fs13));
-    if (process.env.TEST_GRACEFUL_FS_GLOBAL_PATCH && !fs13.__patched) {
-      module2.exports = patch(fs13);
-      fs13.__patched = true;
+    module2.exports = patch(clone(fs14));
+    if (process.env.TEST_GRACEFUL_FS_GLOBAL_PATCH && !fs14.__patched) {
+      module2.exports = patch(fs14);
+      fs14.__patched = true;
     }
-    function patch(fs14) {
-      polyfills(fs14);
-      fs14.gracefulify = patch;
-      fs14.createReadStream = createReadStream2;
-      fs14.createWriteStream = createWriteStream2;
-      var fs$readFile = fs14.readFile;
-      fs14.readFile = readFile5;
-      function readFile5(path19, options, cb) {
+    function patch(fs15) {
+      polyfills(fs15);
+      fs15.gracefulify = patch;
+      fs15.createReadStream = createReadStream2;
+      fs15.createWriteStream = createWriteStream2;
+      var fs$readFile = fs15.readFile;
+      fs15.readFile = readFile5;
+      function readFile5(path20, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
-        return go$readFile(path19, options, cb);
-        function go$readFile(path20, options2, cb2, startTime) {
-          return fs$readFile(path20, options2, function(err) {
+        return go$readFile(path20, options, cb);
+        function go$readFile(path21, options2, cb2, startTime) {
+          return fs$readFile(path21, options2, function(err) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
-              enqueue([go$readFile, [path20, options2, cb2], err, startTime || Date.now(), Date.now()]);
+              enqueue([go$readFile, [path21, options2, cb2], err, startTime || Date.now(), Date.now()]);
             else {
               if (typeof cb2 === "function")
                 cb2.apply(this, arguments);
@@ -566,16 +566,16 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      var fs$writeFile = fs14.writeFile;
-      fs14.writeFile = writeFile6;
-      function writeFile6(path19, data, options, cb) {
+      var fs$writeFile = fs15.writeFile;
+      fs15.writeFile = writeFile6;
+      function writeFile6(path20, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
-        return go$writeFile(path19, data, options, cb);
-        function go$writeFile(path20, data2, options2, cb2, startTime) {
-          return fs$writeFile(path20, data2, options2, function(err) {
+        return go$writeFile(path20, data, options, cb);
+        function go$writeFile(path21, data2, options2, cb2, startTime) {
+          return fs$writeFile(path21, data2, options2, function(err) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
-              enqueue([go$writeFile, [path20, data2, options2, cb2], err, startTime || Date.now(), Date.now()]);
+              enqueue([go$writeFile, [path21, data2, options2, cb2], err, startTime || Date.now(), Date.now()]);
             else {
               if (typeof cb2 === "function")
                 cb2.apply(this, arguments);
@@ -583,17 +583,17 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      var fs$appendFile = fs14.appendFile;
+      var fs$appendFile = fs15.appendFile;
       if (fs$appendFile)
-        fs14.appendFile = appendFile2;
-      function appendFile2(path19, data, options, cb) {
+        fs15.appendFile = appendFile2;
+      function appendFile2(path20, data, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
-        return go$appendFile(path19, data, options, cb);
-        function go$appendFile(path20, data2, options2, cb2, startTime) {
-          return fs$appendFile(path20, data2, options2, function(err) {
+        return go$appendFile(path20, data, options, cb);
+        function go$appendFile(path21, data2, options2, cb2, startTime) {
+          return fs$appendFile(path21, data2, options2, function(err) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
-              enqueue([go$appendFile, [path20, data2, options2, cb2], err, startTime || Date.now(), Date.now()]);
+              enqueue([go$appendFile, [path21, data2, options2, cb2], err, startTime || Date.now(), Date.now()]);
             else {
               if (typeof cb2 === "function")
                 cb2.apply(this, arguments);
@@ -601,9 +601,9 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      var fs$copyFile = fs14.copyFile;
+      var fs$copyFile = fs15.copyFile;
       if (fs$copyFile)
-        fs14.copyFile = copyFile;
+        fs15.copyFile = copyFile;
       function copyFile(src, dest, flags, cb) {
         if (typeof flags === "function") {
           cb = flags;
@@ -621,34 +621,34 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      var fs$readdir = fs14.readdir;
-      fs14.readdir = readdir3;
+      var fs$readdir = fs15.readdir;
+      fs15.readdir = readdir3;
       var noReaddirOptionVersions = /^v[0-5]\./;
-      function readdir3(path19, options, cb) {
+      function readdir3(path20, options, cb) {
         if (typeof options === "function")
           cb = options, options = null;
-        var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path20, options2, cb2, startTime) {
-          return fs$readdir(path20, fs$readdirCallback(
-            path20,
+        var go$readdir = noReaddirOptionVersions.test(process.version) ? function go$readdir2(path21, options2, cb2, startTime) {
+          return fs$readdir(path21, fs$readdirCallback(
+            path21,
             options2,
             cb2,
             startTime
           ));
-        } : function go$readdir2(path20, options2, cb2, startTime) {
-          return fs$readdir(path20, options2, fs$readdirCallback(
-            path20,
+        } : function go$readdir2(path21, options2, cb2, startTime) {
+          return fs$readdir(path21, options2, fs$readdirCallback(
+            path21,
             options2,
             cb2,
             startTime
           ));
         };
-        return go$readdir(path19, options, cb);
-        function fs$readdirCallback(path20, options2, cb2, startTime) {
+        return go$readdir(path20, options, cb);
+        function fs$readdirCallback(path21, options2, cb2, startTime) {
           return function(err, files) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
               enqueue([
                 go$readdir,
-                [path20, options2, cb2],
+                [path21, options2, cb2],
                 err,
                 startTime || Date.now(),
                 Date.now()
@@ -663,21 +663,21 @@ var require_graceful_fs = __commonJS({
         }
       }
       if (process.version.substr(0, 4) === "v0.8") {
-        var legStreams = legacy(fs14);
+        var legStreams = legacy(fs15);
         ReadStream = legStreams.ReadStream;
         WriteStream = legStreams.WriteStream;
       }
-      var fs$ReadStream = fs14.ReadStream;
+      var fs$ReadStream = fs15.ReadStream;
       if (fs$ReadStream) {
         ReadStream.prototype = Object.create(fs$ReadStream.prototype);
         ReadStream.prototype.open = ReadStream$open;
       }
-      var fs$WriteStream = fs14.WriteStream;
+      var fs$WriteStream = fs15.WriteStream;
       if (fs$WriteStream) {
         WriteStream.prototype = Object.create(fs$WriteStream.prototype);
         WriteStream.prototype.open = WriteStream$open;
       }
-      Object.defineProperty(fs14, "ReadStream", {
+      Object.defineProperty(fs15, "ReadStream", {
         get: function() {
           return ReadStream;
         },
@@ -687,7 +687,7 @@ var require_graceful_fs = __commonJS({
         enumerable: true,
         configurable: true
       });
-      Object.defineProperty(fs14, "WriteStream", {
+      Object.defineProperty(fs15, "WriteStream", {
         get: function() {
           return WriteStream;
         },
@@ -698,7 +698,7 @@ var require_graceful_fs = __commonJS({
         configurable: true
       });
       var FileReadStream = ReadStream;
-      Object.defineProperty(fs14, "FileReadStream", {
+      Object.defineProperty(fs15, "FileReadStream", {
         get: function() {
           return FileReadStream;
         },
@@ -709,7 +709,7 @@ var require_graceful_fs = __commonJS({
         configurable: true
       });
       var FileWriteStream = WriteStream;
-      Object.defineProperty(fs14, "FileWriteStream", {
+      Object.defineProperty(fs15, "FileWriteStream", {
         get: function() {
           return FileWriteStream;
         },
@@ -719,7 +719,7 @@ var require_graceful_fs = __commonJS({
         enumerable: true,
         configurable: true
       });
-      function ReadStream(path19, options) {
+      function ReadStream(path20, options) {
         if (this instanceof ReadStream)
           return fs$ReadStream.apply(this, arguments), this;
         else
@@ -739,7 +739,7 @@ var require_graceful_fs = __commonJS({
           }
         });
       }
-      function WriteStream(path19, options) {
+      function WriteStream(path20, options) {
         if (this instanceof WriteStream)
           return fs$WriteStream.apply(this, arguments), this;
         else
@@ -757,22 +757,22 @@ var require_graceful_fs = __commonJS({
           }
         });
       }
-      function createReadStream2(path19, options) {
-        return new fs14.ReadStream(path19, options);
+      function createReadStream2(path20, options) {
+        return new fs15.ReadStream(path20, options);
       }
-      function createWriteStream2(path19, options) {
-        return new fs14.WriteStream(path19, options);
+      function createWriteStream2(path20, options) {
+        return new fs15.WriteStream(path20, options);
       }
-      var fs$open = fs14.open;
-      fs14.open = open;
-      function open(path19, flags, mode, cb) {
+      var fs$open = fs15.open;
+      fs15.open = open;
+      function open(path20, flags, mode, cb) {
         if (typeof mode === "function")
           cb = mode, mode = null;
-        return go$open(path19, flags, mode, cb);
-        function go$open(path20, flags2, mode2, cb2, startTime) {
-          return fs$open(path20, flags2, mode2, function(err, fd) {
+        return go$open(path20, flags, mode, cb);
+        function go$open(path21, flags2, mode2, cb2, startTime) {
+          return fs$open(path21, flags2, mode2, function(err, fd) {
             if (err && (err.code === "EMFILE" || err.code === "ENFILE"))
-              enqueue([go$open, [path20, flags2, mode2, cb2], err, startTime || Date.now(), Date.now()]);
+              enqueue([go$open, [path21, flags2, mode2, cb2], err, startTime || Date.now(), Date.now()]);
             else {
               if (typeof cb2 === "function")
                 cb2.apply(this, arguments);
@@ -780,20 +780,20 @@ var require_graceful_fs = __commonJS({
           });
         }
       }
-      return fs14;
+      return fs15;
     }
     function enqueue(elem) {
       debug("ENQUEUE", elem[0].name, elem[1]);
-      fs13[gracefulQueue].push(elem);
+      fs14[gracefulQueue].push(elem);
       retry();
     }
     var retryTimer;
     function resetQueue() {
       var now = Date.now();
-      for (var i2 = 0; i2 < fs13[gracefulQueue].length; ++i2) {
-        if (fs13[gracefulQueue][i2].length > 2) {
-          fs13[gracefulQueue][i2][3] = now;
-          fs13[gracefulQueue][i2][4] = now;
+      for (var i2 = 0; i2 < fs14[gracefulQueue].length; ++i2) {
+        if (fs14[gracefulQueue][i2].length > 2) {
+          fs14[gracefulQueue][i2][3] = now;
+          fs14[gracefulQueue][i2][4] = now;
         }
       }
       retry();
@@ -801,9 +801,9 @@ var require_graceful_fs = __commonJS({
     function retry() {
       clearTimeout(retryTimer);
       retryTimer = void 0;
-      if (fs13[gracefulQueue].length === 0)
+      if (fs14[gracefulQueue].length === 0)
         return;
-      var elem = fs13[gracefulQueue].shift();
+      var elem = fs14[gracefulQueue].shift();
       var fn = elem[0];
       var args = elem[1];
       var err = elem[2];
@@ -825,7 +825,7 @@ var require_graceful_fs = __commonJS({
           debug("RETRY", fn.name, args);
           fn.apply(null, args.concat([startTime]));
         } else {
-          fs13[gracefulQueue].push(elem);
+          fs14[gracefulQueue].push(elem);
         }
       }
       if (retryTimer === void 0) {
@@ -840,7 +840,7 @@ var require_fs = __commonJS({
   "node_modules/fs-extra/lib/fs/index.js"(exports2) {
     "use strict";
     var u2 = require_universalify().fromCallback;
-    var fs13 = require_graceful_fs();
+    var fs14 = require_graceful_fs();
     var api = [
       "access",
       "appendFile",
@@ -881,26 +881,26 @@ var require_fs = __commonJS({
       "utimes",
       "writeFile"
     ].filter((key) => {
-      return typeof fs13[key] === "function";
+      return typeof fs14[key] === "function";
     });
-    Object.assign(exports2, fs13);
+    Object.assign(exports2, fs14);
     api.forEach((method) => {
-      exports2[method] = u2(fs13[method]);
+      exports2[method] = u2(fs14[method]);
     });
     exports2.exists = function(filename, callback) {
       if (typeof callback === "function") {
-        return fs13.exists(filename, callback);
+        return fs14.exists(filename, callback);
       }
       return new Promise((resolve7) => {
-        return fs13.exists(filename, resolve7);
+        return fs14.exists(filename, resolve7);
       });
     };
     exports2.read = function(fd, buffer, offset, length, position, callback) {
       if (typeof callback === "function") {
-        return fs13.read(fd, buffer, offset, length, position, callback);
+        return fs14.read(fd, buffer, offset, length, position, callback);
       }
       return new Promise((resolve7, reject) => {
-        fs13.read(fd, buffer, offset, length, position, (err, bytesRead, buffer2) => {
+        fs14.read(fd, buffer, offset, length, position, (err, bytesRead, buffer2) => {
           if (err) return reject(err);
           resolve7({ bytesRead, buffer: buffer2 });
         });
@@ -908,10 +908,10 @@ var require_fs = __commonJS({
     };
     exports2.write = function(fd, buffer, ...args) {
       if (typeof args[args.length - 1] === "function") {
-        return fs13.write(fd, buffer, ...args);
+        return fs14.write(fd, buffer, ...args);
       }
       return new Promise((resolve7, reject) => {
-        fs13.write(fd, buffer, ...args, (err, bytesWritten, buffer2) => {
+        fs14.write(fd, buffer, ...args, (err, bytesWritten, buffer2) => {
           if (err) return reject(err);
           resolve7({ bytesWritten, buffer: buffer2 });
         });
@@ -919,10 +919,10 @@ var require_fs = __commonJS({
     };
     exports2.readv = function(fd, buffers, ...args) {
       if (typeof args[args.length - 1] === "function") {
-        return fs13.readv(fd, buffers, ...args);
+        return fs14.readv(fd, buffers, ...args);
       }
       return new Promise((resolve7, reject) => {
-        fs13.readv(fd, buffers, ...args, (err, bytesRead, buffers2) => {
+        fs14.readv(fd, buffers, ...args, (err, bytesRead, buffers2) => {
           if (err) return reject(err);
           resolve7({ bytesRead, buffers: buffers2 });
         });
@@ -930,17 +930,17 @@ var require_fs = __commonJS({
     };
     exports2.writev = function(fd, buffers, ...args) {
       if (typeof args[args.length - 1] === "function") {
-        return fs13.writev(fd, buffers, ...args);
+        return fs14.writev(fd, buffers, ...args);
       }
       return new Promise((resolve7, reject) => {
-        fs13.writev(fd, buffers, ...args, (err, bytesWritten, buffers2) => {
+        fs14.writev(fd, buffers, ...args, (err, bytesWritten, buffers2) => {
           if (err) return reject(err);
           resolve7({ bytesWritten, buffers: buffers2 });
         });
       });
     };
-    if (typeof fs13.realpath.native === "function") {
-      exports2.realpath.native = u2(fs13.realpath.native);
+    if (typeof fs14.realpath.native === "function") {
+      exports2.realpath.native = u2(fs14.realpath.native);
     } else {
       process.emitWarning(
         "fs.realpath.native is not a function. Is fs being monkey-patched?",
@@ -955,10 +955,10 @@ var require_fs = __commonJS({
 var require_utils = __commonJS({
   "node_modules/fs-extra/lib/mkdirs/utils.js"(exports2, module2) {
     "use strict";
-    var path19 = require("path");
+    var path20 = require("path");
     module2.exports.checkPath = function checkPath(pth) {
       if (process.platform === "win32") {
-        const pathHasInvalidWinCharacters = /[<>:"|?*]/.test(pth.replace(path19.parse(pth).root, ""));
+        const pathHasInvalidWinCharacters = /[<>:"|?*]/.test(pth.replace(path20.parse(pth).root, ""));
         if (pathHasInvalidWinCharacters) {
           const error = new Error(`Path contains invalid characters: ${pth}`);
           error.code = "EINVAL";
@@ -973,7 +973,7 @@ var require_utils = __commonJS({
 var require_make_dir = __commonJS({
   "node_modules/fs-extra/lib/mkdirs/make-dir.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_fs();
+    var fs14 = require_fs();
     var { checkPath } = require_utils();
     var getMode = (options) => {
       const defaults3 = { mode: 511 };
@@ -982,14 +982,14 @@ var require_make_dir = __commonJS({
     };
     module2.exports.makeDir = async (dir, options) => {
       checkPath(dir);
-      return fs13.mkdir(dir, {
+      return fs14.mkdir(dir, {
         mode: getMode(options),
         recursive: true
       });
     };
     module2.exports.makeDirSync = (dir, options) => {
       checkPath(dir);
-      return fs13.mkdirSync(dir, {
+      return fs14.mkdirSync(dir, {
         mode: getMode(options),
         recursive: true
       });
@@ -1021,13 +1021,13 @@ var require_path_exists = __commonJS({
   "node_modules/fs-extra/lib/path-exists/index.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var fs13 = require_fs();
-    function pathExists5(path19) {
-      return fs13.access(path19).then(() => true).catch(() => false);
+    var fs14 = require_fs();
+    function pathExists5(path20) {
+      return fs14.access(path20).then(() => true).catch(() => false);
     }
     module2.exports = {
       pathExists: u2(pathExists5),
-      pathExistsSync: fs13.existsSync
+      pathExistsSync: fs14.existsSync
     };
   }
 });
@@ -1036,16 +1036,16 @@ var require_path_exists = __commonJS({
 var require_utimes = __commonJS({
   "node_modules/fs-extra/lib/util/utimes.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_fs();
+    var fs14 = require_fs();
     var u2 = require_universalify().fromPromise;
-    async function utimesMillis(path19, atime, mtime) {
-      const fd = await fs13.open(path19, "r+");
+    async function utimesMillis(path20, atime, mtime) {
+      const fd = await fs14.open(path20, "r+");
       let closeErr = null;
       try {
-        await fs13.futimes(fd, atime, mtime);
+        await fs14.futimes(fd, atime, mtime);
       } finally {
         try {
-          await fs13.close(fd);
+          await fs14.close(fd);
         } catch (e) {
           closeErr = e;
         }
@@ -1054,10 +1054,10 @@ var require_utimes = __commonJS({
         throw closeErr;
       }
     }
-    function utimesMillisSync(path19, atime, mtime) {
-      const fd = fs13.openSync(path19, "r+");
-      fs13.futimesSync(fd, atime, mtime);
-      return fs13.closeSync(fd);
+    function utimesMillisSync(path20, atime, mtime) {
+      const fd = fs14.openSync(path20, "r+");
+      fs14.futimesSync(fd, atime, mtime);
+      return fs14.closeSync(fd);
     }
     module2.exports = {
       utimesMillis: u2(utimesMillis),
@@ -1070,11 +1070,11 @@ var require_utimes = __commonJS({
 var require_stat = __commonJS({
   "node_modules/fs-extra/lib/util/stat.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_fs();
-    var path19 = require("path");
+    var fs14 = require_fs();
+    var path20 = require("path");
     var u2 = require_universalify().fromPromise;
     function getStats(src, dest, opts) {
-      const statFunc = opts.dereference ? (file) => fs13.stat(file, { bigint: true }) : (file) => fs13.lstat(file, { bigint: true });
+      const statFunc = opts.dereference ? (file) => fs14.stat(file, { bigint: true }) : (file) => fs14.lstat(file, { bigint: true });
       return Promise.all([
         statFunc(src),
         statFunc(dest).catch((err) => {
@@ -1085,7 +1085,7 @@ var require_stat = __commonJS({
     }
     function getStatsSync(src, dest, opts) {
       let destStat;
-      const statFunc = opts.dereference ? (file) => fs13.statSync(file, { bigint: true }) : (file) => fs13.lstatSync(file, { bigint: true });
+      const statFunc = opts.dereference ? (file) => fs14.statSync(file, { bigint: true }) : (file) => fs14.lstatSync(file, { bigint: true });
       const srcStat = statFunc(src);
       try {
         destStat = statFunc(dest);
@@ -1099,8 +1099,8 @@ var require_stat = __commonJS({
       const { srcStat, destStat } = await getStats(src, dest, opts);
       if (destStat) {
         if (areIdentical(srcStat, destStat)) {
-          const srcBaseName = path19.basename(src);
-          const destBaseName = path19.basename(dest);
+          const srcBaseName = path20.basename(src);
+          const destBaseName = path20.basename(dest);
           if (funcName === "move" && srcBaseName !== destBaseName && srcBaseName.toLowerCase() === destBaseName.toLowerCase()) {
             return { srcStat, destStat, isChangingCase: true };
           }
@@ -1122,8 +1122,8 @@ var require_stat = __commonJS({
       const { srcStat, destStat } = getStatsSync(src, dest, opts);
       if (destStat) {
         if (areIdentical(srcStat, destStat)) {
-          const srcBaseName = path19.basename(src);
-          const destBaseName = path19.basename(dest);
+          const srcBaseName = path20.basename(src);
+          const destBaseName = path20.basename(dest);
           if (funcName === "move" && srcBaseName !== destBaseName && srcBaseName.toLowerCase() === destBaseName.toLowerCase()) {
             return { srcStat, destStat, isChangingCase: true };
           }
@@ -1142,12 +1142,12 @@ var require_stat = __commonJS({
       return { srcStat, destStat };
     }
     async function checkParentPaths(src, srcStat, dest, funcName) {
-      const srcParent = path19.resolve(path19.dirname(src));
-      const destParent = path19.resolve(path19.dirname(dest));
-      if (destParent === srcParent || destParent === path19.parse(destParent).root) return;
+      const srcParent = path20.resolve(path20.dirname(src));
+      const destParent = path20.resolve(path20.dirname(dest));
+      if (destParent === srcParent || destParent === path20.parse(destParent).root) return;
       let destStat;
       try {
-        destStat = await fs13.stat(destParent, { bigint: true });
+        destStat = await fs14.stat(destParent, { bigint: true });
       } catch (err) {
         if (err.code === "ENOENT") return;
         throw err;
@@ -1158,12 +1158,12 @@ var require_stat = __commonJS({
       return checkParentPaths(src, srcStat, destParent, funcName);
     }
     function checkParentPathsSync(src, srcStat, dest, funcName) {
-      const srcParent = path19.resolve(path19.dirname(src));
-      const destParent = path19.resolve(path19.dirname(dest));
-      if (destParent === srcParent || destParent === path19.parse(destParent).root) return;
+      const srcParent = path20.resolve(path20.dirname(src));
+      const destParent = path20.resolve(path20.dirname(dest));
+      if (destParent === srcParent || destParent === path20.parse(destParent).root) return;
       let destStat;
       try {
-        destStat = fs13.statSync(destParent, { bigint: true });
+        destStat = fs14.statSync(destParent, { bigint: true });
       } catch (err) {
         if (err.code === "ENOENT") return;
         throw err;
@@ -1177,8 +1177,8 @@ var require_stat = __commonJS({
       return destStat.ino !== void 0 && destStat.dev !== void 0 && destStat.ino === srcStat.ino && destStat.dev === srcStat.dev;
     }
     function isSrcSubdir(src, dest) {
-      const srcArr = path19.resolve(src).split(path19.sep).filter((i2) => i2);
-      const destArr = path19.resolve(dest).split(path19.sep).filter((i2) => i2);
+      const srcArr = path20.resolve(src).split(path20.sep).filter((i2) => i2);
+      const destArr = path20.resolve(dest).split(path20.sep).filter((i2) => i2);
       return srcArr.every((cur, i2) => destArr[i2] === cur);
     }
     function errMsg(src, dest, funcName) {
@@ -1230,8 +1230,8 @@ var require_async = __commonJS({
 var require_copy = __commonJS({
   "node_modules/fs-extra/lib/copy/copy.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_fs();
-    var path19 = require("path");
+    var fs14 = require_fs();
+    var path20 = require("path");
     var { mkdirs } = require_mkdirs();
     var { pathExists: pathExists5 } = require_path_exists();
     var { utimesMillis } = require_utimes();
@@ -1254,7 +1254,7 @@ var require_copy = __commonJS({
       await stat.checkParentPaths(src, srcStat, dest, "copy");
       const include = await runFilter(src, dest, opts);
       if (!include) return;
-      const destParent = path19.dirname(dest);
+      const destParent = path20.dirname(dest);
       const dirExists = await pathExists5(destParent);
       if (!dirExists) {
         await mkdirs(destParent);
@@ -1266,7 +1266,7 @@ var require_copy = __commonJS({
       return opts.filter(src, dest);
     }
     async function getStatsAndPerformCopy(destStat, src, dest, opts) {
-      const statFn = opts.dereference ? fs13.stat : fs13.lstat;
+      const statFn = opts.dereference ? fs14.stat : fs14.lstat;
       const srcStat = await statFn(src);
       if (srcStat.isDirectory()) return onDir(srcStat, destStat, src, dest, opts);
       if (srcStat.isFile() || srcStat.isCharacterDevice() || srcStat.isBlockDevice()) return onFile(srcStat, destStat, src, dest, opts);
@@ -1278,7 +1278,7 @@ var require_copy = __commonJS({
     async function onFile(srcStat, destStat, src, dest, opts) {
       if (!destStat) return copyFile(srcStat, src, dest, opts);
       if (opts.overwrite) {
-        await fs13.unlink(dest);
+        await fs14.unlink(dest);
         return copyFile(srcStat, src, dest, opts);
       }
       if (opts.errorOnExist) {
@@ -1286,29 +1286,29 @@ var require_copy = __commonJS({
       }
     }
     async function copyFile(srcStat, src, dest, opts) {
-      await fs13.copyFile(src, dest);
+      await fs14.copyFile(src, dest);
       if (opts.preserveTimestamps) {
         if (fileIsNotWritable(srcStat.mode)) {
           await makeFileWritable(dest, srcStat.mode);
         }
-        const updatedSrcStat = await fs13.stat(src);
+        const updatedSrcStat = await fs14.stat(src);
         await utimesMillis(dest, updatedSrcStat.atime, updatedSrcStat.mtime);
       }
-      return fs13.chmod(dest, srcStat.mode);
+      return fs14.chmod(dest, srcStat.mode);
     }
     function fileIsNotWritable(srcMode) {
       return (srcMode & 128) === 0;
     }
     function makeFileWritable(dest, srcMode) {
-      return fs13.chmod(dest, srcMode | 128);
+      return fs14.chmod(dest, srcMode | 128);
     }
     async function onDir(srcStat, destStat, src, dest, opts) {
       if (!destStat) {
-        await fs13.mkdir(dest);
+        await fs14.mkdir(dest);
       }
-      await asyncIteratorConcurrentProcess(await fs13.opendir(src), async (item) => {
-        const srcItem = path19.join(src, item.name);
-        const destItem = path19.join(dest, item.name);
+      await asyncIteratorConcurrentProcess(await fs14.opendir(src), async (item) => {
+        const srcItem = path20.join(src, item.name);
+        const destItem = path20.join(dest, item.name);
         const include = await runFilter(srcItem, destItem, opts);
         if (include) {
           const { destStat: destStat2 } = await stat.checkPaths(srcItem, destItem, "copy", opts);
@@ -1316,26 +1316,26 @@ var require_copy = __commonJS({
         }
       });
       if (!destStat) {
-        await fs13.chmod(dest, srcStat.mode);
+        await fs14.chmod(dest, srcStat.mode);
       }
     }
     async function onLink(destStat, src, dest, opts) {
-      let resolvedSrc = await fs13.readlink(src);
+      let resolvedSrc = await fs14.readlink(src);
       if (opts.dereference) {
-        resolvedSrc = path19.resolve(process.cwd(), resolvedSrc);
+        resolvedSrc = path20.resolve(process.cwd(), resolvedSrc);
       }
       if (!destStat) {
-        return fs13.symlink(resolvedSrc, dest);
+        return fs14.symlink(resolvedSrc, dest);
       }
       let resolvedDest = null;
       try {
-        resolvedDest = await fs13.readlink(dest);
+        resolvedDest = await fs14.readlink(dest);
       } catch (e) {
-        if (e.code === "EINVAL" || e.code === "UNKNOWN") return fs13.symlink(resolvedSrc, dest);
+        if (e.code === "EINVAL" || e.code === "UNKNOWN") return fs14.symlink(resolvedSrc, dest);
         throw e;
       }
       if (opts.dereference) {
-        resolvedDest = path19.resolve(process.cwd(), resolvedDest);
+        resolvedDest = path20.resolve(process.cwd(), resolvedDest);
       }
       if (stat.isSrcSubdir(resolvedSrc, resolvedDest)) {
         throw new Error(`Cannot copy '${resolvedSrc}' to a subdirectory of itself, '${resolvedDest}'.`);
@@ -1343,8 +1343,8 @@ var require_copy = __commonJS({
       if (stat.isSrcSubdir(resolvedDest, resolvedSrc)) {
         throw new Error(`Cannot overwrite '${resolvedDest}' with '${resolvedSrc}'.`);
       }
-      await fs13.unlink(dest);
-      return fs13.symlink(resolvedSrc, dest);
+      await fs14.unlink(dest);
+      return fs14.symlink(resolvedSrc, dest);
     }
     module2.exports = copy;
   }
@@ -1354,8 +1354,8 @@ var require_copy = __commonJS({
 var require_copy_sync = __commonJS({
   "node_modules/fs-extra/lib/copy/copy-sync.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_graceful_fs();
-    var path19 = require("path");
+    var fs14 = require_graceful_fs();
+    var path20 = require("path");
     var mkdirsSync = require_mkdirs().mkdirsSync;
     var utimesMillisSync = require_utimes().utimesMillisSync;
     var stat = require_stat();
@@ -1376,12 +1376,12 @@ var require_copy_sync = __commonJS({
       const { srcStat, destStat } = stat.checkPathsSync(src, dest, "copy", opts);
       stat.checkParentPathsSync(src, srcStat, dest, "copy");
       if (opts.filter && !opts.filter(src, dest)) return;
-      const destParent = path19.dirname(dest);
-      if (!fs13.existsSync(destParent)) mkdirsSync(destParent);
+      const destParent = path20.dirname(dest);
+      if (!fs14.existsSync(destParent)) mkdirsSync(destParent);
       return getStats(destStat, src, dest, opts);
     }
     function getStats(destStat, src, dest, opts) {
-      const statSync3 = opts.dereference ? fs13.statSync : fs13.lstatSync;
+      const statSync3 = opts.dereference ? fs14.statSync : fs14.lstatSync;
       const srcStat = statSync3(src);
       if (srcStat.isDirectory()) return onDir(srcStat, destStat, src, dest, opts);
       else if (srcStat.isFile() || srcStat.isCharacterDevice() || srcStat.isBlockDevice()) return onFile(srcStat, destStat, src, dest, opts);
@@ -1396,14 +1396,14 @@ var require_copy_sync = __commonJS({
     }
     function mayCopyFile(srcStat, src, dest, opts) {
       if (opts.overwrite) {
-        fs13.unlinkSync(dest);
+        fs14.unlinkSync(dest);
         return copyFile(srcStat, src, dest, opts);
       } else if (opts.errorOnExist) {
         throw new Error(`'${dest}' already exists`);
       }
     }
     function copyFile(srcStat, src, dest, opts) {
-      fs13.copyFileSync(src, dest);
+      fs14.copyFileSync(src, dest);
       if (opts.preserveTimestamps) handleTimestamps(srcStat.mode, src, dest);
       return setDestMode(dest, srcStat.mode);
     }
@@ -1418,10 +1418,10 @@ var require_copy_sync = __commonJS({
       return setDestMode(dest, srcMode | 128);
     }
     function setDestMode(dest, srcMode) {
-      return fs13.chmodSync(dest, srcMode);
+      return fs14.chmodSync(dest, srcMode);
     }
     function setDestTimestamps(src, dest) {
-      const updatedSrcStat = fs13.statSync(src);
+      const updatedSrcStat = fs14.statSync(src);
       return utimesMillisSync(dest, updatedSrcStat.atime, updatedSrcStat.mtime);
     }
     function onDir(srcStat, destStat, src, dest, opts) {
@@ -1429,12 +1429,12 @@ var require_copy_sync = __commonJS({
       return copyDir(src, dest, opts);
     }
     function mkDirAndCopy(srcMode, src, dest, opts) {
-      fs13.mkdirSync(dest);
+      fs14.mkdirSync(dest);
       copyDir(src, dest, opts);
       return setDestMode(dest, srcMode);
     }
     function copyDir(src, dest, opts) {
-      const dir = fs13.opendirSync(src);
+      const dir = fs14.opendirSync(src);
       try {
         let dirent;
         while ((dirent = dir.readSync()) !== null) {
@@ -1445,29 +1445,29 @@ var require_copy_sync = __commonJS({
       }
     }
     function copyDirItem(item, src, dest, opts) {
-      const srcItem = path19.join(src, item);
-      const destItem = path19.join(dest, item);
+      const srcItem = path20.join(src, item);
+      const destItem = path20.join(dest, item);
       if (opts.filter && !opts.filter(srcItem, destItem)) return;
       const { destStat } = stat.checkPathsSync(srcItem, destItem, "copy", opts);
       return getStats(destStat, srcItem, destItem, opts);
     }
     function onLink(destStat, src, dest, opts) {
-      let resolvedSrc = fs13.readlinkSync(src);
+      let resolvedSrc = fs14.readlinkSync(src);
       if (opts.dereference) {
-        resolvedSrc = path19.resolve(process.cwd(), resolvedSrc);
+        resolvedSrc = path20.resolve(process.cwd(), resolvedSrc);
       }
       if (!destStat) {
-        return fs13.symlinkSync(resolvedSrc, dest);
+        return fs14.symlinkSync(resolvedSrc, dest);
       } else {
         let resolvedDest;
         try {
-          resolvedDest = fs13.readlinkSync(dest);
+          resolvedDest = fs14.readlinkSync(dest);
         } catch (err) {
-          if (err.code === "EINVAL" || err.code === "UNKNOWN") return fs13.symlinkSync(resolvedSrc, dest);
+          if (err.code === "EINVAL" || err.code === "UNKNOWN") return fs14.symlinkSync(resolvedSrc, dest);
           throw err;
         }
         if (opts.dereference) {
-          resolvedDest = path19.resolve(process.cwd(), resolvedDest);
+          resolvedDest = path20.resolve(process.cwd(), resolvedDest);
         }
         if (stat.isSrcSubdir(resolvedSrc, resolvedDest)) {
           throw new Error(`Cannot copy '${resolvedSrc}' to a subdirectory of itself, '${resolvedDest}'.`);
@@ -1479,8 +1479,8 @@ var require_copy_sync = __commonJS({
       }
     }
     function copyLink(resolvedSrc, dest) {
-      fs13.unlinkSync(dest);
-      return fs13.symlinkSync(resolvedSrc, dest);
+      fs14.unlinkSync(dest);
+      return fs14.symlinkSync(resolvedSrc, dest);
     }
     module2.exports = copySync;
   }
@@ -1502,13 +1502,13 @@ var require_copy2 = __commonJS({
 var require_remove = __commonJS({
   "node_modules/fs-extra/lib/remove/index.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_graceful_fs();
+    var fs14 = require_graceful_fs();
     var u2 = require_universalify().fromCallback;
-    function remove3(path19, callback) {
-      fs13.rm(path19, { recursive: true, force: true }, callback);
+    function remove3(path20, callback) {
+      fs14.rm(path20, { recursive: true, force: true }, callback);
     }
-    function removeSync(path19) {
-      fs13.rmSync(path19, { recursive: true, force: true });
+    function removeSync(path20) {
+      fs14.rmSync(path20, { recursive: true, force: true });
     }
     module2.exports = {
       remove: u2(remove3),
@@ -1522,28 +1522,28 @@ var require_empty = __commonJS({
   "node_modules/fs-extra/lib/empty/index.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var fs13 = require_fs();
-    var path19 = require("path");
+    var fs14 = require_fs();
+    var path20 = require("path");
     var mkdir = require_mkdirs();
     var remove3 = require_remove();
     var emptyDir4 = u2(async function emptyDir5(dir) {
       let items;
       try {
-        items = await fs13.readdir(dir);
+        items = await fs14.readdir(dir);
       } catch {
         return mkdir.mkdirs(dir);
       }
-      return Promise.all(items.map((item) => remove3.remove(path19.join(dir, item))));
+      return Promise.all(items.map((item) => remove3.remove(path20.join(dir, item))));
     });
     function emptyDirSync(dir) {
       let items;
       try {
-        items = fs13.readdirSync(dir);
+        items = fs14.readdirSync(dir);
       } catch {
         return mkdir.mkdirsSync(dir);
       }
       items.forEach((item) => {
-        item = path19.join(dir, item);
+        item = path20.join(dir, item);
         remove3.removeSync(item);
       });
     }
@@ -1561,52 +1561,52 @@ var require_file = __commonJS({
   "node_modules/fs-extra/lib/ensure/file.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var path19 = require("path");
-    var fs13 = require_fs();
+    var path20 = require("path");
+    var fs14 = require_fs();
     var mkdir = require_mkdirs();
     async function createFile(file) {
       let stats;
       try {
-        stats = await fs13.stat(file);
+        stats = await fs14.stat(file);
       } catch {
       }
       if (stats && stats.isFile()) return;
-      const dir = path19.dirname(file);
+      const dir = path20.dirname(file);
       let dirStats = null;
       try {
-        dirStats = await fs13.stat(dir);
+        dirStats = await fs14.stat(dir);
       } catch (err) {
         if (err.code === "ENOENT") {
           await mkdir.mkdirs(dir);
-          await fs13.writeFile(file, "");
+          await fs14.writeFile(file, "");
           return;
         } else {
           throw err;
         }
       }
       if (dirStats.isDirectory()) {
-        await fs13.writeFile(file, "");
+        await fs14.writeFile(file, "");
       } else {
-        await fs13.readdir(dir);
+        await fs14.readdir(dir);
       }
     }
     function createFileSync(file) {
       let stats;
       try {
-        stats = fs13.statSync(file);
+        stats = fs14.statSync(file);
       } catch {
       }
       if (stats && stats.isFile()) return;
-      const dir = path19.dirname(file);
+      const dir = path20.dirname(file);
       try {
-        if (!fs13.statSync(dir).isDirectory()) {
-          fs13.readdirSync(dir);
+        if (!fs14.statSync(dir).isDirectory()) {
+          fs14.readdirSync(dir);
         }
       } catch (err) {
         if (err && err.code === "ENOENT") mkdir.mkdirsSync(dir);
         else throw err;
       }
-      fs13.writeFileSync(file, "");
+      fs14.writeFileSync(file, "");
     }
     module2.exports = {
       createFile: u2(createFile),
@@ -1620,50 +1620,50 @@ var require_link = __commonJS({
   "node_modules/fs-extra/lib/ensure/link.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var path19 = require("path");
-    var fs13 = require_fs();
+    var path20 = require("path");
+    var fs14 = require_fs();
     var mkdir = require_mkdirs();
     var { pathExists: pathExists5 } = require_path_exists();
     var { areIdentical } = require_stat();
     async function createLink(srcpath, dstpath) {
       let dstStat;
       try {
-        dstStat = await fs13.lstat(dstpath);
+        dstStat = await fs14.lstat(dstpath);
       } catch {
       }
       let srcStat;
       try {
-        srcStat = await fs13.lstat(srcpath);
+        srcStat = await fs14.lstat(srcpath);
       } catch (err) {
         err.message = err.message.replace("lstat", "ensureLink");
         throw err;
       }
       if (dstStat && areIdentical(srcStat, dstStat)) return;
-      const dir = path19.dirname(dstpath);
+      const dir = path20.dirname(dstpath);
       const dirExists = await pathExists5(dir);
       if (!dirExists) {
         await mkdir.mkdirs(dir);
       }
-      await fs13.link(srcpath, dstpath);
+      await fs14.link(srcpath, dstpath);
     }
     function createLinkSync(srcpath, dstpath) {
       let dstStat;
       try {
-        dstStat = fs13.lstatSync(dstpath);
+        dstStat = fs14.lstatSync(dstpath);
       } catch {
       }
       try {
-        const srcStat = fs13.lstatSync(srcpath);
+        const srcStat = fs14.lstatSync(srcpath);
         if (dstStat && areIdentical(srcStat, dstStat)) return;
       } catch (err) {
         err.message = err.message.replace("lstat", "ensureLink");
         throw err;
       }
-      const dir = path19.dirname(dstpath);
-      const dirExists = fs13.existsSync(dir);
-      if (dirExists) return fs13.linkSync(srcpath, dstpath);
+      const dir = path20.dirname(dstpath);
+      const dirExists = fs14.existsSync(dir);
+      if (dirExists) return fs14.linkSync(srcpath, dstpath);
       mkdir.mkdirsSync(dir);
-      return fs13.linkSync(srcpath, dstpath);
+      return fs14.linkSync(srcpath, dstpath);
     }
     module2.exports = {
       createLink: u2(createLink),
@@ -1676,14 +1676,14 @@ var require_link = __commonJS({
 var require_symlink_paths = __commonJS({
   "node_modules/fs-extra/lib/ensure/symlink-paths.js"(exports2, module2) {
     "use strict";
-    var path19 = require("path");
-    var fs13 = require_fs();
+    var path20 = require("path");
+    var fs14 = require_fs();
     var { pathExists: pathExists5 } = require_path_exists();
     var u2 = require_universalify().fromPromise;
     async function symlinkPaths(srcpath, dstpath) {
-      if (path19.isAbsolute(srcpath)) {
+      if (path20.isAbsolute(srcpath)) {
         try {
-          await fs13.lstat(srcpath);
+          await fs14.lstat(srcpath);
         } catch (err) {
           err.message = err.message.replace("lstat", "ensureSymlink");
           throw err;
@@ -1693,8 +1693,8 @@ var require_symlink_paths = __commonJS({
           toDst: srcpath
         };
       }
-      const dstdir = path19.dirname(dstpath);
-      const relativeToDst = path19.join(dstdir, srcpath);
+      const dstdir = path20.dirname(dstpath);
+      const relativeToDst = path20.join(dstdir, srcpath);
       const exists = await pathExists5(relativeToDst);
       if (exists) {
         return {
@@ -1703,39 +1703,39 @@ var require_symlink_paths = __commonJS({
         };
       }
       try {
-        await fs13.lstat(srcpath);
+        await fs14.lstat(srcpath);
       } catch (err) {
         err.message = err.message.replace("lstat", "ensureSymlink");
         throw err;
       }
       return {
         toCwd: srcpath,
-        toDst: path19.relative(dstdir, srcpath)
+        toDst: path20.relative(dstdir, srcpath)
       };
     }
     function symlinkPathsSync(srcpath, dstpath) {
-      if (path19.isAbsolute(srcpath)) {
-        const exists2 = fs13.existsSync(srcpath);
+      if (path20.isAbsolute(srcpath)) {
+        const exists2 = fs14.existsSync(srcpath);
         if (!exists2) throw new Error("absolute srcpath does not exist");
         return {
           toCwd: srcpath,
           toDst: srcpath
         };
       }
-      const dstdir = path19.dirname(dstpath);
-      const relativeToDst = path19.join(dstdir, srcpath);
-      const exists = fs13.existsSync(relativeToDst);
+      const dstdir = path20.dirname(dstpath);
+      const relativeToDst = path20.join(dstdir, srcpath);
+      const exists = fs14.existsSync(relativeToDst);
       if (exists) {
         return {
           toCwd: relativeToDst,
           toDst: srcpath
         };
       }
-      const srcExists = fs13.existsSync(srcpath);
+      const srcExists = fs14.existsSync(srcpath);
       if (!srcExists) throw new Error("relative srcpath does not exist");
       return {
         toCwd: srcpath,
-        toDst: path19.relative(dstdir, srcpath)
+        toDst: path20.relative(dstdir, srcpath)
       };
     }
     module2.exports = {
@@ -1749,13 +1749,13 @@ var require_symlink_paths = __commonJS({
 var require_symlink_type = __commonJS({
   "node_modules/fs-extra/lib/ensure/symlink-type.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_fs();
+    var fs14 = require_fs();
     var u2 = require_universalify().fromPromise;
     async function symlinkType(srcpath, type) {
       if (type) return type;
       let stats;
       try {
-        stats = await fs13.lstat(srcpath);
+        stats = await fs14.lstat(srcpath);
       } catch {
         return "file";
       }
@@ -1765,7 +1765,7 @@ var require_symlink_type = __commonJS({
       if (type) return type;
       let stats;
       try {
-        stats = fs13.lstatSync(srcpath);
+        stats = fs14.lstatSync(srcpath);
       } catch {
         return "file";
       }
@@ -1783,8 +1783,8 @@ var require_symlink = __commonJS({
   "node_modules/fs-extra/lib/ensure/symlink.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var path19 = require("path");
-    var fs13 = require_fs();
+    var path20 = require("path");
+    var fs14 = require_fs();
     var { mkdirs, mkdirsSync } = require_mkdirs();
     var { symlinkPaths, symlinkPathsSync } = require_symlink_paths();
     var { symlinkType, symlinkTypeSync } = require_symlink_type();
@@ -1793,44 +1793,44 @@ var require_symlink = __commonJS({
     async function createSymlink(srcpath, dstpath, type) {
       let stats;
       try {
-        stats = await fs13.lstat(dstpath);
+        stats = await fs14.lstat(dstpath);
       } catch {
       }
       if (stats && stats.isSymbolicLink()) {
         const [srcStat, dstStat] = await Promise.all([
-          fs13.stat(srcpath),
-          fs13.stat(dstpath)
+          fs14.stat(srcpath),
+          fs14.stat(dstpath)
         ]);
         if (areIdentical(srcStat, dstStat)) return;
       }
       const relative = await symlinkPaths(srcpath, dstpath);
       srcpath = relative.toDst;
       const toType = await symlinkType(relative.toCwd, type);
-      const dir = path19.dirname(dstpath);
+      const dir = path20.dirname(dstpath);
       if (!await pathExists5(dir)) {
         await mkdirs(dir);
       }
-      return fs13.symlink(srcpath, dstpath, toType);
+      return fs14.symlink(srcpath, dstpath, toType);
     }
     function createSymlinkSync(srcpath, dstpath, type) {
       let stats;
       try {
-        stats = fs13.lstatSync(dstpath);
+        stats = fs14.lstatSync(dstpath);
       } catch {
       }
       if (stats && stats.isSymbolicLink()) {
-        const srcStat = fs13.statSync(srcpath);
-        const dstStat = fs13.statSync(dstpath);
+        const srcStat = fs14.statSync(srcpath);
+        const dstStat = fs14.statSync(dstpath);
         if (areIdentical(srcStat, dstStat)) return;
       }
       const relative = symlinkPathsSync(srcpath, dstpath);
       srcpath = relative.toDst;
       type = symlinkTypeSync(relative.toCwd, type);
-      const dir = path19.dirname(dstpath);
-      const exists = fs13.existsSync(dir);
-      if (exists) return fs13.symlinkSync(srcpath, dstpath, type);
+      const dir = path20.dirname(dstpath);
+      const exists = fs14.existsSync(dir);
+      if (exists) return fs14.symlinkSync(srcpath, dstpath, type);
       mkdirsSync(dir);
-      return fs13.symlinkSync(srcpath, dstpath, type);
+      return fs14.symlinkSync(srcpath, dstpath, type);
     }
     module2.exports = {
       createSymlink: u2(createSymlink),
@@ -1897,9 +1897,9 @@ var require_jsonfile = __commonJS({
       if (typeof options === "string") {
         options = { encoding: options };
       }
-      const fs13 = options.fs || _fs;
+      const fs14 = options.fs || _fs;
       const shouldThrow = "throws" in options ? options.throws : true;
-      let data = await universalify.fromCallback(fs13.readFile)(file, options);
+      let data = await universalify.fromCallback(fs14.readFile)(file, options);
       data = stripBom(data);
       let obj;
       try {
@@ -1915,14 +1915,14 @@ var require_jsonfile = __commonJS({
       return obj;
     }
     var readFile5 = universalify.fromPromise(_readFile);
-    function readFileSync6(file, options = {}) {
+    function readFileSync7(file, options = {}) {
       if (typeof options === "string") {
         options = { encoding: options };
       }
-      const fs13 = options.fs || _fs;
+      const fs14 = options.fs || _fs;
       const shouldThrow = "throws" in options ? options.throws : true;
       try {
-        let content = fs13.readFileSync(file, options);
+        let content = fs14.readFileSync(file, options);
         content = stripBom(content);
         return JSON.parse(content, options.reviver);
       } catch (err) {
@@ -1935,19 +1935,19 @@ var require_jsonfile = __commonJS({
       }
     }
     async function _writeFile(file, obj, options = {}) {
-      const fs13 = options.fs || _fs;
+      const fs14 = options.fs || _fs;
       const str = stringify(obj, options);
-      await universalify.fromCallback(fs13.writeFile)(file, str, options);
+      await universalify.fromCallback(fs14.writeFile)(file, str, options);
     }
     var writeFile6 = universalify.fromPromise(_writeFile);
     function writeFileSync4(file, obj, options = {}) {
-      const fs13 = options.fs || _fs;
+      const fs14 = options.fs || _fs;
       const str = stringify(obj, options);
-      return fs13.writeFileSync(file, str, options);
+      return fs14.writeFileSync(file, str, options);
     }
     module2.exports = {
       readFile: readFile5,
-      readFileSync: readFileSync6,
+      readFileSync: readFileSync7,
       writeFile: writeFile6,
       writeFileSync: writeFileSync4
     };
@@ -1974,23 +1974,23 @@ var require_output_file = __commonJS({
   "node_modules/fs-extra/lib/output-file/index.js"(exports2, module2) {
     "use strict";
     var u2 = require_universalify().fromPromise;
-    var fs13 = require_fs();
-    var path19 = require("path");
+    var fs14 = require_fs();
+    var path20 = require("path");
     var mkdir = require_mkdirs();
     var pathExists5 = require_path_exists().pathExists;
     async function outputFile(file, data, encoding = "utf-8") {
-      const dir = path19.dirname(file);
+      const dir = path20.dirname(file);
       if (!await pathExists5(dir)) {
         await mkdir.mkdirs(dir);
       }
-      return fs13.writeFile(file, data, encoding);
+      return fs14.writeFile(file, data, encoding);
     }
     function outputFileSync(file, ...args) {
-      const dir = path19.dirname(file);
-      if (!fs13.existsSync(dir)) {
+      const dir = path20.dirname(file);
+      if (!fs14.existsSync(dir)) {
         mkdir.mkdirsSync(dir);
       }
-      fs13.writeFileSync(file, ...args);
+      fs14.writeFileSync(file, ...args);
     }
     module2.exports = {
       outputFile: u2(outputFile),
@@ -2049,8 +2049,8 @@ var require_json = __commonJS({
 var require_move = __commonJS({
   "node_modules/fs-extra/lib/move/move.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_fs();
-    var path19 = require("path");
+    var fs14 = require_fs();
+    var path20 = require("path");
     var { copy } = require_copy2();
     var { remove: remove3 } = require_remove();
     var { mkdirp } = require_mkdirs();
@@ -2060,8 +2060,8 @@ var require_move = __commonJS({
       const overwrite = opts.overwrite || opts.clobber || false;
       const { srcStat, isChangingCase = false } = await stat.checkPaths(src, dest, "move", opts);
       await stat.checkParentPaths(src, srcStat, dest, "move");
-      const destParent = path19.dirname(dest);
-      const parsedParentPath = path19.parse(destParent);
+      const destParent = path20.dirname(dest);
+      const parsedParentPath = path20.parse(destParent);
       if (parsedParentPath.root !== destParent) {
         await mkdirp(destParent);
       }
@@ -2076,7 +2076,7 @@ var require_move = __commonJS({
         }
       }
       try {
-        await fs13.rename(src, dest);
+        await fs14.rename(src, dest);
       } catch (err) {
         if (err.code !== "EXDEV") {
           throw err;
@@ -2101,8 +2101,8 @@ var require_move = __commonJS({
 var require_move_sync = __commonJS({
   "node_modules/fs-extra/lib/move/move-sync.js"(exports2, module2) {
     "use strict";
-    var fs13 = require_graceful_fs();
-    var path19 = require("path");
+    var fs14 = require_graceful_fs();
+    var path20 = require("path");
     var copySync = require_copy2().copySync;
     var removeSync = require_remove().removeSync;
     var mkdirpSync = require_mkdirs().mkdirpSync;
@@ -2112,12 +2112,12 @@ var require_move_sync = __commonJS({
       const overwrite = opts.overwrite || opts.clobber || false;
       const { srcStat, isChangingCase = false } = stat.checkPathsSync(src, dest, "move", opts);
       stat.checkParentPathsSync(src, srcStat, dest, "move");
-      if (!isParentRoot(dest)) mkdirpSync(path19.dirname(dest));
+      if (!isParentRoot(dest)) mkdirpSync(path20.dirname(dest));
       return doRename(src, dest, overwrite, isChangingCase);
     }
     function isParentRoot(dest) {
-      const parent = path19.dirname(dest);
-      const parsedPath = path19.parse(parent);
+      const parent = path20.dirname(dest);
+      const parsedPath = path20.parse(parent);
       return parsedPath.root === parent;
     }
     function doRename(src, dest, overwrite, isChangingCase) {
@@ -2126,12 +2126,12 @@ var require_move_sync = __commonJS({
         removeSync(dest);
         return rename(src, dest, overwrite);
       }
-      if (fs13.existsSync(dest)) throw new Error("dest already exists.");
+      if (fs14.existsSync(dest)) throw new Error("dest already exists.");
       return rename(src, dest, overwrite);
     }
     function rename(src, dest, overwrite) {
       try {
-        fs13.renameSync(src, dest);
+        fs14.renameSync(src, dest);
       } catch (err) {
         if (err.code !== "EXDEV") throw err;
         return moveAcrossDevice(src, dest, overwrite);
@@ -2188,8 +2188,8 @@ var require_windows = __commonJS({
   "node_modules/isexe/windows.js"(exports2, module2) {
     module2.exports = isexe;
     isexe.sync = sync2;
-    var fs13 = require("fs");
-    function checkPathExt(path19, options) {
+    var fs14 = require("fs");
+    function checkPathExt(path20, options) {
       var pathext = options.pathExt !== void 0 ? options.pathExt : process.env.PATHEXT;
       if (!pathext) {
         return true;
@@ -2200,25 +2200,25 @@ var require_windows = __commonJS({
       }
       for (var i2 = 0; i2 < pathext.length; i2++) {
         var p = pathext[i2].toLowerCase();
-        if (p && path19.substr(-p.length).toLowerCase() === p) {
+        if (p && path20.substr(-p.length).toLowerCase() === p) {
           return true;
         }
       }
       return false;
     }
-    function checkStat(stat, path19, options) {
+    function checkStat(stat, path20, options) {
       if (!stat.isSymbolicLink() && !stat.isFile()) {
         return false;
       }
-      return checkPathExt(path19, options);
+      return checkPathExt(path20, options);
     }
-    function isexe(path19, options, cb) {
-      fs13.stat(path19, function(er, stat) {
-        cb(er, er ? false : checkStat(stat, path19, options));
+    function isexe(path20, options, cb) {
+      fs14.stat(path20, function(er, stat) {
+        cb(er, er ? false : checkStat(stat, path20, options));
       });
     }
-    function sync2(path19, options) {
-      return checkStat(fs13.statSync(path19), path19, options);
+    function sync2(path20, options) {
+      return checkStat(fs14.statSync(path20), path20, options);
     }
   }
 });
@@ -2228,14 +2228,14 @@ var require_mode = __commonJS({
   "node_modules/isexe/mode.js"(exports2, module2) {
     module2.exports = isexe;
     isexe.sync = sync2;
-    var fs13 = require("fs");
-    function isexe(path19, options, cb) {
-      fs13.stat(path19, function(er, stat) {
+    var fs14 = require("fs");
+    function isexe(path20, options, cb) {
+      fs14.stat(path20, function(er, stat) {
         cb(er, er ? false : checkStat(stat, options));
       });
     }
-    function sync2(path19, options) {
-      return checkStat(fs13.statSync(path19), options);
+    function sync2(path20, options) {
+      return checkStat(fs14.statSync(path20), options);
     }
     function checkStat(stat, options) {
       return stat.isFile() && checkMode(stat, options);
@@ -2259,7 +2259,7 @@ var require_mode = __commonJS({
 // node_modules/isexe/index.js
 var require_isexe = __commonJS({
   "node_modules/isexe/index.js"(exports2, module2) {
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var core;
     if (process.platform === "win32" || global.TESTING_WINDOWS) {
       core = require_windows();
@@ -2268,7 +2268,7 @@ var require_isexe = __commonJS({
     }
     module2.exports = isexe;
     isexe.sync = sync2;
-    function isexe(path19, options, cb) {
+    function isexe(path20, options, cb) {
       if (typeof options === "function") {
         cb = options;
         options = {};
@@ -2278,7 +2278,7 @@ var require_isexe = __commonJS({
           throw new TypeError("callback not provided");
         }
         return new Promise(function(resolve7, reject) {
-          isexe(path19, options || {}, function(er, is) {
+          isexe(path20, options || {}, function(er, is) {
             if (er) {
               reject(er);
             } else {
@@ -2287,7 +2287,7 @@ var require_isexe = __commonJS({
           });
         });
       }
-      core(path19, options || {}, function(er, is) {
+      core(path20, options || {}, function(er, is) {
         if (er) {
           if (er.code === "EACCES" || options && options.ignoreErrors) {
             er = null;
@@ -2297,9 +2297,9 @@ var require_isexe = __commonJS({
         cb(er, is);
       });
     }
-    function sync2(path19, options) {
+    function sync2(path20, options) {
       try {
-        return core.sync(path19, options || {});
+        return core.sync(path20, options || {});
       } catch (er) {
         if (options && options.ignoreErrors || er.code === "EACCES") {
           return false;
@@ -2315,7 +2315,7 @@ var require_isexe = __commonJS({
 var require_which = __commonJS({
   "node_modules/which/which.js"(exports2, module2) {
     var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-    var path19 = require("path");
+    var path20 = require("path");
     var COLON = isWindows ? ";" : ":";
     var isexe = require_isexe();
     var getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
@@ -2353,7 +2353,7 @@ var require_which = __commonJS({
           return opt.all && found.length ? resolve7(found) : reject(getNotFoundError(cmd));
         const ppRaw = pathEnv[i2];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path19.join(pathPart, cmd);
+        const pCmd = path20.join(pathPart, cmd);
         const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
         resolve7(subStep(p, i2, 0));
       });
@@ -2380,7 +2380,7 @@ var require_which = __commonJS({
       for (let i2 = 0; i2 < pathEnv.length; i2++) {
         const ppRaw = pathEnv[i2];
         const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-        const pCmd = path19.join(pathPart, cmd);
+        const pCmd = path20.join(pathPart, cmd);
         const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
         for (let j = 0; j < pathExt.length; j++) {
           const cur = p + pathExt[j];
@@ -2428,11 +2428,11 @@ var require_path_key = __commonJS({
 var require_resolveCommand = __commonJS({
   "node_modules/cross-spawn/lib/util/resolveCommand.js"(exports2, module2) {
     "use strict";
-    var path19 = require("path");
+    var path20 = require("path");
     var which = require_which();
     var getPathKey = require_path_key();
     function resolveCommandAttempt(parsed, withoutPathExt) {
-      const env3 = parsed.options.env || process.env;
+      const env4 = parsed.options.env || process.env;
       const cwd = process.cwd();
       const hasCustomCwd = parsed.options.cwd != null;
       const shouldSwitchCwd = hasCustomCwd && process.chdir !== void 0 && !process.chdir.disabled;
@@ -2445,8 +2445,8 @@ var require_resolveCommand = __commonJS({
       let resolved;
       try {
         resolved = which.sync(parsed.command, {
-          path: env3[getPathKey({ env: env3 })],
-          pathExt: withoutPathExt ? path19.delimiter : void 0
+          path: env4[getPathKey({ env: env4 })],
+          pathExt: withoutPathExt ? path20.delimiter : void 0
         });
       } catch (e) {
       } finally {
@@ -2455,7 +2455,7 @@ var require_resolveCommand = __commonJS({
         }
       }
       if (resolved) {
-        resolved = path19.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
+        resolved = path20.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
       }
       return resolved;
     }
@@ -2509,8 +2509,8 @@ var require_shebang_command = __commonJS({
       if (!match3) {
         return null;
       }
-      const [path19, argument] = match3[0].replace(/#! ?/, "").split(" ");
-      const binary = path19.split("/").pop();
+      const [path20, argument] = match3[0].replace(/#! ?/, "").split(" ");
+      const binary = path20.split("/").pop();
       if (binary === "env") {
         return argument;
       }
@@ -2523,16 +2523,16 @@ var require_shebang_command = __commonJS({
 var require_readShebang = __commonJS({
   "node_modules/cross-spawn/lib/util/readShebang.js"(exports2, module2) {
     "use strict";
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var shebangCommand = require_shebang_command();
     function readShebang(command) {
       const size = 150;
       const buffer = Buffer.alloc(size);
       let fd;
       try {
-        fd = fs13.openSync(command, "r");
-        fs13.readSync(fd, buffer, 0, size, 0);
-        fs13.closeSync(fd);
+        fd = fs14.openSync(command, "r");
+        fs14.readSync(fd, buffer, 0, size, 0);
+        fs14.closeSync(fd);
       } catch (e) {
       }
       return shebangCommand(buffer.toString());
@@ -2545,7 +2545,7 @@ var require_readShebang = __commonJS({
 var require_parse = __commonJS({
   "node_modules/cross-spawn/lib/parse.js"(exports2, module2) {
     "use strict";
-    var path19 = require("path");
+    var path20 = require("path");
     var resolveCommand = require_resolveCommand();
     var escape4 = require_escape();
     var readShebang = require_readShebang();
@@ -2570,7 +2570,7 @@ var require_parse = __commonJS({
       const needsShell = !isExecutableRegExp.test(commandFile);
       if (parsed.options.forceShell || needsShell) {
         const needsDoubleEscapeMetaChars = isCmdShimRegExp.test(commandFile);
-        parsed.command = path19.normalize(parsed.command);
+        parsed.command = path20.normalize(parsed.command);
         parsed.command = escape4.command(parsed.command);
         parsed.args = parsed.args.map((arg) => escape4.argument(arg, needsDoubleEscapeMetaChars));
         const shellCommand = [parsed.command].concat(parsed.args).join(" ");
@@ -11527,11 +11527,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path19) {
-      if (!path19 || typeof path19 !== "string") {
+    function lookup(path20) {
+      if (!path20 || typeof path20 !== "string") {
         return false;
       }
-      var extension2 = extname2("x." + path19).toLowerCase().substr(1);
+      var extension2 = extname2("x." + path20).toLowerCase().substr(1);
       if (!extension2) {
         return false;
       }
@@ -12636,11 +12636,11 @@ var require_form_data = __commonJS({
     "use strict";
     var CombinedStream = require_combined_stream();
     var util3 = require("util");
-    var path19 = require("path");
+    var path20 = require("path");
     var http2 = require("http");
     var https2 = require("https");
     var parseUrl = require("url").parse;
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var Stream2 = require("stream").Stream;
     var crypto2 = require("crypto");
     var mime = require_mime_types();
@@ -12707,7 +12707,7 @@ var require_form_data = __commonJS({
         if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
           callback(null, value.end + 1 - (value.start ? value.start : 0));
         } else {
-          fs13.stat(value.path, function(err, stat) {
+          fs14.stat(value.path, function(err, stat) {
             if (err) {
               callback(err);
               return;
@@ -12764,11 +12764,11 @@ var require_form_data = __commonJS({
     FormData3.prototype._getContentDisposition = function(value, options) {
       var filename;
       if (typeof options.filepath === "string") {
-        filename = path19.normalize(options.filepath).replace(/\\/g, "/");
+        filename = path20.normalize(options.filepath).replace(/\\/g, "/");
       } else if (options.filename || value && (value.name || value.path)) {
-        filename = path19.basename(options.filename || value && (value.name || value.path));
+        filename = path20.basename(options.filename || value && (value.name || value.path));
       } else if (value && value.readable && hasOwn(value, "httpVersion")) {
-        filename = path19.basename(value.client._httpMessage.path || "");
+        filename = path20.basename(value.client._httpMessage.path || "");
       }
       if (filename) {
         return 'filename="' + filename + '"';
@@ -13138,7 +13138,7 @@ var require_ms = __commonJS({
 // node_modules/debug/src/common.js
 var require_common = __commonJS({
   "node_modules/debug/src/common.js"(exports2, module2) {
-    function setup(env3) {
+    function setup(env4) {
       createDebug.debug = createDebug;
       createDebug.default = createDebug;
       createDebug.coerce = coerce;
@@ -13147,8 +13147,8 @@ var require_common = __commonJS({
       createDebug.enabled = enabled;
       createDebug.humanize = require_ms();
       createDebug.destroy = destroy;
-      Object.keys(env3).forEach((key) => {
-        createDebug[key] = env3[key];
+      Object.keys(env4).forEach((key) => {
+        createDebug[key] = env4[key];
       });
       createDebug.names = [];
       createDebug.skips = [];
@@ -13502,20 +13502,20 @@ var require_supports_color = __commonJS({
     var os = require("os");
     var tty3 = require("tty");
     var hasFlag = require_has_flag();
-    var { env: env3 } = process;
+    var { env: env4 } = process;
     var forceColor;
     if (hasFlag("no-color") || hasFlag("no-colors") || hasFlag("color=false") || hasFlag("color=never")) {
       forceColor = 0;
     } else if (hasFlag("color") || hasFlag("colors") || hasFlag("color=true") || hasFlag("color=always")) {
       forceColor = 1;
     }
-    if ("FORCE_COLOR" in env3) {
-      if (env3.FORCE_COLOR === "true") {
+    if ("FORCE_COLOR" in env4) {
+      if (env4.FORCE_COLOR === "true") {
         forceColor = 1;
-      } else if (env3.FORCE_COLOR === "false") {
+      } else if (env4.FORCE_COLOR === "false") {
         forceColor = 0;
       } else {
-        forceColor = env3.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env3.FORCE_COLOR, 10), 3);
+        forceColor = env4.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env4.FORCE_COLOR, 10), 3);
       }
     }
     function translateLevel(level) {
@@ -13543,7 +13543,7 @@ var require_supports_color = __commonJS({
         return 0;
       }
       const min = forceColor || 0;
-      if (env3.TERM === "dumb") {
+      if (env4.TERM === "dumb") {
         return min;
       }
       if (process.platform === "win32") {
@@ -13553,34 +13553,34 @@ var require_supports_color = __commonJS({
         }
         return 1;
       }
-      if ("CI" in env3) {
-        if (["TRAVIS", "CIRCLECI", "APPVEYOR", "GITLAB_CI", "GITHUB_ACTIONS", "BUILDKITE"].some((sign) => sign in env3) || env3.CI_NAME === "codeship") {
+      if ("CI" in env4) {
+        if (["TRAVIS", "CIRCLECI", "APPVEYOR", "GITLAB_CI", "GITHUB_ACTIONS", "BUILDKITE"].some((sign) => sign in env4) || env4.CI_NAME === "codeship") {
           return 1;
         }
         return min;
       }
-      if ("TEAMCITY_VERSION" in env3) {
-        return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env3.TEAMCITY_VERSION) ? 1 : 0;
+      if ("TEAMCITY_VERSION" in env4) {
+        return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env4.TEAMCITY_VERSION) ? 1 : 0;
       }
-      if (env3.COLORTERM === "truecolor") {
+      if (env4.COLORTERM === "truecolor") {
         return 3;
       }
-      if ("TERM_PROGRAM" in env3) {
-        const version = parseInt((env3.TERM_PROGRAM_VERSION || "").split(".")[0], 10);
-        switch (env3.TERM_PROGRAM) {
+      if ("TERM_PROGRAM" in env4) {
+        const version = parseInt((env4.TERM_PROGRAM_VERSION || "").split(".")[0], 10);
+        switch (env4.TERM_PROGRAM) {
           case "iTerm.app":
             return version >= 3 ? 3 : 2;
           case "Apple_Terminal":
             return 2;
         }
       }
-      if (/-256(color)?$/i.test(env3.TERM)) {
+      if (/-256(color)?$/i.test(env4.TERM)) {
         return 2;
       }
-      if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env3.TERM)) {
+      if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env4.TERM)) {
         return 1;
       }
-      if ("COLORTERM" in env3) {
+      if ("COLORTERM" in env4) {
         return 1;
       }
       return min;
@@ -14298,6 +14298,503 @@ var require_follow_redirects = __commonJS({
   }
 });
 
+// node_modules/vscode-nls/lib/common/ral.js
+var require_ral = __commonJS({
+  "node_modules/vscode-nls/lib/common/ral.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    var _ral;
+    function RAL() {
+      if (_ral === void 0) {
+        throw new Error("No runtime abstraction layer installed");
+      }
+      return _ral;
+    }
+    (function(RAL2) {
+      function install(ral) {
+        if (ral === void 0) {
+          throw new Error("No runtime abstraction layer provided");
+        }
+        _ral = ral;
+      }
+      RAL2.install = install;
+    })(RAL || (RAL = {}));
+    exports2.default = RAL;
+  }
+});
+
+// node_modules/vscode-nls/lib/common/common.js
+var require_common2 = __commonJS({
+  "node_modules/vscode-nls/lib/common/common.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.config = exports2.loadMessageBundle = exports2.localize = exports2.format = exports2.setPseudo = exports2.isPseudo = exports2.isDefined = exports2.BundleFormat = exports2.MessageFormat = void 0;
+    var ral_1 = require_ral();
+    var MessageFormat2;
+    (function(MessageFormat3) {
+      MessageFormat3["file"] = "file";
+      MessageFormat3["bundle"] = "bundle";
+      MessageFormat3["both"] = "both";
+    })(MessageFormat2 = exports2.MessageFormat || (exports2.MessageFormat = {}));
+    var BundleFormat;
+    (function(BundleFormat2) {
+      BundleFormat2["standalone"] = "standalone";
+      BundleFormat2["languagePack"] = "languagePack";
+    })(BundleFormat = exports2.BundleFormat || (exports2.BundleFormat = {}));
+    var LocalizeInfo;
+    (function(LocalizeInfo2) {
+      function is(value) {
+        var candidate = value;
+        return candidate && isDefined(candidate.key) && isDefined(candidate.comment);
+      }
+      LocalizeInfo2.is = is;
+    })(LocalizeInfo || (LocalizeInfo = {}));
+    function isDefined(value) {
+      return typeof value !== "undefined";
+    }
+    exports2.isDefined = isDefined;
+    exports2.isPseudo = false;
+    function setPseudo(pseudo) {
+      exports2.isPseudo = pseudo;
+    }
+    exports2.setPseudo = setPseudo;
+    function format3(message, args) {
+      var result;
+      if (exports2.isPseudo) {
+        message = "\uFF3B" + message.replace(/[aouei]/g, "$&$&") + "\uFF3D";
+      }
+      if (args.length === 0) {
+        result = message;
+      } else {
+        result = message.replace(/\{(\d+)\}/g, function(match3, rest) {
+          var index = rest[0];
+          var arg = args[index];
+          var replacement = match3;
+          if (typeof arg === "string") {
+            replacement = arg;
+          } else if (typeof arg === "number" || typeof arg === "boolean" || arg === void 0 || arg === null) {
+            replacement = String(arg);
+          }
+          return replacement;
+        });
+      }
+      return result;
+    }
+    exports2.format = format3;
+    function localize2(_key, message) {
+      var args = [];
+      for (var _i = 2; _i < arguments.length; _i++) {
+        args[_i - 2] = arguments[_i];
+      }
+      return format3(message, args);
+    }
+    exports2.localize = localize2;
+    function loadMessageBundle(file) {
+      return (0, ral_1.default)().loadMessageBundle(file);
+    }
+    exports2.loadMessageBundle = loadMessageBundle;
+    function config3(opts) {
+      return (0, ral_1.default)().config(opts);
+    }
+    exports2.config = config3;
+  }
+});
+
+// node_modules/vscode-nls/lib/node/main.js
+var require_main = __commonJS({
+  "node_modules/vscode-nls/lib/node/main.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.config = exports2.loadMessageBundle = exports2.BundleFormat = exports2.MessageFormat = void 0;
+    var path20 = require("path");
+    var fs14 = require("fs");
+    var ral_1 = require_ral();
+    var common_1 = require_common2();
+    var common_2 = require_common2();
+    Object.defineProperty(exports2, "MessageFormat", { enumerable: true, get: function() {
+      return common_2.MessageFormat;
+    } });
+    Object.defineProperty(exports2, "BundleFormat", { enumerable: true, get: function() {
+      return common_2.BundleFormat;
+    } });
+    var toString4 = Object.prototype.toString;
+    function isNumber3(value) {
+      return toString4.call(value) === "[object Number]";
+    }
+    function isString4(value) {
+      return toString4.call(value) === "[object String]";
+    }
+    function isBoolean2(value) {
+      return value === true || value === false;
+    }
+    function readJsonFileSync(filename) {
+      return JSON.parse(fs14.readFileSync(filename, "utf8"));
+    }
+    var resolvedBundles;
+    var options;
+    function initializeSettings() {
+      options = { locale: void 0, language: void 0, languagePackSupport: false, cacheLanguageResolution: true, messageFormat: common_1.MessageFormat.bundle };
+      if (isString4(process.env.VSCODE_NLS_CONFIG)) {
+        try {
+          var vscodeOptions_1 = JSON.parse(process.env.VSCODE_NLS_CONFIG);
+          var language = void 0;
+          if (vscodeOptions_1.availableLanguages) {
+            var value = vscodeOptions_1.availableLanguages["*"];
+            if (isString4(value)) {
+              language = value;
+            }
+          }
+          if (isString4(vscodeOptions_1.locale)) {
+            options.locale = vscodeOptions_1.locale.toLowerCase();
+          }
+          if (language === void 0) {
+            options.language = options.locale;
+          } else if (language !== "en") {
+            options.language = language;
+          }
+          if (isBoolean2(vscodeOptions_1._languagePackSupport)) {
+            options.languagePackSupport = vscodeOptions_1._languagePackSupport;
+          }
+          if (isString4(vscodeOptions_1._cacheRoot)) {
+            options.cacheRoot = vscodeOptions_1._cacheRoot;
+          }
+          if (isString4(vscodeOptions_1._languagePackId)) {
+            options.languagePackId = vscodeOptions_1._languagePackId;
+          }
+          if (isString4(vscodeOptions_1._translationsConfigFile)) {
+            options.translationsConfigFile = vscodeOptions_1._translationsConfigFile;
+            try {
+              options.translationsConfig = readJsonFileSync(options.translationsConfigFile);
+            } catch (error) {
+              if (vscodeOptions_1._corruptedFile) {
+                var dirname6 = path20.dirname(vscodeOptions_1._corruptedFile);
+                fs14.exists(dirname6, function(exists) {
+                  if (exists) {
+                    fs14.writeFile(vscodeOptions_1._corruptedFile, "corrupted", "utf8", function(err) {
+                      console.error(err);
+                    });
+                  }
+                });
+              }
+            }
+          }
+        } catch (_a2) {
+        }
+      }
+      (0, common_1.setPseudo)(options.locale === "pseudo");
+      resolvedBundles = /* @__PURE__ */ Object.create(null);
+    }
+    initializeSettings();
+    function supportsLanguagePack() {
+      return options.languagePackSupport === true && options.cacheRoot !== void 0 && options.languagePackId !== void 0 && options.translationsConfigFile !== void 0 && options.translationsConfig !== void 0;
+    }
+    function createScopedLocalizeFunction(messages) {
+      return function(key, message) {
+        var args = [];
+        for (var _i = 2; _i < arguments.length; _i++) {
+          args[_i - 2] = arguments[_i];
+        }
+        if (isNumber3(key)) {
+          if (key >= messages.length) {
+            console.error("Broken localize call found. Index out of bounds. Stacktrace is\n: ".concat(new Error("").stack));
+            return;
+          }
+          return (0, common_1.format)(messages[key], args);
+        } else {
+          if (isString4(message)) {
+            console.warn("Message ".concat(message, " didn't get externalized correctly."));
+            return (0, common_1.format)(message, args);
+          } else {
+            console.error("Broken localize call found. Stacktrace is\n: ".concat(new Error("").stack));
+          }
+        }
+      };
+    }
+    function resolveLanguage(file) {
+      var resolvedLanguage;
+      if (options.cacheLanguageResolution && resolvedLanguage) {
+        resolvedLanguage = resolvedLanguage;
+      } else {
+        if (common_1.isPseudo || !options.language) {
+          resolvedLanguage = ".nls.json";
+        } else {
+          var locale = options.language;
+          while (locale) {
+            var candidate = ".nls." + locale + ".json";
+            if (fs14.existsSync(file + candidate)) {
+              resolvedLanguage = candidate;
+              break;
+            } else {
+              var index = locale.lastIndexOf("-");
+              if (index > 0) {
+                locale = locale.substring(0, index);
+              } else {
+                resolvedLanguage = ".nls.json";
+                locale = null;
+              }
+            }
+          }
+        }
+        if (options.cacheLanguageResolution) {
+          resolvedLanguage = resolvedLanguage;
+        }
+      }
+      return file + resolvedLanguage;
+    }
+    function findInTheBoxBundle(root) {
+      var language = options.language;
+      while (language) {
+        var candidate = path20.join(root, "nls.bundle.".concat(language, ".json"));
+        if (fs14.existsSync(candidate)) {
+          return candidate;
+        } else {
+          var index = language.lastIndexOf("-");
+          if (index > 0) {
+            language = language.substring(0, index);
+          } else {
+            language = void 0;
+          }
+        }
+      }
+      if (language === void 0) {
+        var candidate = path20.join(root, "nls.bundle.json");
+        if (fs14.existsSync(candidate)) {
+          return candidate;
+        }
+      }
+      return void 0;
+    }
+    function createDefaultNlsBundle(folder) {
+      var metaData = readJsonFileSync(path20.join(folder, "nls.metadata.json"));
+      var result = /* @__PURE__ */ Object.create(null);
+      for (var module_1 in metaData) {
+        var entry = metaData[module_1];
+        result[module_1] = entry.messages;
+      }
+      return result;
+    }
+    function createNLSBundle(header, metaDataPath) {
+      var languagePackLocation = options.translationsConfig[header.id];
+      if (!languagePackLocation) {
+        return void 0;
+      }
+      var languagePack = readJsonFileSync(languagePackLocation).contents;
+      var metaData = readJsonFileSync(path20.join(metaDataPath, "nls.metadata.json"));
+      var result = /* @__PURE__ */ Object.create(null);
+      for (var module_2 in metaData) {
+        var entry = metaData[module_2];
+        var translations = languagePack["".concat(header.outDir, "/").concat(module_2)];
+        if (translations) {
+          var resultMessages = [];
+          for (var i2 = 0; i2 < entry.keys.length; i2++) {
+            var messageKey = entry.keys[i2];
+            var key = isString4(messageKey) ? messageKey : messageKey.key;
+            var translatedMessage = translations[key];
+            if (translatedMessage === void 0) {
+              translatedMessage = entry.messages[i2];
+            }
+            resultMessages.push(translatedMessage);
+          }
+          result[module_2] = resultMessages;
+        } else {
+          result[module_2] = entry.messages;
+        }
+      }
+      return result;
+    }
+    function touch(file) {
+      var d = /* @__PURE__ */ new Date();
+      fs14.utimes(file, d, d, function() {
+      });
+    }
+    function cacheBundle(key, bundle) {
+      resolvedBundles[key] = bundle;
+      return bundle;
+    }
+    function loadNlsBundleOrCreateFromI18n(header, bundlePath) {
+      var result;
+      var bundle = path20.join(options.cacheRoot, "".concat(header.id, "-").concat(header.hash, ".json"));
+      var useMemoryOnly = false;
+      var writeBundle = false;
+      try {
+        result = JSON.parse(fs14.readFileSync(bundle, { encoding: "utf8", flag: "r" }));
+        touch(bundle);
+        return result;
+      } catch (err) {
+        if (err.code === "ENOENT") {
+          writeBundle = true;
+        } else if (err instanceof SyntaxError) {
+          console.log("Syntax error parsing message bundle: ".concat(err.message, "."));
+          fs14.unlink(bundle, function(err2) {
+            if (err2) {
+              console.error("Deleting corrupted bundle ".concat(bundle, " failed."));
+            }
+          });
+          useMemoryOnly = true;
+        } else {
+          throw err;
+        }
+      }
+      result = createNLSBundle(header, bundlePath);
+      if (!result || useMemoryOnly) {
+        return result;
+      }
+      if (writeBundle) {
+        try {
+          fs14.writeFileSync(bundle, JSON.stringify(result), { encoding: "utf8", flag: "wx" });
+        } catch (err) {
+          if (err.code === "EEXIST") {
+            return result;
+          }
+          throw err;
+        }
+      }
+      return result;
+    }
+    function loadDefaultNlsBundle(bundlePath) {
+      try {
+        return createDefaultNlsBundle(bundlePath);
+      } catch (err) {
+        console.log("Generating default bundle from meta data failed.", err);
+        return void 0;
+      }
+    }
+    function loadNlsBundle(header, bundlePath) {
+      var result;
+      if (supportsLanguagePack()) {
+        try {
+          result = loadNlsBundleOrCreateFromI18n(header, bundlePath);
+        } catch (err) {
+          console.log("Load or create bundle failed ", err);
+        }
+      }
+      if (!result) {
+        if (options.languagePackSupport) {
+          return loadDefaultNlsBundle(bundlePath);
+        }
+        var candidate = findInTheBoxBundle(bundlePath);
+        if (candidate) {
+          try {
+            return readJsonFileSync(candidate);
+          } catch (err) {
+            console.log("Loading in the box message bundle failed.", err);
+          }
+        }
+        result = loadDefaultNlsBundle(bundlePath);
+      }
+      return result;
+    }
+    function tryFindMetaDataHeaderFile(file) {
+      var result;
+      var dirname6 = path20.dirname(file);
+      while (true) {
+        result = path20.join(dirname6, "nls.metadata.header.json");
+        if (fs14.existsSync(result)) {
+          break;
+        }
+        var parent = path20.dirname(dirname6);
+        if (parent === dirname6) {
+          result = void 0;
+          break;
+        } else {
+          dirname6 = parent;
+        }
+      }
+      return result;
+    }
+    function loadMessageBundle(file) {
+      if (!file) {
+        return common_1.localize;
+      }
+      var ext2 = path20.extname(file);
+      if (ext2) {
+        file = file.substr(0, file.length - ext2.length);
+      }
+      if (options.messageFormat === common_1.MessageFormat.both || options.messageFormat === common_1.MessageFormat.bundle) {
+        var headerFile = tryFindMetaDataHeaderFile(file);
+        if (headerFile) {
+          var bundlePath = path20.dirname(headerFile);
+          var bundle = resolvedBundles[bundlePath];
+          if (bundle === void 0) {
+            try {
+              var header = JSON.parse(fs14.readFileSync(headerFile, "utf8"));
+              try {
+                var nlsBundle = loadNlsBundle(header, bundlePath);
+                bundle = cacheBundle(bundlePath, nlsBundle ? { header, nlsBundle } : null);
+              } catch (err) {
+                console.error("Failed to load nls bundle", err);
+                bundle = cacheBundle(bundlePath, null);
+              }
+            } catch (err) {
+              console.error("Failed to read header file", err);
+              bundle = cacheBundle(bundlePath, null);
+            }
+          }
+          if (bundle) {
+            var module_3 = file.substr(bundlePath.length + 1).replace(/\\/g, "/");
+            var messages = bundle.nlsBundle[module_3];
+            if (messages === void 0) {
+              console.error("Messages for file ".concat(file, " not found. See console for details."));
+              return function() {
+                return "Messages not found.";
+              };
+            }
+            return createScopedLocalizeFunction(messages);
+          }
+        }
+      }
+      if (options.messageFormat === common_1.MessageFormat.both || options.messageFormat === common_1.MessageFormat.file) {
+        try {
+          var json = readJsonFileSync(resolveLanguage(file));
+          if (Array.isArray(json)) {
+            return createScopedLocalizeFunction(json);
+          } else {
+            if ((0, common_1.isDefined)(json.messages) && (0, common_1.isDefined)(json.keys)) {
+              return createScopedLocalizeFunction(json.messages);
+            } else {
+              console.error("String bundle '".concat(file, "' uses an unsupported format."));
+              return function() {
+                return "File bundle has unsupported format. See console for details";
+              };
+            }
+          }
+        } catch (err) {
+          if (err.code !== "ENOENT") {
+            console.error("Failed to load single file bundle", err);
+          }
+        }
+      }
+      console.error("Failed to load message bundle for file ".concat(file));
+      return function() {
+        return "Failed to load message bundle. See console for details.";
+      };
+    }
+    exports2.loadMessageBundle = loadMessageBundle;
+    function config3(opts) {
+      if (opts) {
+        if (isString4(opts.locale)) {
+          options.locale = opts.locale.toLowerCase();
+          options.language = options.locale;
+          resolvedBundles = /* @__PURE__ */ Object.create(null);
+        }
+        if (opts.messageFormat !== void 0) {
+          options.messageFormat = opts.messageFormat;
+        }
+        if (opts.bundleFormat === common_1.BundleFormat.standalone && options.languagePackSupport === true) {
+          options.languagePackSupport = false;
+        }
+      }
+      (0, common_1.setPseudo)(options.locale === "pseudo");
+      return loadMessageBundle;
+    }
+    exports2.config = config3;
+    ral_1.default.install(Object.freeze({
+      loadMessageBundle,
+      config: config3
+    }));
+  }
+});
+
 // node_modules/punycode.js/punycode.js
 var require_punycode = __commonJS({
   "node_modules/punycode.js/punycode.js"(exports2, module2) {
@@ -14560,11 +15057,11 @@ var require_lib2 = __commonJS({
     function lookupEscape(ch) {
       return escapeMap[ch];
     }
-    function _prettifyError(path19, withInternals, err) {
+    function _prettifyError(path20, withInternals, err) {
       if (!err.Update) {
         err = new _exports.TemplateError(err);
       }
-      err.Update(path19);
+      err.Update(path20);
       if (!withInternals) {
         var old = err;
         err = new Error(old.message);
@@ -14625,8 +15122,8 @@ var require_lib2 = __commonJS({
       err.lineno = lineno;
       err.colno = colno;
       err.firstUpdate = true;
-      err.Update = function Update(path19) {
-        var msg = "(" + (path19 || "unknown path") + ")";
+      err.Update = function Update(path20) {
+        var msg = "(" + (path20 || "unknown path") + ")";
         if (this.firstUpdate) {
           if (this.lineno && this.colno) {
             msg += " [Line " + this.lineno + ", Column " + this.colno + "]";
@@ -18465,7 +18962,7 @@ var require_filters = __commonJS({
       return r.copySafeness(str, res);
     }
     _exports.indent = indent;
-    function join11(arr, del, attr) {
+    function join12(arr, del, attr) {
       del = del || "";
       if (attr) {
         arr = lib2.map(arr, function(v) {
@@ -18474,7 +18971,7 @@ var require_filters = __commonJS({
       }
       return arr.join(del);
     }
-    _exports.join = join11;
+    _exports.join = join12;
     function last(arr) {
       return arr[arr.length - 1];
     }
@@ -18826,7 +19323,7 @@ var require_loader = __commonJS({
       };
       return _setPrototypeOf(o2, p);
     }
-    var path19 = require("path");
+    var path20 = require("path");
     var _require = require_object();
     var EmitterObj = _require.EmitterObj;
     module2.exports = /* @__PURE__ */ (function(_EmitterObj) {
@@ -18836,7 +19333,7 @@ var require_loader = __commonJS({
       }
       var _proto = Loader.prototype;
       _proto.resolve = function resolve7(from, to) {
-        return path19.resolve(path19.dirname(from), to);
+        return path20.resolve(path20.dirname(from), to);
       };
       _proto.isRelative = function isRelative(filename) {
         return filename.indexOf("./") === 0 || filename.indexOf("../") === 0;
@@ -18908,8 +19405,8 @@ var require_node_loaders = __commonJS({
       };
       return _setPrototypeOf(o2, p);
     }
-    var fs13 = require("fs");
-    var path19 = require("path");
+    var fs14 = require("fs");
+    var path20 = require("path");
     var Loader = require_loader();
     var _require = require_precompiled_loader();
     var PrecompiledLoader = _require.PrecompiledLoader;
@@ -18927,7 +19424,7 @@ var require_node_loaders = __commonJS({
         _this.noCache = !!opts.noCache;
         if (searchPaths) {
           searchPaths = Array.isArray(searchPaths) ? searchPaths : [searchPaths];
-          _this.searchPaths = searchPaths.map(path19.normalize);
+          _this.searchPaths = searchPaths.map(path20.normalize);
         } else {
           _this.searchPaths = ["."];
         }
@@ -18937,10 +19434,10 @@ var require_node_loaders = __commonJS({
           } catch (e) {
             throw new Error("watch requires chokidar to be installed");
           }
-          var paths = _this.searchPaths.filter(fs13.existsSync);
+          var paths = _this.searchPaths.filter(fs14.existsSync);
           var watcher = chokidar.watch(paths);
           watcher.on("all", function(event, fullname) {
-            fullname = path19.resolve(fullname);
+            fullname = path20.resolve(fullname);
             if (event === "change" && fullname in _this.pathsToNames) {
               _this.emit("update", _this.pathsToNames[fullname], fullname);
             }
@@ -18956,9 +19453,9 @@ var require_node_loaders = __commonJS({
         var fullpath = null;
         var paths = this.searchPaths;
         for (var i2 = 0; i2 < paths.length; i2++) {
-          var basePath = path19.resolve(paths[i2]);
-          var p = path19.resolve(paths[i2], name);
-          if (p.indexOf(basePath) === 0 && fs13.existsSync(p)) {
+          var basePath = path20.resolve(paths[i2]);
+          var p = path20.resolve(paths[i2], name);
+          if (p.indexOf(basePath) === 0 && fs14.existsSync(p)) {
             fullpath = p;
             break;
           }
@@ -18968,7 +19465,7 @@ var require_node_loaders = __commonJS({
         }
         this.pathsToNames[fullpath] = name;
         var source = {
-          src: fs13.readFileSync(fullpath, "utf-8"),
+          src: fs14.readFileSync(fullpath, "utf-8"),
           path: fullpath,
           noCache: this.noCache
         };
@@ -19020,7 +19517,7 @@ var require_node_loaders = __commonJS({
         }
         this.pathsToNames[fullpath] = name;
         var source = {
-          src: fs13.readFileSync(fullpath, "utf-8"),
+          src: fs14.readFileSync(fullpath, "utf-8"),
           path: fullpath,
           noCache: this.noCache
         };
@@ -19223,13 +19720,13 @@ var require_globals = __commonJS({
 var require_express_app = __commonJS({
   "node_modules/nunjucks/src/express-app.js"(exports2, module2) {
     "use strict";
-    var path19 = require("path");
-    module2.exports = function express(env3, app) {
+    var path20 = require("path");
+    module2.exports = function express(env4, app) {
       function NunjucksView(name, opts) {
         this.name = name;
         this.path = name;
         this.defaultEngine = opts.defaultEngine;
-        this.ext = path19.extname(name);
+        this.ext = path20.extname(name);
         if (!this.ext && !this.defaultEngine) {
           throw new Error("No default engine was specified and no extension was provided.");
         }
@@ -19238,11 +19735,11 @@ var require_express_app = __commonJS({
         }
       }
       NunjucksView.prototype.render = function render(opts, cb) {
-        env3.render(this.name, opts, cb);
+        env4.render(this.name, opts, cb);
       };
       app.set("view", NunjucksView);
-      app.set("nunjucksEnv", env3);
-      return env3;
+      app.set("nunjucksEnv", env4);
+      return env4;
     };
   }
 });
@@ -19289,7 +19786,7 @@ var require_environment = __commonJS({
     var noopTmplSrc = {
       type: "code",
       obj: {
-        root: function root(env3, context, frame, runtime, cb) {
+        root: function root(env4, context, frame, runtime, cb) {
           try {
             cb(null, "");
           } catch (e) {
@@ -19547,9 +20044,9 @@ var require_environment = __commonJS({
         return _Obj.apply(this, arguments) || this;
       }
       var _proto2 = Context2.prototype;
-      _proto2.init = function init(ctx, blocks, env3) {
+      _proto2.init = function init(ctx, blocks, env4) {
         var _this4 = this;
-        this.env = env3 || new Environment();
+        this.env = env4 || new Environment();
         this.ctx = lib2.extend({}, ctx);
         this.blocks = {};
         this.exported = [];
@@ -19581,14 +20078,14 @@ var require_environment = __commonJS({
         }
         return this.blocks[name][0];
       };
-      _proto2.getSuper = function getSuper(env3, name, block2, frame, runtime, cb) {
+      _proto2.getSuper = function getSuper(env4, name, block2, frame, runtime, cb) {
         var idx = lib2.indexOf(this.blocks[name] || [], block2);
         var blk = this.blocks[name][idx + 1];
         var context = this;
         if (idx === -1 || !blk) {
           throw new Error('no super block available for "' + name + '"');
         }
-        blk(env3, context, frame, runtime, cb);
+        blk(env4, context, frame, runtime, cb);
       };
       _proto2.addExport = function addExport(name) {
         this.exported.push(name);
@@ -19609,8 +20106,8 @@ var require_environment = __commonJS({
         return _Obj2.apply(this, arguments) || this;
       }
       var _proto3 = Template2.prototype;
-      _proto3.init = function init(src, env3, path19, eagerCompile) {
-        this.env = env3 || new Environment();
+      _proto3.init = function init(src, env4, path20, eagerCompile) {
+        this.env = env4 || new Environment();
         if (lib2.isObject(src)) {
           switch (src.type) {
             case "code":
@@ -19627,7 +20124,7 @@ var require_environment = __commonJS({
         } else {
           throw new Error("src must be a string or an object describing the source");
         }
-        this.path = path19;
+        this.path = path20;
         if (eagerCompile) {
           try {
             this._compile();
@@ -19777,8 +20274,8 @@ var require_precompile_global = __commonJS({
 var require_precompile = __commonJS({
   "node_modules/nunjucks/src/precompile.js"(exports2, module2) {
     "use strict";
-    var fs13 = require("fs");
-    var path19 = require("path");
+    var fs14 = require("fs");
+    var path20 = require("path");
     var _require = require_lib2();
     var _prettifyError = _require._prettifyError;
     var compiler = require_compiler();
@@ -19796,28 +20293,28 @@ var require_precompile = __commonJS({
     function precompileString(str, opts) {
       opts = opts || {};
       opts.isString = true;
-      var env3 = opts.env || new Environment([]);
+      var env4 = opts.env || new Environment([]);
       var wrapper = opts.wrapper || precompileGlobal;
       if (!opts.name) {
         throw new Error('the "name" option is required when compiling a string');
       }
-      return wrapper([_precompile(str, opts.name, env3)], opts);
+      return wrapper([_precompile(str, opts.name, env4)], opts);
     }
     function precompile(input, opts) {
       opts = opts || {};
-      var env3 = opts.env || new Environment([]);
+      var env4 = opts.env || new Environment([]);
       var wrapper = opts.wrapper || precompileGlobal;
       if (opts.isString) {
         return precompileString(input, opts);
       }
-      var pathStats = fs13.existsSync(input) && fs13.statSync(input);
+      var pathStats = fs14.existsSync(input) && fs14.statSync(input);
       var precompiled = [];
       var templates = [];
       function addTemplates(dir) {
-        fs13.readdirSync(dir).forEach(function(file) {
-          var filepath = path19.join(dir, file);
-          var subpath = filepath.substr(path19.join(input, "/").length);
-          var stat = fs13.statSync(filepath);
+        fs14.readdirSync(dir).forEach(function(file) {
+          var filepath = path20.join(dir, file);
+          var subpath = filepath.substr(path20.join(input, "/").length);
+          var stat = fs14.statSync(filepath);
           if (stat && stat.isDirectory()) {
             subpath += "/";
             if (!match3(subpath, opts.exclude)) {
@@ -19829,13 +20326,13 @@ var require_precompile = __commonJS({
         });
       }
       if (pathStats.isFile()) {
-        precompiled.push(_precompile(fs13.readFileSync(input, "utf-8"), opts.name || input, env3));
+        precompiled.push(_precompile(fs14.readFileSync(input, "utf-8"), opts.name || input, env4));
       } else if (pathStats.isDirectory()) {
         addTemplates(input);
         for (var i2 = 0; i2 < templates.length; i2++) {
-          var name = templates[i2].replace(path19.join(input, "/"), "");
+          var name = templates[i2].replace(path20.join(input, "/"), "");
           try {
-            precompiled.push(_precompile(fs13.readFileSync(templates[i2], "utf-8"), name, env3));
+            precompiled.push(_precompile(fs14.readFileSync(templates[i2], "utf-8"), name, env4));
           } catch (e) {
             if (opts.force) {
               console.error(e);
@@ -19847,14 +20344,14 @@ var require_precompile = __commonJS({
       }
       return wrapper(precompiled, opts);
     }
-    function _precompile(str, name, env3) {
-      env3 = env3 || new Environment([]);
-      var asyncFilters = env3.asyncFilters;
-      var extensions3 = env3.extensionsList;
+    function _precompile(str, name, env4) {
+      env4 = env4 || new Environment([]);
+      var asyncFilters = env4.asyncFilters;
+      var extensions3 = env4.extensionsList;
       var template;
       name = name.replace(/\\/g, "/");
       try {
-        template = compiler.compile(str, asyncFilters, extensions3, name, env3.opts);
+        template = compiler.compile(str, asyncFilters, extensions3, name, env4.opts);
       } catch (err) {
         throw _prettifyError(name, false, err);
       }
@@ -20212,11 +20709,11 @@ var require_nunjucks = __commonJS({
       reset: function reset2() {
         e = void 0;
       },
-      compile: function compile2(src, env3, path19, eagerCompile) {
+      compile: function compile2(src, env4, path20, eagerCompile) {
         if (!e) {
           configure3();
         }
-        return new Template(src, env3, path19, eagerCompile);
+        return new Template(src, env4, path20, eagerCompile);
       },
       render: function render(name, ctx, cb) {
         if (!e) {
@@ -20239,8 +20736,8 @@ var require_nunjucks = __commonJS({
 // node_modules/node-dir/lib/paths.js
 var require_paths = __commonJS({
   "node_modules/node-dir/lib/paths.js"(exports2) {
-    var fs13 = require("fs");
-    var path19 = require("path");
+    var fs14 = require("fs");
+    var path20 = require("path");
     exports2.promiseFiles = function promiseFiles(dir, type, options) {
       type = type || "file";
       var processor = function(res, rej) {
@@ -20283,7 +20780,7 @@ var require_paths = __commonJS({
         return function(err, stat) {
           if (err) {
             if (!lstatCalled) {
-              return fs13.lstat(statPath, getStatHandler(statPath, name, true));
+              return fs14.lstat(statPath, getStatHandler(statPath, name, true));
             }
             return callback(err);
           }
@@ -20337,13 +20834,13 @@ var require_paths = __commonJS({
         if (!pending) return done();
         for (var file, i2 = 0, l = list2.length; i2 < l; i2++) {
           var fname = list2[i2].toString();
-          file = path19.join(dir, fname);
-          var buffile = Buffer.concat([bufdir, Buffer.from(path19.sep), list2[i2]]);
+          file = path20.join(dir, fname);
+          var buffile = Buffer.concat([bufdir, Buffer.from(path20.sep), list2[i2]]);
           if (options.sync) {
-            var res = fs13.statSync(buffile);
+            var res = fs14.statSync(buffile);
             getStatHandler(file, fname)(null, res);
           } else {
-            fs13.stat(buffile, getStatHandler(file, fname));
+            fs14.stat(buffile, getStatHandler(file, fname));
           }
         }
         return results;
@@ -20352,17 +20849,17 @@ var require_paths = __commonJS({
         if (err) return callback(err);
         if (stat && stat.mode === 17115) return done();
         if (options.sync) {
-          const list2 = fs13.readdirSync(bufdir, { encoding: "buffer" });
+          const list2 = fs14.readdirSync(bufdir, { encoding: "buffer" });
           return onDirRead(null, list2);
         } else {
-          fs13.readdir(bufdir, { encoding: "buffer" }, onDirRead);
+          fs14.readdir(bufdir, { encoding: "buffer" }, onDirRead);
         }
       };
       if (options.sync) {
-        const stat = fs13.statSync(bufdir);
+        const stat = fs14.statSync(bufdir);
         return onStat(null, stat);
       } else {
-        fs13.stat(bufdir, onStat);
+        fs14.stat(bufdir, onStat);
       }
     };
     exports2.paths = function paths(dir, combine, callback) {
@@ -20401,8 +20898,8 @@ var require_paths = __commonJS({
 // node_modules/node-dir/lib/readfiles.js
 var require_readfiles = __commonJS({
   "node_modules/node-dir/lib/readfiles.js"(exports2, module2) {
-    var fs13 = require("fs");
-    var path19 = require("path");
+    var fs14 = require("fs");
+    var path20 = require("path");
     function extend2(target, source, modify) {
       var result = target ? modify ? target : extend2({}, target, true) : {};
       if (!source) return result;
@@ -20438,7 +20935,7 @@ var require_readfiles = __commonJS({
           complete(null, files);
         }
       };
-      fs13.readdir(dir, function(err, list2) {
+      fs14.readdir(dir, function(err, list2) {
         if (err) {
           if (options.doneOnErr === true) {
             if (err.code === "EACCES") return done();
@@ -20452,8 +20949,8 @@ var require_readfiles = __commonJS({
         (function next() {
           var filename = list2[i2++];
           if (!filename) return done(null, files);
-          var file = path19.join(dir, filename);
-          fs13.stat(file, function(err2, stat) {
+          var file = path20.join(dir, filename);
+          fs14.stat(file, function(err2, stat) {
             if (err2 && options.doneOnErr === true) return done(err2);
             if (stat && stat.isDirectory()) {
               if (options.recursive) {
@@ -20471,7 +20968,7 @@ var require_readfiles = __commonJS({
               if (options.filter && !options.filter(filename)) return next();
               if (options.shortName) files.push(filename);
               else files.push(file);
-              fs13.readFile(file, options.encoding, function(err3, data) {
+              fs14.readFile(file, options.encoding, function(err3, data) {
                 if (err3) {
                   if (err3.code === "EACCES") return next();
                   if (options.doneOnErr === true) {
@@ -20719,7 +21216,7 @@ var require_minimatch = __commonJS({
   "node_modules/minimatch/minimatch.js"(exports2, module2) {
     module2.exports = minimatch2;
     minimatch2.Minimatch = Minimatch2;
-    var path19 = (function() {
+    var path20 = (function() {
       try {
         return require("path");
       } catch (e) {
@@ -20727,7 +21224,7 @@ var require_minimatch = __commonJS({
     })() || {
       sep: "/"
     };
-    minimatch2.sep = path19.sep;
+    minimatch2.sep = path20.sep;
     var GLOBSTAR2 = minimatch2.GLOBSTAR = Minimatch2.GLOBSTAR = {};
     var expand2 = require_brace_expansion();
     var plTypes = {
@@ -20816,8 +21313,8 @@ var require_minimatch = __commonJS({
       assertValidPattern2(pattern);
       if (!options) options = {};
       pattern = pattern.trim();
-      if (!options.allowWindowsEscape && path19.sep !== "/") {
-        pattern = pattern.split(path19.sep).join("/");
+      if (!options.allowWindowsEscape && path20.sep !== "/") {
+        pattern = pattern.split(path20.sep).join("/");
       }
       this.options = options;
       this.set = [];
@@ -21186,8 +21683,8 @@ var require_minimatch = __commonJS({
       if (this.empty) return f === "";
       if (f === "/" && partial) return true;
       var options = this.options;
-      if (path19.sep !== "/") {
-        f = f.split(path19.sep).join("/");
+      if (path20.sep !== "/") {
+        f = f.split(path20.sep).join("/");
       }
       f = f.split(slashSplit);
       this.debug(this.pattern, "split", f);
@@ -21290,9 +21787,9 @@ var require_minimatch = __commonJS({
 // node_modules/node-dir/lib/readfilesstream.js
 var require_readfilesstream = __commonJS({
   "node_modules/node-dir/lib/readfilesstream.js"(exports2, module2) {
-    var fs13 = require("fs");
+    var fs14 = require("fs");
     var mm = require_minimatch();
-    var path19 = require("path");
+    var path20 = require("path");
     function extend2(target, source, modify) {
       var result = target ? modify ? target : extend2({}, target, true) : {};
       if (!source) return result;
@@ -21336,7 +21833,7 @@ var require_readfilesstream = __commonJS({
           complete(null, files);
         }
       };
-      fs13.readdir(dir, function(err, list2) {
+      fs14.readdir(dir, function(err, list2) {
         if (err) {
           if (options.doneOnErr === true) {
             if (err.code === "EACCES") return done();
@@ -21350,8 +21847,8 @@ var require_readfilesstream = __commonJS({
         (function next() {
           var filename = list2[i2++];
           if (!filename) return done(null, files);
-          var file = path19.join(dir, filename);
-          fs13.stat(file, function(err2, stat) {
+          var file = path20.join(dir, filename);
+          fs14.stat(file, function(err2, stat) {
             if (err2 && options.doneOnErr === true) return done(err2);
             if (stat && stat.isDirectory()) {
               if (options.recursive) {
@@ -21369,7 +21866,7 @@ var require_readfilesstream = __commonJS({
               if (options.filter && !options.filter(filename)) return next();
               if (options.shortName) files.push(filename);
               else files.push(file);
-              var stream5 = fs13.createReadStream(file);
+              var stream5 = fs14.createReadStream(file);
               if (options.encoding !== null) {
                 stream5.setEncoding(options.encoding);
               }
@@ -23240,7 +23737,7 @@ var require_Utils = __commonJS({
       return escapeSpaces ? s.replace(/ /, "\xB7") : s.replace(/\t/, "\\t").replace(/\n/, "\\n").replace(/\r/, "\\r");
     }
     exports2.escapeWhitespace = escapeWhitespace;
-    function join11(collection, separator) {
+    function join12(collection, separator) {
       let buf = "";
       let first = true;
       for (let current of collection) {
@@ -23253,7 +23750,7 @@ var require_Utils = __commonJS({
       }
       return buf;
     }
-    exports2.join = join11;
+    exports2.join = join12;
     function equals(x, y) {
       if (x === y) {
         return true;
@@ -24867,8 +25364,8 @@ var require_ATNConfigSet = __commonJS({
           return this._conflictInfo.conflictedAlts.clone();
         }
         let alts = new BitSet_1.BitSet();
-        for (let config2 of this) {
-          alts.set(config2.alt);
+        for (let config3 of this) {
+          alts.set(config3.alt);
         }
         return alts;
       }
@@ -24896,8 +25393,8 @@ var require_ATNConfigSet = __commonJS({
         if (this.configs.length === 0) {
           return;
         }
-        for (let config2 of this.configs) {
-          config2.context = interpreter.atn.getCachedContext(config2.context);
+        for (let config3 of this.configs) {
+          config3.context = interpreter.atn.getCachedContext(config3.context);
         }
       }
       clone(readonly) {
@@ -24918,11 +25415,11 @@ var require_ATNConfigSet = __commonJS({
           return false;
         }
         if (this.mergedConfigs && this.unmerged) {
-          let config2 = o2;
-          let configKey = this.getKey(config2);
+          let config3 = o2;
+          let configKey = this.getKey(config3);
           let mergedConfig = this.mergedConfigs.get(configKey);
-          if (mergedConfig != null && this.canMerge(config2, configKey, mergedConfig)) {
-            return mergedConfig.contains(config2);
+          if (mergedConfig != null && this.canMerge(config3, configKey, mergedConfig)) {
+            return mergedConfig.contains(config3);
           }
           for (let c3 of this.unmerged) {
             if (c3.contains(o2)) {
@@ -24999,18 +25496,18 @@ var require_ATNConfigSet = __commonJS({
         this.updatePropertiesForAddedConfig(e);
         return true;
       }
-      updatePropertiesForMergedConfig(config2) {
-        this._dipsIntoOuterContext = this._dipsIntoOuterContext || config2.reachesIntoOuterContext;
+      updatePropertiesForMergedConfig(config3) {
+        this._dipsIntoOuterContext = this._dipsIntoOuterContext || config3.reachesIntoOuterContext;
         assert(!this.outermostConfigSet || !this._dipsIntoOuterContext);
       }
-      updatePropertiesForAddedConfig(config2) {
+      updatePropertiesForAddedConfig(config3) {
         if (this.configs.length === 1) {
-          this._uniqueAlt = config2.alt;
-        } else if (this._uniqueAlt !== config2.alt) {
+          this._uniqueAlt = config3.alt;
+        } else if (this._uniqueAlt !== config3.alt) {
           this._uniqueAlt = ATN_1.ATN.INVALID_ALT_NUMBER;
         }
-        this._hasSemanticContext = this._hasSemanticContext || !SemanticContext_1.SemanticContext.NONE.equals(config2.semanticContext);
-        this._dipsIntoOuterContext = this._dipsIntoOuterContext || config2.reachesIntoOuterContext;
+        this._hasSemanticContext = this._hasSemanticContext || !SemanticContext_1.SemanticContext.NONE.equals(config3.semanticContext);
+        this._dipsIntoOuterContext = this._dipsIntoOuterContext || config3.reachesIntoOuterContext;
         assert(!this.outermostConfigSet || !this._dipsIntoOuterContext);
       }
       canMerge(left, leftKey, right) {
@@ -26001,8 +26498,8 @@ var require_DFASerializer = __commonJS({
         }
         if (s.isContextSensitive) {
           stateStr += "*";
-          for (let config2 of s.configs) {
-            if (config2.reachesIntoOuterContext) {
+          for (let config3 of s.configs) {
+            if (config3.reachesIntoOuterContext) {
               stateStr += "*";
               break;
             }
@@ -27769,16 +28266,16 @@ var require_LexerATNSimulator = __commonJS({
             let target = this.getReachableTarget(trans, t);
             if (target != null) {
               let lexerActionExecutor = c3.lexerActionExecutor;
-              let config2;
+              let config3;
               if (lexerActionExecutor != null) {
                 lexerActionExecutor = lexerActionExecutor.fixOffsetBeforeMatch(input.index - this.startIndex);
-                config2 = c3.transform(target, true, lexerActionExecutor);
+                config3 = c3.transform(target, true, lexerActionExecutor);
               } else {
                 assert(c3.lexerActionExecutor == null);
-                config2 = c3.transform(target, true);
+                config3 = c3.transform(target, true);
               }
               let treatEofAsEpsilon = t === IntStream_1.IntStream.EOF;
-              if (this.closure(input, config2, reach, currentAltReachedAcceptState, true, treatEofAsEpsilon)) {
+              if (this.closure(input, config3, reach, currentAltReachedAcceptState, true, treatEofAsEpsilon)) {
                 skipAlt = c3.alt;
                 break;
               }
@@ -27823,24 +28320,24 @@ var require_LexerATNSimulator = __commonJS({
        * @returns `true` if an accept state is reached, otherwise
        * `false`.
        */
-      closure(input, config2, configs, currentAltReachedAcceptState, speculative, treatEofAsEpsilon) {
+      closure(input, config3, configs, currentAltReachedAcceptState, speculative, treatEofAsEpsilon) {
         if (LexerATNSimulator2.debug) {
-          console.log("closure(" + config2.toString(this.recog, true) + ")");
+          console.log("closure(" + config3.toString(this.recog, true) + ")");
         }
-        if (config2.state instanceof RuleStopState_1.RuleStopState) {
+        if (config3.state instanceof RuleStopState_1.RuleStopState) {
           if (LexerATNSimulator2.debug) {
             if (this.recog != null) {
-              console.log(`closure at ${this.recog.ruleNames[config2.state.ruleIndex]} rule stop ${config2}`);
+              console.log(`closure at ${this.recog.ruleNames[config3.state.ruleIndex]} rule stop ${config3}`);
             } else {
-              console.log(`closure at rule stop ${config2}`);
+              console.log(`closure at rule stop ${config3}`);
             }
           }
-          let context = config2.context;
+          let context = config3.context;
           if (context.isEmpty) {
-            configs.add(config2);
+            configs.add(config3);
             return true;
           } else if (context.hasEmpty) {
-            configs.add(config2.transform(config2.state, true, PredictionContext_1.PredictionContext.EMPTY_FULL));
+            configs.add(config3.transform(config3.state, true, PredictionContext_1.PredictionContext.EMPTY_FULL));
             currentAltReachedAcceptState = true;
           }
           for (let i2 = 0; i2 < context.size; i2++) {
@@ -27850,20 +28347,20 @@ var require_LexerATNSimulator = __commonJS({
             }
             let newContext = context.getParent(i2);
             let returnState = this.atn.states[returnStateNumber];
-            let c3 = config2.transform(returnState, false, newContext);
+            let c3 = config3.transform(returnState, false, newContext);
             currentAltReachedAcceptState = this.closure(input, c3, configs, currentAltReachedAcceptState, speculative, treatEofAsEpsilon);
           }
           return currentAltReachedAcceptState;
         }
-        if (!config2.state.onlyHasEpsilonTransitions) {
-          if (!currentAltReachedAcceptState || !config2.hasPassedThroughNonGreedyDecision) {
-            configs.add(config2);
+        if (!config3.state.onlyHasEpsilonTransitions) {
+          if (!currentAltReachedAcceptState || !config3.hasPassedThroughNonGreedyDecision) {
+            configs.add(config3);
           }
         }
-        let p = config2.state;
+        let p = config3.state;
         for (let i2 = 0; i2 < p.numberOfOptimizedTransitions; i2++) {
           let t = p.getOptimizedTransition(i2);
-          let c3 = this.getEpsilonTarget(input, config2, t, configs, speculative, treatEofAsEpsilon);
+          let c3 = this.getEpsilonTarget(input, config3, t, configs, speculative, treatEofAsEpsilon);
           if (c3 != null) {
             currentAltReachedAcceptState = this.closure(input, c3, configs, currentAltReachedAcceptState, speculative, treatEofAsEpsilon);
           }
@@ -27871,16 +28368,16 @@ var require_LexerATNSimulator = __commonJS({
         return currentAltReachedAcceptState;
       }
       // side-effect: can alter configs.hasSemanticContext
-      getEpsilonTarget(input, config2, t, configs, speculative, treatEofAsEpsilon) {
+      getEpsilonTarget(input, config3, t, configs, speculative, treatEofAsEpsilon) {
         let c3;
         switch (t.serializationType) {
           case 3:
             let ruleTransition = t;
-            if (this.optimize_tail_calls && ruleTransition.optimizedTailCall && !config2.context.hasEmpty) {
-              c3 = config2.transform(t.target, true);
+            if (this.optimize_tail_calls && ruleTransition.optimizedTailCall && !config3.context.hasEmpty) {
+              c3 = config3.transform(t.target, true);
             } else {
-              let newContext = config2.context.getChild(ruleTransition.followState.stateNumber);
-              c3 = config2.transform(t.target, true, newContext);
+              let newContext = config3.context.getChild(ruleTransition.followState.stateNumber);
+              c3 = config3.transform(t.target, true, newContext);
             }
             break;
           case 10:
@@ -27892,29 +28389,29 @@ var require_LexerATNSimulator = __commonJS({
             }
             configs.hasSemanticContext = true;
             if (this.evaluatePredicate(input, pt.ruleIndex, pt.predIndex, speculative)) {
-              c3 = config2.transform(t.target, true);
+              c3 = config3.transform(t.target, true);
             } else {
               c3 = void 0;
             }
             break;
           case 6:
-            if (config2.context.hasEmpty) {
-              let lexerActionExecutor = LexerActionExecutor_1.LexerActionExecutor.append(config2.lexerActionExecutor, this.atn.lexerActions[t.actionIndex]);
-              c3 = config2.transform(t.target, true, lexerActionExecutor);
+            if (config3.context.hasEmpty) {
+              let lexerActionExecutor = LexerActionExecutor_1.LexerActionExecutor.append(config3.lexerActionExecutor, this.atn.lexerActions[t.actionIndex]);
+              c3 = config3.transform(t.target, true, lexerActionExecutor);
               break;
             } else {
-              c3 = config2.transform(t.target, true);
+              c3 = config3.transform(t.target, true);
               break;
             }
           case 1:
-            c3 = config2.transform(t.target, true);
+            c3 = config3.transform(t.target, true);
             break;
           case 5:
           case 2:
           case 7:
             if (treatEofAsEpsilon) {
               if (t.matches(IntStream_1.IntStream.EOF, Lexer_1.Lexer.MIN_CHAR_VALUE, Lexer_1.Lexer.MAX_CHAR_VALUE)) {
-                c3 = config2.transform(t.target, false);
+                c3 = config3.transform(t.target, false);
                 break;
               }
             }
@@ -35009,14 +35506,14 @@ var require_XPath = __commonJS({
     var XPathWildcardAnywhereElement_1 = require_XPathWildcardAnywhereElement();
     var XPathWildcardElement_1 = require_XPathWildcardElement();
     var XPath = class _XPath {
-      constructor(parser, path19) {
+      constructor(parser, path20) {
         this.parser = parser;
-        this.path = path19;
-        this.elements = this.split(path19);
+        this.path = path20;
+        this.elements = this.split(path20);
       }
       // TODO: check for invalid token/rule names, bad syntax
-      split(path19) {
-        let lexer = new XPathLexer_1.XPathLexer(CharStreams_1.CharStreams.fromString(path19));
+      split(path20) {
+        let lexer = new XPathLexer_1.XPathLexer(CharStreams_1.CharStreams.fromString(path20));
         lexer.recover = (e) => {
           throw e;
         };
@@ -35028,7 +35525,7 @@ var require_XPath = __commonJS({
         } catch (e) {
           if (e instanceof LexerNoViableAltException_1.LexerNoViableAltException) {
             let pos = lexer.charPositionInLine;
-            let msg = "Invalid tokens or characters at index " + pos + " in path '" + path19 + "' -- " + e.message;
+            let msg = "Invalid tokens or characters at index " + pos + " in path '" + path20 + "' -- " + e.message;
             throw new RangeError(msg);
           }
           throw e;
@@ -37636,8 +38133,8 @@ var require_PredictionMode = __commonJS({
       }
       PredictionMode2.hasConfigInRuleStopState = hasConfigInRuleStopState;
       function allConfigsInRuleStopStates(configs) {
-        for (let config2 of configs) {
-          if (!(config2.state instanceof RuleStopState_1.RuleStopState)) {
+        for (let config3 of configs) {
+          if (!(config3.state instanceof RuleStopState_1.RuleStopState)) {
             return false;
           }
         }
@@ -38163,10 +38660,10 @@ var require_ParserATNSimulator = __commonJS({
         if (previous.s0 != null) {
           let alts = new BitSet_1.BitSet();
           let maxAlt = 0;
-          for (let config2 of previous.s0.configs) {
-            if (config2.reachesIntoOuterContext || config2.state instanceof RuleStopState_1.RuleStopState) {
-              alts.set(config2.alt);
-              maxAlt = Math.max(maxAlt, config2.alt);
+          for (let config3 of previous.s0.configs) {
+            if (config3.reachesIntoOuterContext || config3.state instanceof RuleStopState_1.RuleStopState) {
+              alts.set(config3.alt);
+              maxAlt = Math.max(maxAlt, config3.alt);
             }
           }
           switch (alts.cardinality()) {
@@ -38179,9 +38676,9 @@ var require_ParserATNSimulator = __commonJS({
                 return alts.nextSetBit(0);
               }
               let filteredConfigs = new ATNConfigSet_1.ATNConfigSet();
-              for (let config2 of previous.s0.configs) {
-                if (config2.reachesIntoOuterContext || config2.state instanceof RuleStopState_1.RuleStopState) {
-                  filteredConfigs.add(config2);
+              for (let config3 of previous.s0.configs) {
+                if (config3.reachesIntoOuterContext || config3.state instanceof RuleStopState_1.RuleStopState) {
+                  filteredConfigs.add(config3);
                 }
               }
               let altToPred = this.getPredsForAmbigAlts(alts, filteredConfigs, maxAlt);
@@ -38369,11 +38866,11 @@ var require_ParserATNSimulator = __commonJS({
           return configs;
         }
         let result = new ATNConfigSet_1.ATNConfigSet();
-        for (let config2 of configs) {
-          if (!(config2.state instanceof RuleStopState_1.RuleStopState)) {
+        for (let config3 of configs) {
+          if (!(config3.state instanceof RuleStopState_1.RuleStopState)) {
             continue;
           }
-          result.add(config2, contextCache);
+          result.add(config3, contextCache);
         }
         return result;
       }
@@ -38549,32 +39046,32 @@ var require_ParserATNSimulator = __commonJS({
       applyPrecedenceFilter(configs, globalContext, contextCache) {
         let statesFromAlt1 = /* @__PURE__ */ new Map();
         let configSet = new ATNConfigSet_1.ATNConfigSet();
-        for (let config2 of configs) {
-          if (config2.alt !== 1) {
+        for (let config3 of configs) {
+          if (config3.alt !== 1) {
             continue;
           }
-          let updatedContext = config2.semanticContext.evalPrecedence(this._parser, globalContext);
+          let updatedContext = config3.semanticContext.evalPrecedence(this._parser, globalContext);
           if (updatedContext == null) {
             continue;
           }
-          statesFromAlt1.set(config2.state.stateNumber, config2.context);
-          if (updatedContext !== config2.semanticContext) {
-            configSet.add(config2.transform(config2.state, false, updatedContext), contextCache);
+          statesFromAlt1.set(config3.state.stateNumber, config3.context);
+          if (updatedContext !== config3.semanticContext) {
+            configSet.add(config3.transform(config3.state, false, updatedContext), contextCache);
           } else {
-            configSet.add(config2, contextCache);
+            configSet.add(config3, contextCache);
           }
         }
-        for (let config2 of configs) {
-          if (config2.alt === 1) {
+        for (let config3 of configs) {
+          if (config3.alt === 1) {
             continue;
           }
-          if (!config2.isPrecedenceFilterSuppressed) {
-            let context = statesFromAlt1.get(config2.state.stateNumber);
-            if (context != null && context.equals(config2.context)) {
+          if (!config3.isPrecedenceFilterSuppressed) {
+            let context = statesFromAlt1.get(config3.state.stateNumber);
+            if (context != null && context.equals(config3.context)) {
               continue;
             }
           }
-          configSet.add(config2, contextCache);
+          configSet.add(config3, contextCache);
         }
         return configSet;
       }
@@ -38715,60 +39212,60 @@ var require_ParserATNSimulator = __commonJS({
         let closureBusy = new Array2DHashSet_1.Array2DHashSet(ObjectEqualityComparator_1.ObjectEqualityComparator.INSTANCE);
         while (currentConfigs.size > 0) {
           let intermediate = new ATNConfigSet_1.ATNConfigSet();
-          for (let config2 of currentConfigs) {
-            this.closureImpl(config2, configs, intermediate, closureBusy, collectPredicates, hasMoreContext, contextCache, 0, treatEofAsEpsilon);
+          for (let config3 of currentConfigs) {
+            this.closureImpl(config3, configs, intermediate, closureBusy, collectPredicates, hasMoreContext, contextCache, 0, treatEofAsEpsilon);
           }
           currentConfigs = intermediate;
         }
       }
-      closureImpl(config2, configs, intermediate, closureBusy, collectPredicates, hasMoreContexts, contextCache, depth, treatEofAsEpsilon) {
+      closureImpl(config3, configs, intermediate, closureBusy, collectPredicates, hasMoreContexts, contextCache, depth, treatEofAsEpsilon) {
         if (ParserATNSimulator2.debug) {
-          console.log("closure(" + config2.toString(this._parser, true) + ")");
+          console.log("closure(" + config3.toString(this._parser, true) + ")");
         }
-        if (config2.state instanceof RuleStopState_1.RuleStopState) {
-          if (!config2.context.isEmpty) {
-            let hasEmpty = config2.context.hasEmpty;
-            let nonEmptySize = config2.context.size - (hasEmpty ? 1 : 0);
+        if (config3.state instanceof RuleStopState_1.RuleStopState) {
+          if (!config3.context.isEmpty) {
+            let hasEmpty = config3.context.hasEmpty;
+            let nonEmptySize = config3.context.size - (hasEmpty ? 1 : 0);
             for (let i2 = 0; i2 < nonEmptySize; i2++) {
-              let newContext = config2.context.getParent(i2);
-              let returnState = this.atn.states[config2.context.getReturnState(i2)];
-              let c3 = ATNConfig_1.ATNConfig.create(returnState, config2.alt, newContext, config2.semanticContext);
-              c3.outerContextDepth = config2.outerContextDepth;
-              c3.isPrecedenceFilterSuppressed = config2.isPrecedenceFilterSuppressed;
+              let newContext = config3.context.getParent(i2);
+              let returnState = this.atn.states[config3.context.getReturnState(i2)];
+              let c3 = ATNConfig_1.ATNConfig.create(returnState, config3.alt, newContext, config3.semanticContext);
+              c3.outerContextDepth = config3.outerContextDepth;
+              c3.isPrecedenceFilterSuppressed = config3.isPrecedenceFilterSuppressed;
               assert(depth > MIN_INTEGER_VALUE);
               this.closureImpl(c3, configs, intermediate, closureBusy, collectPredicates, hasMoreContexts, contextCache, depth - 1, treatEofAsEpsilon);
             }
             if (!hasEmpty || !hasMoreContexts) {
               return;
             }
-            config2 = config2.transform(config2.state, false, PredictionContext_1.PredictionContext.EMPTY_LOCAL);
+            config3 = config3.transform(config3.state, false, PredictionContext_1.PredictionContext.EMPTY_LOCAL);
           } else if (!hasMoreContexts) {
-            configs.add(config2, contextCache);
+            configs.add(config3, contextCache);
             return;
           } else {
             if (ParserATNSimulator2.debug) {
-              console.log("FALLING off rule " + this.getRuleName(config2.state.ruleIndex));
+              console.log("FALLING off rule " + this.getRuleName(config3.state.ruleIndex));
             }
-            if (config2.context === PredictionContext_1.PredictionContext.EMPTY_FULL) {
-              config2 = config2.transform(config2.state, false, PredictionContext_1.PredictionContext.EMPTY_LOCAL);
-            } else if (!config2.reachesIntoOuterContext && PredictionContext_1.PredictionContext.isEmptyLocal(config2.context)) {
-              configs.add(config2, contextCache);
+            if (config3.context === PredictionContext_1.PredictionContext.EMPTY_FULL) {
+              config3 = config3.transform(config3.state, false, PredictionContext_1.PredictionContext.EMPTY_LOCAL);
+            } else if (!config3.reachesIntoOuterContext && PredictionContext_1.PredictionContext.isEmptyLocal(config3.context)) {
+              configs.add(config3, contextCache);
             }
           }
         }
-        let p = config2.state;
+        let p = config3.state;
         if (!p.onlyHasEpsilonTransitions) {
-          configs.add(config2, contextCache);
+          configs.add(config3, contextCache);
           if (ParserATNSimulator2.debug) {
             console.log("added config " + configs);
           }
         }
         for (let i2 = 0; i2 < p.numberOfOptimizedTransitions; i2++) {
-          if (i2 === 0 && p.stateType === ATNStateType_1.ATNStateType.STAR_LOOP_ENTRY && p.precedenceRuleDecision && !config2.context.hasEmpty) {
+          if (i2 === 0 && p.stateType === ATNStateType_1.ATNStateType.STAR_LOOP_ENTRY && p.precedenceRuleDecision && !config3.context.hasEmpty) {
             let precedenceDecision = p;
             let suppress = true;
-            for (let j = 0; j < config2.context.size; j++) {
-              if (!precedenceDecision.precedenceLoopbackStates.get(config2.context.getReturnState(j))) {
+            for (let j = 0; j < config3.context.size; j++) {
+              if (!precedenceDecision.precedenceLoopbackStates.get(config3.context.getReturnState(j))) {
                 suppress = false;
                 break;
               }
@@ -38779,7 +39276,7 @@ var require_ParserATNSimulator = __commonJS({
           }
           let t = p.getOptimizedTransition(i2);
           let continueCollecting = !(t instanceof ActionTransition_1.ActionTransition) && collectPredicates;
-          let c3 = this.getEpsilonTarget(config2, t, continueCollecting, depth === 0, contextCache, treatEofAsEpsilon);
+          let c3 = this.getEpsilonTarget(config3, t, continueCollecting, depth === 0, contextCache, treatEofAsEpsilon);
           if (c3 != null) {
             if (t instanceof RuleTransition_1.RuleTransition) {
               if (intermediate != null && !collectPredicates) {
@@ -38788,7 +39285,7 @@ var require_ParserATNSimulator = __commonJS({
               }
             }
             let newDepth = depth;
-            if (config2.state instanceof RuleStopState_1.RuleStopState) {
+            if (config3.state instanceof RuleStopState_1.RuleStopState) {
               if (this.dfa != null && this.dfa.isPrecedenceDfa) {
                 let outermostPrecedenceReturn = t.outermostPrecedenceReturn;
                 if (outermostPrecedenceReturn === this.dfa.atnStartState.ruleIndex) {
@@ -38805,11 +39302,11 @@ var require_ParserATNSimulator = __commonJS({
                 console.log("dips into outer ctx: " + c3);
               }
             } else if (t instanceof RuleTransition_1.RuleTransition) {
-              if (this.optimize_tail_calls && t.optimizedTailCall && (!this.tail_call_preserves_sll || !PredictionContext_1.PredictionContext.isEmptyLocal(config2.context))) {
-                assert(c3.context === config2.context);
+              if (this.optimize_tail_calls && t.optimizedTailCall && (!this.tail_call_preserves_sll || !PredictionContext_1.PredictionContext.isEmptyLocal(config3.context))) {
+                assert(c3.context === config3.context);
                 if (newDepth === 0) {
                   newDepth--;
-                  if (!this.tail_call_preserves_sll && PredictionContext_1.PredictionContext.isEmptyLocal(config2.context)) {
+                  if (!this.tail_call_preserves_sll && PredictionContext_1.PredictionContext.isEmptyLocal(config3.context)) {
                     c3.outerContextDepth = c3.outerContextDepth + 1;
                   }
                 }
@@ -38833,24 +39330,24 @@ var require_ParserATNSimulator = __commonJS({
         }
         return "<rule " + index + ">";
       }
-      getEpsilonTarget(config2, t, collectPredicates, inContext, contextCache, treatEofAsEpsilon) {
+      getEpsilonTarget(config3, t, collectPredicates, inContext, contextCache, treatEofAsEpsilon) {
         switch (t.serializationType) {
           case 3:
-            return this.ruleTransition(config2, t, contextCache);
+            return this.ruleTransition(config3, t, contextCache);
           case 10:
-            return this.precedenceTransition(config2, t, collectPredicates, inContext);
+            return this.precedenceTransition(config3, t, collectPredicates, inContext);
           case 4:
-            return this.predTransition(config2, t, collectPredicates, inContext);
+            return this.predTransition(config3, t, collectPredicates, inContext);
           case 6:
-            return this.actionTransition(config2, t);
+            return this.actionTransition(config3, t);
           case 1:
-            return config2.transform(t.target, false);
+            return config3.transform(t.target, false);
           case 5:
           case 2:
           case 7:
             if (treatEofAsEpsilon) {
               if (t.matches(Token_1.Token.EOF, 0, 1)) {
-                return config2.transform(t.target, false);
+                return config3.transform(t.target, false);
               }
             }
             return void 0;
@@ -38858,13 +39355,13 @@ var require_ParserATNSimulator = __commonJS({
             return void 0;
         }
       }
-      actionTransition(config2, t) {
+      actionTransition(config3, t) {
         if (ParserATNSimulator2.debug) {
           console.log("ACTION edge " + t.ruleIndex + ":" + t.actionIndex);
         }
-        return config2.transform(t.target, false);
+        return config3.transform(t.target, false);
       }
-      precedenceTransition(config2, pt, collectPredicates, inContext) {
+      precedenceTransition(config3, pt, collectPredicates, inContext) {
         if (ParserATNSimulator2.debug) {
           console.log("PRED (collectPredicates=" + collectPredicates + ") " + pt.precedence + ">=_p, ctx dependent=true");
           if (this._parser != null) {
@@ -38873,17 +39370,17 @@ var require_ParserATNSimulator = __commonJS({
         }
         let c3;
         if (collectPredicates && inContext) {
-          let newSemCtx = SemanticContext_1.SemanticContext.and(config2.semanticContext, pt.predicate);
-          c3 = config2.transform(pt.target, false, newSemCtx);
+          let newSemCtx = SemanticContext_1.SemanticContext.and(config3.semanticContext, pt.predicate);
+          c3 = config3.transform(pt.target, false, newSemCtx);
         } else {
-          c3 = config2.transform(pt.target, false);
+          c3 = config3.transform(pt.target, false);
         }
         if (ParserATNSimulator2.debug) {
           console.log("config from pred transition=" + c3);
         }
         return c3;
       }
-      predTransition(config2, pt, collectPredicates, inContext) {
+      predTransition(config3, pt, collectPredicates, inContext) {
         if (ParserATNSimulator2.debug) {
           console.log("PRED (collectPredicates=" + collectPredicates + ") " + pt.ruleIndex + ":" + pt.predIndex + ", ctx dependent=" + pt.isCtxDependent);
           if (this._parser != null) {
@@ -38892,30 +39389,30 @@ var require_ParserATNSimulator = __commonJS({
         }
         let c3;
         if (collectPredicates && (!pt.isCtxDependent || pt.isCtxDependent && inContext)) {
-          let newSemCtx = SemanticContext_1.SemanticContext.and(config2.semanticContext, pt.predicate);
-          c3 = config2.transform(pt.target, false, newSemCtx);
+          let newSemCtx = SemanticContext_1.SemanticContext.and(config3.semanticContext, pt.predicate);
+          c3 = config3.transform(pt.target, false, newSemCtx);
         } else {
-          c3 = config2.transform(pt.target, false);
+          c3 = config3.transform(pt.target, false);
         }
         if (ParserATNSimulator2.debug) {
           console.log("config from pred transition=" + c3);
         }
         return c3;
       }
-      ruleTransition(config2, t, contextCache) {
+      ruleTransition(config3, t, contextCache) {
         if (ParserATNSimulator2.debug) {
-          console.log("CALL rule " + this.getRuleName(t.target.ruleIndex) + ", ctx=" + config2.context);
+          console.log("CALL rule " + this.getRuleName(t.target.ruleIndex) + ", ctx=" + config3.context);
         }
         let returnState = t.followState;
         let newContext;
-        if (this.optimize_tail_calls && t.optimizedTailCall && (!this.tail_call_preserves_sll || !PredictionContext_1.PredictionContext.isEmptyLocal(config2.context))) {
-          newContext = config2.context;
+        if (this.optimize_tail_calls && t.optimizedTailCall && (!this.tail_call_preserves_sll || !PredictionContext_1.PredictionContext.isEmptyLocal(config3.context))) {
+          newContext = config3.context;
         } else if (contextCache != null) {
-          newContext = contextCache.getChild(config2.context, returnState.stateNumber);
+          newContext = contextCache.getChild(config3.context, returnState.stateNumber);
         } else {
-          newContext = config2.context.getChild(returnState.stateNumber);
+          newContext = config3.context.getChild(returnState.stateNumber);
         }
-        return config2.transform(t.target, false, newContext);
+        return config3.transform(t.target, false, newContext);
       }
       isConflicted(configset, contextCache) {
         if (configset.uniqueAlt !== ATN_1.ATN.INVALID_ALT_NUMBER || configset.size <= 1) {
@@ -38928,10 +39425,10 @@ var require_ParserATNSimulator = __commonJS({
         let minAlt = configs[0].alt;
         alts.set(minAlt);
         let currentState = configs[0].state.nonStopStateNumber;
-        for (let config2 of configs) {
-          let stateNumber = config2.state.nonStopStateNumber;
+        for (let config3 of configs) {
+          let stateNumber = config3.state.nonStopStateNumber;
           if (stateNumber !== currentState) {
-            if (config2.alt !== minAlt) {
+            if (config3.alt !== minAlt) {
               return void 0;
             }
             currentState = stateNumber;
@@ -38942,19 +39439,19 @@ var require_ParserATNSimulator = __commonJS({
           currentState = configs[0].state.nonStopStateNumber;
           representedAlts = new BitSet_1.BitSet();
           let maxAlt = minAlt;
-          for (let config2 of configs) {
-            if (config2.state.nonStopStateNumber !== currentState) {
+          for (let config3 of configs) {
+            if (config3.state.nonStopStateNumber !== currentState) {
               break;
             }
-            let alt = config2.alt;
+            let alt = config3.alt;
             representedAlts.set(alt);
             maxAlt = alt;
           }
           currentState = configs[0].state.nonStopStateNumber;
           let currentAlt = minAlt;
-          for (let config2 of configs) {
-            let stateNumber = config2.state.nonStopStateNumber;
-            let alt = config2.alt;
+          for (let config3 of configs) {
+            let stateNumber = config3.state.nonStopStateNumber;
+            let alt = config3.alt;
             if (stateNumber !== currentState) {
               if (currentAlt !== maxAlt) {
                 exact = false;
@@ -38976,25 +39473,25 @@ var require_ParserATNSimulator = __commonJS({
         let lastIndexCurrentStateMinAlt = 0;
         let joinedCheckContext = configs[0].context;
         for (let i2 = 1; i2 < configs.length; i2++) {
-          let config2 = configs[i2];
-          if (config2.alt !== minAlt) {
+          let config3 = configs[i2];
+          if (config3.alt !== minAlt) {
             break;
           }
-          if (config2.state.nonStopStateNumber !== currentState) {
+          if (config3.state.nonStopStateNumber !== currentState) {
             break;
           }
           lastIndexCurrentStateMinAlt = i2;
           joinedCheckContext = contextCache.join(joinedCheckContext, configs[i2].context);
         }
         for (let i2 = lastIndexCurrentStateMinAlt + 1; i2 < configs.length; i2++) {
-          let config2 = configs[i2];
-          let state = config2.state;
-          alts.set(config2.alt);
+          let config3 = configs[i2];
+          let state = config3.state;
+          alts.set(config3.alt);
           if (state.nonStopStateNumber !== currentState) {
             currentState = state.nonStopStateNumber;
             firstIndexCurrentState = i2;
             lastIndexCurrentStateMinAlt = i2;
-            joinedCheckContext = config2.context;
+            joinedCheckContext = config3.context;
             for (let j = firstIndexCurrentState + 1; j < configs.length; j++) {
               let config22 = configs[j];
               if (config22.alt !== minAlt) {
@@ -39009,8 +39506,8 @@ var require_ParserATNSimulator = __commonJS({
             i2 = lastIndexCurrentStateMinAlt;
             continue;
           }
-          let joinedCheckContext2 = config2.context;
-          let currentAlt = config2.alt;
+          let joinedCheckContext2 = config3.context;
+          let currentAlt = config3.alt;
           let lastIndexCurrentStateCurrentAlt = i2;
           for (let j = lastIndexCurrentStateCurrentAlt + 1; j < configs.length; j++) {
             let config22 = configs[j];
@@ -39140,8 +39637,8 @@ var require_ParserATNSimulator = __commonJS({
       addDFAContextState(dfa, configs, returnContext, contextCache) {
         if (returnContext !== PredictionContext_1.PredictionContext.EMPTY_FULL_STATE_KEY) {
           let contextConfigs = new ATNConfigSet_1.ATNConfigSet();
-          for (let config2 of configs) {
-            contextConfigs.add(config2.appendContext(returnContext, contextCache));
+          for (let config3 of configs) {
+            contextConfigs.add(config3.appendContext(returnContext, contextCache));
           }
           return this.addDFAState(dfa, contextConfigs, contextCache);
         } else {
@@ -62264,8 +62761,8 @@ var require_DiagnosticErrorListener = __commonJS({
           return reportedAlts;
         }
         let result = new BitSet_1.BitSet();
-        for (let config2 of configs) {
-          result.set(config2.alt);
+        for (let config3 of configs) {
+          result.set(config3.alt);
         }
         return result;
       }
@@ -63159,19 +63656,19 @@ var require_lib3 = __commonJS({
     } });
     function check(pathStr) {
       return __awaiter(this, void 0, void 0, function* () {
-        const path19 = (0, path_1.resolve)(pathStr || process.argv[1] || process.cwd());
+        const path20 = (0, path_1.resolve)(pathStr || process.argv[1] || process.cwd());
         const result = {
           status: 0,
           errors: []
         };
-        if (!(0, fs_1.existsSync)(path19)) {
-          console.log(`Path does not exist, aborting: ${path19}`);
+        if (!(0, fs_1.existsSync)(path20)) {
+          console.log(`Path does not exist, aborting: ${path20}`);
           result.status = 2;
         } else {
           try {
-            yield parseFiles(path19);
+            yield parseFiles(path20);
           } catch (err) {
-            console.log(`Error processing: ${path19}`);
+            console.log(`Error processing: ${path20}`);
             console.log(err);
             result.status = 1;
           }
@@ -63183,13 +63680,13 @@ var require_lib3 = __commonJS({
     exports2.check = check;
     function checkProject(pathStr) {
       return __awaiter(this, void 0, void 0, function* () {
-        const path19 = (0, path_1.resolve)(pathStr || process.argv[1] || process.cwd());
-        const name = (0, path_1.basename)(path19);
-        const project = findProjectFile(path19, 1);
+        const path20 = (0, path_1.resolve)(pathStr || process.argv[1] || process.cwd());
+        const name = (0, path_1.basename)(path20);
+        const project = findProjectFile(path20, 1);
         const packages = getProjectPackages(project);
         if (packages.length == 0) {
           console.log(`[${name}]: No valid SFDX project, checking all cls & trigger files`);
-          const result = yield check(path19);
+          const result = yield check(path20);
           return [Object.assign({ name, path: "." }, result)];
         }
         const projectDir = (0, path_1.dirname)(project);
@@ -63200,7 +63697,7 @@ var require_lib3 = __commonJS({
           return Object.assign({
             name,
             pkg,
-            path: (0, path_1.relative)(path19, pkgPath)
+            path: (0, path_1.relative)(path20, pkgPath)
           }, result);
         })));
         process.exitCode = Math.max(...projectResult.map((r) => r.status));
@@ -63208,13 +63705,13 @@ var require_lib3 = __commonJS({
       });
     }
     exports2.checkProject = checkProject;
-    function parseFiles(path19) {
+    function parseFiles(path20) {
       return __awaiter(this, void 0, void 0, function* () {
-        const files = yield dir.promiseFiles(path19);
-        const classErrors = parseByType(path19, files, ".cls", (parser) => {
+        const files = yield dir.promiseFiles(path20);
+        const classErrors = parseByType(path20, files, ".cls", (parser) => {
           parser.compilationUnit();
         });
-        const triggerErrors = parseByType(path19, files, ".trigger", (parser) => {
+        const triggerErrors = parseByType(path20, files, ".trigger", (parser) => {
           parser.triggerUnit();
         });
         return classErrors.concat(triggerErrors);
@@ -63269,8 +63766,8 @@ var require_lib3 = __commonJS({
       if (!projectFilePath) {
         return [];
       }
-      const config2 = JSON.parse((0, fs_1.readFileSync)(projectFilePath, { encoding: "utf8" }));
-      const packages = config2.packageDirectories || [];
+      const config3 = JSON.parse((0, fs_1.readFileSync)(projectFilePath, { encoding: "utf8" }));
+      const packages = config3.packageDirectories || [];
       return packages.flatMap((p) => p.path ? p.path.replace(/\\/g, "/") : []);
     }
   }
@@ -63284,14 +63781,14 @@ __export(extension_exports, {
 });
 module.exports = __toCommonJS(extension_exports);
 var vscode15 = __toESM(require("vscode"));
-var path18 = __toESM(require("path"));
-var fs12 = __toESM(require_lib());
+var path19 = __toESM(require("path"));
+var fs13 = __toESM(require_lib());
 var import_child_process = require("child_process");
 
 // src/providers/dependenciesProvider.ts
 var vscode3 = __toESM(require("vscode"));
-var fs2 = __toESM(require("fs"));
-var path8 = __toESM(require("path"));
+var fs3 = __toESM(require("fs"));
+var path9 = __toESM(require("path"));
 
 // node_modules/is-plain-obj/index.js
 function isPlainObject(value) {
@@ -63632,12 +64129,12 @@ var NO_ESCAPE_REGEXP = /^[\w./-]+$/;
 // node_modules/is-unicode-supported/index.js
 var import_node_process3 = __toESM(require("node:process"), 1);
 function isUnicodeSupported() {
-  const { env: env3 } = import_node_process3.default;
-  const { TERM, TERM_PROGRAM } = env3;
+  const { env: env4 } = import_node_process3.default;
+  const { TERM, TERM_PROGRAM } = env4;
   if (import_node_process3.default.platform !== "win32") {
     return TERM !== "linux";
   }
-  return Boolean(env3.WT_SESSION) || Boolean(env3.TERMINUS_SUBLIME) || env3.ConEmuTask === "{cmd::Cmder}" || TERM_PROGRAM === "Terminus-Sublime" || TERM_PROGRAM === "vscode" || TERM === "xterm-256color" || TERM === "alacritty" || TERM === "rxvt-unicode" || TERM === "rxvt-unicode-256color" || env3.TERMINAL_EMULATOR === "JetBrains-JediTerm";
+  return Boolean(env4.WT_SESSION) || Boolean(env4.TERMINUS_SUBLIME) || env4.ConEmuTask === "{cmd::Cmder}" || TERM_PROGRAM === "Terminus-Sublime" || TERM_PROGRAM === "vscode" || TERM === "xterm-256color" || TERM === "alacritty" || TERM === "rxvt-unicode" || TERM === "rxvt-unicode-256color" || env4.TERMINAL_EMULATOR === "JetBrains-JediTerm";
 }
 
 // node_modules/figures/index.js
@@ -64148,13 +64645,13 @@ var import_node_path2 = __toESM(require("node:path"), 1);
 // node_modules/npm-run-path/node_modules/path-key/index.js
 function pathKey(options = {}) {
   const {
-    env: env3 = process.env,
+    env: env4 = process.env,
     platform: platform2 = process.platform
   } = options;
   if (platform2 !== "win32") {
     return "PATH";
   }
-  return Object.keys(env3).reverse().find((key) => key.toUpperCase() === "PATH") || "Path";
+  return Object.keys(env4).reverse().find((key) => key.toUpperCase() === "PATH") || "Path";
 }
 
 // node_modules/unicorn-magic/node.js
@@ -64214,12 +64711,12 @@ var applyExecPath = (result, pathParts, execPath2, cwdPath) => {
     result.push(pathPart);
   }
 };
-var npmRunPathEnv = ({ env: env3 = import_node_process5.default.env, ...options } = {}) => {
-  env3 = { ...env3 };
-  const pathName = pathKey({ env: env3 });
-  options.path = env3[pathName];
-  env3[pathName] = npmRunPath(options);
-  return env3;
+var npmRunPathEnv = ({ env: env4 = import_node_process5.default.env, ...options } = {}) => {
+  env4 = { ...env4 };
+  const pathName = pathKey({ env: env4 });
+  options.path = env4[pathName];
+  env4[pathName] = npmRunPath(options);
+  return env4;
 };
 
 // node_modules/execa/lib/terminate/kill.js
@@ -65575,17 +66072,17 @@ var addDefaultOptions = ({
   serialization
 });
 var getEnv = ({ env: envOption, extendEnv, preferLocal, node, localDirectory, nodePath }) => {
-  const env3 = extendEnv ? { ...import_node_process8.default.env, ...envOption } : envOption;
+  const env4 = extendEnv ? { ...import_node_process8.default.env, ...envOption } : envOption;
   if (preferLocal || node) {
     return npmRunPathEnv({
-      env: env3,
+      env: env4,
       cwd: localDirectory,
       execPath: nodePath,
       preferLocal,
       addExecPath: node
     });
   }
-  return env3;
+  return env4;
 };
 
 // node_modules/execa/lib/arguments/shell.js
@@ -67674,13 +68171,13 @@ var logOutputSync = ({ serializedResult, fdNumber, state, verboseInfo, encoding,
   }
 };
 var writeToFiles = (serializedResult, stdioItems, outputFiles) => {
-  for (const { path: path19, append: append2 } of stdioItems.filter(({ type }) => FILE_TYPES.has(type))) {
-    const pathString = typeof path19 === "string" ? path19 : path19.toString();
+  for (const { path: path20, append: append2 } of stdioItems.filter(({ type }) => FILE_TYPES.has(type))) {
+    const pathString = typeof path20 === "string" ? path20 : path20.toString();
     if (append2 || outputFiles.has(pathString)) {
-      (0, import_node_fs4.appendFileSync)(path19, serializedResult);
+      (0, import_node_fs4.appendFileSync)(path20, serializedResult);
     } else {
       outputFiles.add(pathString);
-      (0, import_node_fs4.writeFileSync)(path19, serializedResult);
+      (0, import_node_fs4.writeFileSync)(path20, serializedResult);
     }
   }
 };
@@ -70461,7 +70958,7 @@ var utils_default = {
 };
 
 // node_modules/axios/lib/core/AxiosError.js
-function AxiosError(message, code2, config2, request, response) {
+function AxiosError(message, code2, config3, request, response) {
   Error.call(this);
   if (Error.captureStackTrace) {
     Error.captureStackTrace(this, this.constructor);
@@ -70471,7 +70968,7 @@ function AxiosError(message, code2, config2, request, response) {
   this.message = message;
   this.name = "AxiosError";
   code2 && (this.code = code2);
-  config2 && (this.config = config2);
+  config3 && (this.config = config3);
   request && (this.request = request);
   if (response) {
     this.response = response;
@@ -70520,7 +71017,7 @@ var descriptors2 = {};
 });
 Object.defineProperties(AxiosError, descriptors2);
 Object.defineProperty(prototype, "isAxiosError", { value: true });
-AxiosError.from = (error, code2, config2, request, response, customProps) => {
+AxiosError.from = (error, code2, config3, request, response, customProps) => {
   const axiosError = Object.create(prototype);
   utils_default.toFlatObject(error, axiosError, function filter3(obj) {
     return obj !== Error.prototype;
@@ -70529,7 +71026,7 @@ AxiosError.from = (error, code2, config2, request, response, customProps) => {
   });
   const msg = error && error.message ? error.message : "Error";
   const errCode = code2 == null && error ? error.code : code2;
-  AxiosError.call(axiosError, msg, errCode, config2, request, response);
+  AxiosError.call(axiosError, msg, errCode, config3, request, response);
   if (error && axiosError.cause == null) {
     Object.defineProperty(axiosError, "cause", { value: error, configurable: true });
   }
@@ -70550,9 +71047,9 @@ function isVisitable(thing) {
 function removeBrackets(key) {
   return utils_default.endsWith(key, "[]") ? key.slice(0, -2) : key;
 }
-function renderKey(path19, key, dots) {
-  if (!path19) return key;
-  return path19.concat(key).map(function each(token, i2) {
+function renderKey(path20, key, dots) {
+  if (!path20) return key;
+  return path20.concat(key).map(function each(token, i2) {
     token = removeBrackets(token);
     return !dots && i2 ? "[" + token + "]" : token;
   }).join(dots ? "." : "");
@@ -70600,9 +71097,9 @@ function toFormData(obj, formData, options) {
     }
     return value;
   }
-  function defaultVisitor(value, key, path19) {
+  function defaultVisitor(value, key, path20) {
     let arr = value;
-    if (value && !path19 && typeof value === "object") {
+    if (value && !path20 && typeof value === "object") {
       if (utils_default.endsWith(key, "{}")) {
         key = metaTokens ? key : key.slice(0, -2);
         value = JSON.stringify(value);
@@ -70621,7 +71118,7 @@ function toFormData(obj, formData, options) {
     if (isVisitable(value)) {
       return true;
     }
-    formData.append(renderKey(path19, key, dots), convertValue(value));
+    formData.append(renderKey(path20, key, dots), convertValue(value));
     return false;
   }
   const stack = [];
@@ -70630,10 +71127,10 @@ function toFormData(obj, formData, options) {
     convertValue,
     isVisitable
   });
-  function build(value, path19) {
+  function build(value, path20) {
     if (utils_default.isUndefined(value)) return;
     if (stack.indexOf(value) !== -1) {
-      throw Error("Circular reference detected in " + path19.join("."));
+      throw Error("Circular reference detected in " + path20.join("."));
     }
     stack.push(value);
     utils_default.forEach(value, function each(el, key) {
@@ -70641,11 +71138,11 @@ function toFormData(obj, formData, options) {
         formData,
         el,
         utils_default.isString(key) ? key.trim() : key,
-        path19,
+        path20,
         exposedHelpers
       );
       if (result === true) {
-        build(el, path19 ? path19.concat(key) : [key]);
+        build(el, path20 ? path20.concat(key) : [key]);
       }
     });
     stack.pop();
@@ -70857,7 +71354,7 @@ var platform_default = {
 // node_modules/axios/lib/helpers/toURLEncodedForm.js
 function toURLEncodedForm(data, options) {
   return toFormData_default(data, new platform_default.classes.URLSearchParams(), {
-    visitor: function(value, key, path19, helpers) {
+    visitor: function(value, key, path20, helpers) {
       if (platform_default.isNode && utils_default.isBuffer(value)) {
         this.append(key, value.toString("base64"));
         return false;
@@ -70887,11 +71384,11 @@ function arrayToObject(arr) {
   return obj;
 }
 function formDataToJSON(formData) {
-  function buildPath(path19, value, target, index) {
-    let name = path19[index++];
+  function buildPath(path20, value, target, index) {
+    let name = path20[index++];
     if (name === "__proto__") return true;
     const isNumericKey = Number.isFinite(+name);
-    const isLast = index >= path19.length;
+    const isLast = index >= path20.length;
     name = !name && utils_default.isArray(target) ? target.length : name;
     if (isLast) {
       if (utils_default.hasOwnProp(target, name)) {
@@ -70904,7 +71401,7 @@ function formDataToJSON(formData) {
     if (!target[name] || !utils_default.isObject(target[name])) {
       target[name] = [];
     }
-    const result = buildPath(path19, value, target[name], index);
+    const result = buildPath(path20, value, target[name], index);
     if (result && utils_default.isArray(target[name])) {
       target[name] = arrayToObject(target[name]);
     }
@@ -71306,12 +71803,12 @@ var AxiosHeaders_default = AxiosHeaders;
 
 // node_modules/axios/lib/core/transformData.js
 function transformData(fns, response) {
-  const config2 = this || defaults_default;
-  const context = response || config2;
+  const config3 = this || defaults_default;
+  const context = response || config3;
   const headers = AxiosHeaders_default.from(context.headers);
   let data = context.data;
   utils_default.forEach(fns, function transform(fn) {
-    data = fn.call(config2, data, headers.normalize(), response ? response.status : void 0);
+    data = fn.call(config3, data, headers.normalize(), response ? response.status : void 0);
   });
   headers.normalize();
   return data;
@@ -71323,8 +71820,8 @@ function isCancel(value) {
 }
 
 // node_modules/axios/lib/cancel/CanceledError.js
-function CanceledError(message, config2, request) {
-  AxiosError_default.call(this, message == null ? "canceled" : message, AxiosError_default.ERR_CANCELED, config2, request);
+function CanceledError(message, config3, request) {
+  AxiosError_default.call(this, message == null ? "canceled" : message, AxiosError_default.ERR_CANCELED, config3, request);
   this.name = "CanceledError";
 }
 utils_default.inherits(CanceledError, AxiosError_default, {
@@ -71917,11 +72414,11 @@ var resolveFamily = ({ address, family }) => {
   };
 };
 var buildAddressEntry = (address, family) => resolveFamily(utils_default.isObject(address) ? address : { address, family });
-var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
+var http_default = isHttpAdapterSupported && function httpAdapter(config3) {
   return wrapAsync(async function dispatchHttpRequest(resolve7, reject, onDone) {
-    let { data, lookup, family } = config2;
-    const { responseType, responseEncoding } = config2;
-    const method = config2.method.toUpperCase();
+    let { data, lookup, family } = config3;
+    const { responseType, responseEncoding } = config3;
+    const method = config3.method.toUpperCase();
     let isDone;
     let rejected = false;
     let req;
@@ -71939,11 +72436,11 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
     }
     const emitter = new import_events.EventEmitter();
     const onFinished = () => {
-      if (config2.cancelToken) {
-        config2.cancelToken.unsubscribe(abort);
+      if (config3.cancelToken) {
+        config3.cancelToken.unsubscribe(abort);
       }
-      if (config2.signal) {
-        config2.signal.removeEventListener("abort", abort);
+      if (config3.signal) {
+        config3.signal.removeEventListener("abort", abort);
       }
       emitter.removeAllListeners();
     };
@@ -71955,27 +72452,27 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       }
     });
     function abort(reason) {
-      emitter.emit("abort", !reason || reason.type ? new CanceledError_default(null, config2, req) : reason);
+      emitter.emit("abort", !reason || reason.type ? new CanceledError_default(null, config3, req) : reason);
     }
     emitter.once("abort", reject);
-    if (config2.cancelToken || config2.signal) {
-      config2.cancelToken && config2.cancelToken.subscribe(abort);
-      if (config2.signal) {
-        config2.signal.aborted ? abort() : config2.signal.addEventListener("abort", abort);
+    if (config3.cancelToken || config3.signal) {
+      config3.cancelToken && config3.cancelToken.subscribe(abort);
+      if (config3.signal) {
+        config3.signal.aborted ? abort() : config3.signal.addEventListener("abort", abort);
       }
     }
-    const fullPath = buildFullPath(config2.baseURL, config2.url, config2.allowAbsoluteUrls);
+    const fullPath = buildFullPath(config3.baseURL, config3.url, config3.allowAbsoluteUrls);
     const parsed = new URL(fullPath, platform_default.hasBrowserEnv ? platform_default.origin : void 0);
     const protocol = parsed.protocol || supportedProtocols[0];
     if (protocol === "data:") {
-      if (config2.maxContentLength > -1) {
-        const dataUrl = String(config2.url || fullPath || "");
+      if (config3.maxContentLength > -1) {
+        const dataUrl = String(config3.url || fullPath || "");
         const estimated = estimateDataURLDecodedBytes(dataUrl);
-        if (estimated > config2.maxContentLength) {
+        if (estimated > config3.maxContentLength) {
           return reject(new AxiosError_default(
-            "maxContentLength size of " + config2.maxContentLength + " exceeded",
+            "maxContentLength size of " + config3.maxContentLength + " exceeded",
             AxiosError_default.ERR_BAD_RESPONSE,
-            config2
+            config3
           ));
         }
       }
@@ -71985,15 +72482,15 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
           status: 405,
           statusText: "method not allowed",
           headers: {},
-          config: config2
+          config: config3
         });
       }
       try {
-        convertedData = fromDataURI(config2.url, responseType === "blob", {
-          Blob: config2.env && config2.env.Blob
+        convertedData = fromDataURI(config3.url, responseType === "blob", {
+          Blob: config3.env && config3.env.Blob
         });
       } catch (err) {
-        throw AxiosError_default.from(err, AxiosError_default.ERR_BAD_REQUEST, config2);
+        throw AxiosError_default.from(err, AxiosError_default.ERR_BAD_REQUEST, config3);
       }
       if (responseType === "text") {
         convertedData = convertedData.toString(responseEncoding);
@@ -72008,20 +72505,20 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
         status: 200,
         statusText: "OK",
         headers: new AxiosHeaders_default(),
-        config: config2
+        config: config3
       });
     }
     if (supportedProtocols.indexOf(protocol) === -1) {
       return reject(new AxiosError_default(
         "Unsupported protocol " + protocol,
         AxiosError_default.ERR_BAD_REQUEST,
-        config2
+        config3
       ));
     }
-    const headers = AxiosHeaders_default.from(config2.headers).normalize();
+    const headers = AxiosHeaders_default.from(config3.headers).normalize();
     headers.set("User-Agent", "axios/" + VERSION, false);
-    const { onUploadProgress, onDownloadProgress } = config2;
-    const maxRate = config2.maxRate;
+    const { onUploadProgress, onDownloadProgress } = config3;
+    const maxRate = config3.maxRate;
     let maxUploadRate = void 0;
     let maxDownloadRate = void 0;
     if (utils_default.isSpecCompliantForm(data)) {
@@ -72055,15 +72552,15 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
         return reject(new AxiosError_default(
           "Data after transformation must be a string, an ArrayBuffer, a Buffer, or a Stream",
           AxiosError_default.ERR_BAD_REQUEST,
-          config2
+          config3
         ));
       }
       headers.setContentLength(data.length, false);
-      if (config2.maxBodyLength > -1 && data.length > config2.maxBodyLength) {
+      if (config3.maxBodyLength > -1 && data.length > config3.maxBodyLength) {
         return reject(new AxiosError_default(
           "Request body larger than maxBodyLength limit",
           AxiosError_default.ERR_BAD_REQUEST,
-          config2
+          config3
         ));
       }
     }
@@ -72090,9 +72587,9 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       ));
     }
     let auth = void 0;
-    if (config2.auth) {
-      const username = config2.auth.username || "";
-      const password = config2.auth.password || "";
+    if (config3.auth) {
+      const username = config3.auth.username || "";
+      const password = config3.auth.password || "";
       auth = username + ":" + password;
     }
     if (!auth && parsed.username) {
@@ -72101,17 +72598,17 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       auth = urlUsername + ":" + urlPassword;
     }
     auth && headers.delete("authorization");
-    let path19;
+    let path20;
     try {
-      path19 = buildURL(
+      path20 = buildURL(
         parsed.pathname + parsed.search,
-        config2.params,
-        config2.paramsSerializer
+        config3.params,
+        config3.paramsSerializer
       ).replace(/^\?/, "");
     } catch (err) {
       const customErr = new Error(err.message);
-      customErr.config = config2;
-      customErr.url = config2.url;
+      customErr.config = config3;
+      customErr.url = config3.url;
       customErr.exists = true;
       return reject(customErr);
     }
@@ -72121,10 +72618,10 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       false
     );
     const options = {
-      path: path19,
+      path: path20,
       method,
       headers: headers.toJSON(),
-      agents: { http: config2.httpAgent, https: config2.httpsAgent },
+      agents: { http: config3.httpAgent, https: config3.httpsAgent },
       auth,
       protocol,
       family,
@@ -72132,36 +72629,36 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       beforeRedirects: {}
     };
     !utils_default.isUndefined(lookup) && (options.lookup = lookup);
-    if (config2.socketPath) {
-      options.socketPath = config2.socketPath;
+    if (config3.socketPath) {
+      options.socketPath = config3.socketPath;
     } else {
       options.hostname = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
       options.port = parsed.port;
-      setProxy(options, config2.proxy, protocol + "//" + parsed.hostname + (parsed.port ? ":" + parsed.port : "") + options.path);
+      setProxy(options, config3.proxy, protocol + "//" + parsed.hostname + (parsed.port ? ":" + parsed.port : "") + options.path);
     }
     let transport;
     const isHttpsRequest = isHttps.test(options.protocol);
-    options.agent = isHttpsRequest ? config2.httpsAgent : config2.httpAgent;
-    if (config2.transport) {
-      transport = config2.transport;
-    } else if (config2.maxRedirects === 0) {
+    options.agent = isHttpsRequest ? config3.httpsAgent : config3.httpAgent;
+    if (config3.transport) {
+      transport = config3.transport;
+    } else if (config3.maxRedirects === 0) {
       transport = isHttpsRequest ? import_https.default : import_http.default;
     } else {
-      if (config2.maxRedirects) {
-        options.maxRedirects = config2.maxRedirects;
+      if (config3.maxRedirects) {
+        options.maxRedirects = config3.maxRedirects;
       }
-      if (config2.beforeRedirect) {
-        options.beforeRedirects.config = config2.beforeRedirect;
+      if (config3.beforeRedirect) {
+        options.beforeRedirects.config = config3.beforeRedirect;
       }
       transport = isHttpsRequest ? httpsFollow : httpFollow;
     }
-    if (config2.maxBodyLength > -1) {
-      options.maxBodyLength = config2.maxBodyLength;
+    if (config3.maxBodyLength > -1) {
+      options.maxBodyLength = config3.maxBodyLength;
     } else {
       options.maxBodyLength = Infinity;
     }
-    if (config2.insecureHTTPParser) {
-      options.insecureHTTPParser = config2.insecureHTTPParser;
+    if (config3.insecureHTTPParser) {
+      options.insecureHTTPParser = config3.insecureHTTPParser;
     }
     req = transport.request(options, function handleResponse(res) {
       if (req.destroyed) return;
@@ -72182,7 +72679,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       }
       let responseStream = res;
       const lastRequest = res.req || req;
-      if (config2.decompress !== false && res.headers["content-encoding"]) {
+      if (config3.decompress !== false && res.headers["content-encoding"]) {
         if (method === "HEAD" || res.statusCode === 204) {
           delete res.headers["content-encoding"];
         }
@@ -72216,7 +72713,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
         status: res.statusCode,
         statusText: res.statusMessage,
         headers: new AxiosHeaders_default(res.headers),
-        config: config2,
+        config: config3,
         request: lastRequest
       };
       if (responseType === "stream") {
@@ -72228,13 +72725,13 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
         responseStream.on("data", function handleStreamData(chunk) {
           responseBuffer.push(chunk);
           totalResponseBytes += chunk.length;
-          if (config2.maxContentLength > -1 && totalResponseBytes > config2.maxContentLength) {
+          if (config3.maxContentLength > -1 && totalResponseBytes > config3.maxContentLength) {
             rejected = true;
             responseStream.destroy();
             reject(new AxiosError_default(
-              "maxContentLength size of " + config2.maxContentLength + " exceeded",
+              "maxContentLength size of " + config3.maxContentLength + " exceeded",
               AxiosError_default.ERR_BAD_RESPONSE,
-              config2,
+              config3,
               lastRequest
             ));
           }
@@ -72246,7 +72743,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
           const err = new AxiosError_default(
             "stream has been aborted",
             AxiosError_default.ERR_BAD_RESPONSE,
-            config2,
+            config3,
             lastRequest
           );
           responseStream.destroy(err);
@@ -72254,7 +72751,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
         });
         responseStream.on("error", function handleStreamError2(err) {
           if (req.destroyed) return;
-          reject(AxiosError_default.from(err, null, config2, lastRequest));
+          reject(AxiosError_default.from(err, null, config3, lastRequest));
         });
         responseStream.on("end", function handleStreamEnd2() {
           try {
@@ -72267,7 +72764,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
             }
             response.data = responseData;
           } catch (err) {
-            return reject(AxiosError_default.from(err, null, config2, response.request, response));
+            return reject(AxiosError_default.from(err, null, config3, response.request, response));
           }
           settle(resolve7, reject, response);
         });
@@ -72284,33 +72781,33 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       req.destroy(err);
     });
     req.on("error", function handleRequestError(err) {
-      reject(AxiosError_default.from(err, null, config2, req));
+      reject(AxiosError_default.from(err, null, config3, req));
     });
     req.on("socket", function handleRequestSocket(socket) {
       socket.setKeepAlive(true, 1e3 * 60);
     });
-    if (config2.timeout) {
-      const timeout = parseInt(config2.timeout, 10);
+    if (config3.timeout) {
+      const timeout = parseInt(config3.timeout, 10);
       if (Number.isNaN(timeout)) {
         reject(new AxiosError_default(
           "error trying to parse `config.timeout` to int",
           AxiosError_default.ERR_BAD_OPTION_VALUE,
-          config2,
+          config3,
           req
         ));
         return;
       }
       req.setTimeout(timeout, function handleRequestTimeout() {
         if (isDone) return;
-        let timeoutErrorMessage = config2.timeout ? "timeout of " + config2.timeout + "ms exceeded" : "timeout exceeded";
-        const transitional2 = config2.transitional || transitional_default;
-        if (config2.timeoutErrorMessage) {
-          timeoutErrorMessage = config2.timeoutErrorMessage;
+        let timeoutErrorMessage = config3.timeout ? "timeout of " + config3.timeout + "ms exceeded" : "timeout exceeded";
+        const transitional2 = config3.transitional || transitional_default;
+        if (config3.timeoutErrorMessage) {
+          timeoutErrorMessage = config3.timeoutErrorMessage;
         }
         reject(new AxiosError_default(
           timeoutErrorMessage,
           transitional2.clarifyTimeoutError ? AxiosError_default.ETIMEDOUT : AxiosError_default.ECONNABORTED,
-          config2,
+          config3,
           req
         ));
         abort();
@@ -72328,7 +72825,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config2) {
       });
       data.on("close", () => {
         if (!ended && !errored) {
-          abort(new CanceledError_default("Request stream has been aborted", config2, req));
+          abort(new CanceledError_default("Request stream has been aborted", config3, req));
         }
       });
       data.pipe(req);
@@ -72351,10 +72848,10 @@ var isURLSameOrigin_default = platform_default.hasStandardBrowserEnv ? /* @__PUR
 var cookies_default = platform_default.hasStandardBrowserEnv ? (
   // Standard browser envs support document.cookie
   {
-    write(name, value, expires, path19, domain, secure) {
+    write(name, value, expires, path20, domain, secure) {
       const cookie = [name + "=" + encodeURIComponent(value)];
       utils_default.isNumber(expires) && cookie.push("expires=" + new Date(expires).toGMTString());
-      utils_default.isString(path19) && cookie.push("path=" + path19);
+      utils_default.isString(path20) && cookie.push("path=" + path20);
       utils_default.isString(domain) && cookie.push("domain=" + domain);
       secure === true && cookie.push("secure");
       document.cookie = cookie.join("; ");
@@ -72382,8 +72879,8 @@ var cookies_default = platform_default.hasStandardBrowserEnv ? (
 
 // node_modules/axios/lib/core/mergeConfig.js
 var headersToObject = (thing) => thing instanceof AxiosHeaders_default ? { ...thing } : thing;
-function mergeConfig(config1, config2) {
-  config2 = config2 || {};
+function mergeConfig(config1, config22) {
+  config22 = config22 || {};
   const config3 = {};
   function getMergedValue(target, source, prop, caseless) {
     if (utils_default.isPlainObject(target) && utils_default.isPlainObject(source)) {
@@ -72415,7 +72912,7 @@ function mergeConfig(config1, config2) {
     }
   }
   function mergeDirectKeys(a2, b, prop) {
-    if (prop in config2) {
+    if (prop in config22) {
       return getMergedValue(a2, b);
     } else if (prop in config1) {
       return getMergedValue(void 0, a2);
@@ -72452,20 +72949,20 @@ function mergeConfig(config1, config2) {
     validateStatus: mergeDirectKeys,
     headers: (a2, b, prop) => mergeDeepProperties(headersToObject(a2), headersToObject(b), prop, true)
   };
-  utils_default.forEach(Object.keys({ ...config1, ...config2 }), function computeConfigValue(prop) {
+  utils_default.forEach(Object.keys({ ...config1, ...config22 }), function computeConfigValue(prop) {
     const merge2 = mergeMap[prop] || mergeDeepProperties;
-    const configValue = merge2(config1[prop], config2[prop], prop);
+    const configValue = merge2(config1[prop], config22[prop], prop);
     utils_default.isUndefined(configValue) && merge2 !== mergeDirectKeys || (config3[prop] = configValue);
   });
   return config3;
 }
 
 // node_modules/axios/lib/helpers/resolveConfig.js
-var resolveConfig_default = (config2) => {
-  const newConfig = mergeConfig({}, config2);
+var resolveConfig_default = (config3) => {
+  const newConfig = mergeConfig({}, config3);
   let { data, withXSRFToken, xsrfHeaderName, xsrfCookieName, headers, auth } = newConfig;
   newConfig.headers = headers = AxiosHeaders_default.from(headers);
-  newConfig.url = buildURL(buildFullPath(newConfig.baseURL, newConfig.url, newConfig.allowAbsoluteUrls), config2.params, config2.paramsSerializer);
+  newConfig.url = buildURL(buildFullPath(newConfig.baseURL, newConfig.url, newConfig.allowAbsoluteUrls), config3.params, config3.paramsSerializer);
   if (auth) {
     headers.set(
       "Authorization",
@@ -72499,9 +72996,9 @@ var resolveConfig_default = (config2) => {
 
 // node_modules/axios/lib/adapters/xhr.js
 var isXHRAdapterSupported = typeof XMLHttpRequest !== "undefined";
-var xhr_default = isXHRAdapterSupported && function(config2) {
+var xhr_default = isXHRAdapterSupported && function(config3) {
   return new Promise(function dispatchXhrRequest(resolve7, reject) {
-    const _config = resolveConfig_default(config2);
+    const _config = resolveConfig_default(config3);
     let requestData = _config.data;
     const requestHeaders = AxiosHeaders_default.from(_config.headers).normalize();
     let { responseType, onUploadProgress, onDownloadProgress } = _config;
@@ -72530,7 +73027,7 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
         status: request.status,
         statusText: request.statusText,
         headers: responseHeaders,
-        config: config2,
+        config: config3,
         request
       };
       settle(function _resolve(value) {
@@ -72559,12 +73056,12 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
       if (!request) {
         return;
       }
-      reject(new AxiosError_default("Request aborted", AxiosError_default.ECONNABORTED, config2, request));
+      reject(new AxiosError_default("Request aborted", AxiosError_default.ECONNABORTED, config3, request));
       request = null;
     };
     request.onerror = function handleError(event) {
       const msg = event && event.message ? event.message : "Network Error";
-      const err = new AxiosError_default(msg, AxiosError_default.ERR_NETWORK, config2, request);
+      const err = new AxiosError_default(msg, AxiosError_default.ERR_NETWORK, config3, request);
       err.event = event || null;
       reject(err);
       request = null;
@@ -72578,7 +73075,7 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
       reject(new AxiosError_default(
         timeoutErrorMessage,
         transitional2.clarifyTimeoutError ? AxiosError_default.ETIMEDOUT : AxiosError_default.ECONNABORTED,
-        config2,
+        config3,
         request
       ));
       request = null;
@@ -72609,7 +73106,7 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
         if (!request) {
           return;
         }
-        reject(!cancel || cancel.type ? new CanceledError_default(null, config2, request) : cancel);
+        reject(!cancel || cancel.type ? new CanceledError_default(null, config3, request) : cancel);
         request.abort();
         request = null;
       };
@@ -72620,7 +73117,7 @@ var xhr_default = isXHRAdapterSupported && function(config2) {
     }
     const protocol = parseProtocol(_config.url);
     if (protocol && platform_default.protocols.indexOf(protocol) === -1) {
-      reject(new AxiosError_default("Unsupported protocol " + protocol + ":", AxiosError_default.ERR_BAD_REQUEST, config2));
+      reject(new AxiosError_default("Unsupported protocol " + protocol + ":", AxiosError_default.ERR_BAD_REQUEST, config3));
       return;
     }
     request.send(requestData || null);
@@ -72758,11 +73255,11 @@ var test = (fn, ...args) => {
     return false;
   }
 };
-var factory = (env3) => {
-  env3 = utils_default.merge.call({
+var factory = (env4) => {
+  env4 = utils_default.merge.call({
     skipUndefined: true
-  }, globalFetchAPI, env3);
-  const { fetch: envFetch, Request, Response } = env3;
+  }, globalFetchAPI, env4);
+  const { fetch: envFetch, Request, Response } = env4;
   const isFetchSupported = envFetch ? isFunction2(envFetch) : typeof fetch === "function";
   const isRequestSupported = isFunction2(Request);
   const isResponseSupported = isFunction2(Response);
@@ -72789,12 +73286,12 @@ var factory = (env3) => {
   };
   isFetchSupported && (() => {
     ["text", "arrayBuffer", "blob", "formData", "stream"].forEach((type) => {
-      !resolvers[type] && (resolvers[type] = (res, config2) => {
+      !resolvers[type] && (resolvers[type] = (res, config3) => {
         let method = res && res[type];
         if (method) {
           return method.call(res);
         }
-        throw new AxiosError_default(`Response type '${type}' is not supported`, AxiosError_default.ERR_NOT_SUPPORT, config2);
+        throw new AxiosError_default(`Response type '${type}' is not supported`, AxiosError_default.ERR_NOT_SUPPORT, config3);
       });
     });
   })();
@@ -72826,7 +73323,7 @@ var factory = (env3) => {
     const length = utils_default.toFiniteNumber(headers.getContentLength());
     return length == null ? getBodyLength(body) : length;
   };
-  return async (config2) => {
+  return async (config3) => {
     let {
       url: url2,
       method,
@@ -72840,7 +73337,7 @@ var factory = (env3) => {
       headers,
       withCredentials = "same-origin",
       fetchOptions
-    } = resolveConfig_default(config2);
+    } = resolveConfig_default(config3);
     let _fetch = envFetch || fetch;
     responseType = responseType ? (responseType + "").toLowerCase() : "text";
     let composedSignal = composeSignals_default([signal, cancelToken && cancelToken.toAbortSignal()], timeout);
@@ -72903,7 +73400,7 @@ var factory = (env3) => {
         );
       }
       responseType = responseType || "text";
-      let responseData = await resolvers[utils_default.findKey(resolvers, responseType) || "text"](response, config2);
+      let responseData = await resolvers[utils_default.findKey(resolvers, responseType) || "text"](response, config3);
       !isStreamResponse && unsubscribe && unsubscribe();
       return await new Promise((resolve7, reject) => {
         settle(resolve7, reject, {
@@ -72911,7 +73408,7 @@ var factory = (env3) => {
           headers: AxiosHeaders_default.from(response.headers),
           status: response.status,
           statusText: response.statusText,
-          config: config2,
+          config: config3,
           request
         });
       });
@@ -72919,20 +73416,20 @@ var factory = (env3) => {
       unsubscribe && unsubscribe();
       if (err && err.name === "TypeError" && /Load failed|fetch/i.test(err.message)) {
         throw Object.assign(
-          new AxiosError_default("Network Error", AxiosError_default.ERR_NETWORK, config2, request),
+          new AxiosError_default("Network Error", AxiosError_default.ERR_NETWORK, config3, request),
           {
             cause: err.cause || err
           }
         );
       }
-      throw AxiosError_default.from(err, err && err.code, config2, request);
+      throw AxiosError_default.from(err, err && err.code, config3, request);
     }
   };
 };
 var seedCache = /* @__PURE__ */ new Map();
-var getFetch = (config2) => {
-  let env3 = config2 ? config2.env : {};
-  const { fetch: fetch2, Request, Response } = env3;
+var getFetch = (config3) => {
+  let env4 = config3 ? config3.env : {};
+  const { fetch: fetch2, Request, Response } = env4;
   const seeds = [
     Request,
     Response,
@@ -72942,7 +73439,7 @@ var getFetch = (config2) => {
   while (i2--) {
     seed = seeds[i2];
     target = map.get(seed);
-    target === void 0 && map.set(seed, target = i2 ? /* @__PURE__ */ new Map() : factory(env3));
+    target === void 0 && map.set(seed, target = i2 ? /* @__PURE__ */ new Map() : factory(env4));
     map = target;
   }
   return target;
@@ -72969,7 +73466,7 @@ utils_default.forEach(knownAdapters, (fn, value) => {
 var renderReason = (reason) => `- ${reason}`;
 var isResolvedHandle = (adapter2) => utils_default.isFunction(adapter2) || adapter2 === null || adapter2 === false;
 var adapters_default = {
-  getAdapter: (adapters, config2) => {
+  getAdapter: (adapters, config3) => {
     adapters = utils_default.isArray(adapters) ? adapters : [adapters];
     const { length } = adapters;
     let nameOrAdapter;
@@ -72985,7 +73482,7 @@ var adapters_default = {
           throw new AxiosError_default(`Unknown adapter '${id}'`);
         }
       }
-      if (adapter2 && (utils_default.isFunction(adapter2) || (adapter2 = adapter2.get(config2)))) {
+      if (adapter2 && (utils_default.isFunction(adapter2) || (adapter2 = adapter2.get(config3)))) {
         break;
       }
       rejectedReasons[id || "#" + i2] = adapter2;
@@ -73006,41 +73503,41 @@ var adapters_default = {
 };
 
 // node_modules/axios/lib/core/dispatchRequest.js
-function throwIfCancellationRequested(config2) {
-  if (config2.cancelToken) {
-    config2.cancelToken.throwIfRequested();
+function throwIfCancellationRequested(config3) {
+  if (config3.cancelToken) {
+    config3.cancelToken.throwIfRequested();
   }
-  if (config2.signal && config2.signal.aborted) {
-    throw new CanceledError_default(null, config2);
+  if (config3.signal && config3.signal.aborted) {
+    throw new CanceledError_default(null, config3);
   }
 }
-function dispatchRequest(config2) {
-  throwIfCancellationRequested(config2);
-  config2.headers = AxiosHeaders_default.from(config2.headers);
-  config2.data = transformData.call(
-    config2,
-    config2.transformRequest
+function dispatchRequest(config3) {
+  throwIfCancellationRequested(config3);
+  config3.headers = AxiosHeaders_default.from(config3.headers);
+  config3.data = transformData.call(
+    config3,
+    config3.transformRequest
   );
-  if (["post", "put", "patch"].indexOf(config2.method) !== -1) {
-    config2.headers.setContentType("application/x-www-form-urlencoded", false);
+  if (["post", "put", "patch"].indexOf(config3.method) !== -1) {
+    config3.headers.setContentType("application/x-www-form-urlencoded", false);
   }
-  const adapter2 = adapters_default.getAdapter(config2.adapter || defaults_default.adapter, config2);
-  return adapter2(config2).then(function onAdapterResolution(response) {
-    throwIfCancellationRequested(config2);
+  const adapter2 = adapters_default.getAdapter(config3.adapter || defaults_default.adapter, config3);
+  return adapter2(config3).then(function onAdapterResolution(response) {
+    throwIfCancellationRequested(config3);
     response.data = transformData.call(
-      config2,
-      config2.transformResponse,
+      config3,
+      config3.transformResponse,
       response
     );
     response.headers = AxiosHeaders_default.from(response.headers);
     return response;
   }, function onAdapterRejection(reason) {
     if (!isCancel(reason)) {
-      throwIfCancellationRequested(config2);
+      throwIfCancellationRequested(config3);
       if (reason && reason.response) {
         reason.response.data = transformData.call(
-          config2,
-          config2.transformResponse,
+          config3,
+          config3.transformResponse,
           reason.response
         );
         reason.response.headers = AxiosHeaders_default.from(reason.response.headers);
@@ -73059,20 +73556,20 @@ var validators = {};
 });
 var deprecatedWarnings = {};
 validators.transitional = function transitional(validator, version, message) {
-  function formatMessage(opt, desc) {
+  function formatMessage2(opt, desc) {
     return "[Axios v" + VERSION + "] Transitional option '" + opt + "'" + desc + (message ? ". " + message : "");
   }
   return (value, opt, opts) => {
     if (validator === false) {
       throw new AxiosError_default(
-        formatMessage(opt, " has been removed" + (version ? " in " + version : "")),
+        formatMessage2(opt, " has been removed" + (version ? " in " + version : "")),
         AxiosError_default.ERR_DEPRECATED
       );
     }
     if (version && !deprecatedWarnings[opt]) {
       deprecatedWarnings[opt] = true;
       console.warn(
-        formatMessage(
+        formatMessage2(
           opt,
           " has been deprecated since v" + version + " and will be removed in the near future"
         )
@@ -73132,9 +73629,9 @@ var Axios = class {
    *
    * @returns {Promise} The Promise to be fulfilled
    */
-  async request(configOrUrl, config2) {
+  async request(configOrUrl, config3) {
     try {
-      return await this._request(configOrUrl, config2);
+      return await this._request(configOrUrl, config3);
     } catch (err) {
       if (err instanceof Error) {
         let dummy = {};
@@ -73152,15 +73649,15 @@ var Axios = class {
       throw err;
     }
   }
-  _request(configOrUrl, config2) {
+  _request(configOrUrl, config3) {
     if (typeof configOrUrl === "string") {
-      config2 = config2 || {};
-      config2.url = configOrUrl;
+      config3 = config3 || {};
+      config3.url = configOrUrl;
     } else {
-      config2 = configOrUrl || {};
+      config3 = configOrUrl || {};
     }
-    config2 = mergeConfig(this.defaults, config2);
-    const { transitional: transitional2, paramsSerializer, headers } = config2;
+    config3 = mergeConfig(this.defaults, config3);
+    const { transitional: transitional2, paramsSerializer, headers } = config3;
     if (transitional2 !== void 0) {
       validator_default.assertOptions(transitional2, {
         silentJSONParsing: validators2.transitional(validators2.boolean),
@@ -73170,7 +73667,7 @@ var Axios = class {
     }
     if (paramsSerializer != null) {
       if (utils_default.isFunction(paramsSerializer)) {
-        config2.paramsSerializer = {
+        config3.paramsSerializer = {
           serialize: paramsSerializer
         };
       } else {
@@ -73180,20 +73677,20 @@ var Axios = class {
         }, true);
       }
     }
-    if (config2.allowAbsoluteUrls !== void 0) {
+    if (config3.allowAbsoluteUrls !== void 0) {
     } else if (this.defaults.allowAbsoluteUrls !== void 0) {
-      config2.allowAbsoluteUrls = this.defaults.allowAbsoluteUrls;
+      config3.allowAbsoluteUrls = this.defaults.allowAbsoluteUrls;
     } else {
-      config2.allowAbsoluteUrls = true;
+      config3.allowAbsoluteUrls = true;
     }
-    validator_default.assertOptions(config2, {
+    validator_default.assertOptions(config3, {
       baseUrl: validators2.spelling("baseURL"),
       withXsrfToken: validators2.spelling("withXSRFToken")
     }, true);
-    config2.method = (config2.method || this.defaults.method || "get").toLowerCase();
+    config3.method = (config3.method || this.defaults.method || "get").toLowerCase();
     let contextHeaders = headers && utils_default.merge(
       headers.common,
-      headers[config2.method]
+      headers[config3.method]
     );
     headers && utils_default.forEach(
       ["delete", "get", "head", "post", "put", "patch", "common"],
@@ -73201,11 +73698,11 @@ var Axios = class {
         delete headers[method];
       }
     );
-    config2.headers = AxiosHeaders_default.concat(contextHeaders, headers);
+    config3.headers = AxiosHeaders_default.concat(contextHeaders, headers);
     const requestInterceptorChain = [];
     let synchronousRequestInterceptors = true;
     this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
-      if (typeof interceptor.runWhen === "function" && interceptor.runWhen(config2) === false) {
+      if (typeof interceptor.runWhen === "function" && interceptor.runWhen(config3) === false) {
         return;
       }
       synchronousRequestInterceptors = synchronousRequestInterceptors && interceptor.synchronous;
@@ -73223,14 +73720,14 @@ var Axios = class {
       chain.unshift(...requestInterceptorChain);
       chain.push(...responseInterceptorChain);
       len = chain.length;
-      promise = Promise.resolve(config2);
+      promise = Promise.resolve(config3);
       while (i2 < len) {
         promise = promise.then(chain[i2++], chain[i2++]);
       }
       return promise;
     }
     len = requestInterceptorChain.length;
-    let newConfig = config2;
+    let newConfig = config3;
     while (i2 < len) {
       const onFulfilled = requestInterceptorChain[i2++];
       const onRejected = requestInterceptorChain[i2++];
@@ -73253,25 +73750,25 @@ var Axios = class {
     }
     return promise;
   }
-  getUri(config2) {
-    config2 = mergeConfig(this.defaults, config2);
-    const fullPath = buildFullPath(config2.baseURL, config2.url, config2.allowAbsoluteUrls);
-    return buildURL(fullPath, config2.params, config2.paramsSerializer);
+  getUri(config3) {
+    config3 = mergeConfig(this.defaults, config3);
+    const fullPath = buildFullPath(config3.baseURL, config3.url, config3.allowAbsoluteUrls);
+    return buildURL(fullPath, config3.params, config3.paramsSerializer);
   }
 };
 utils_default.forEach(["delete", "get", "head", "options"], function forEachMethodNoData(method) {
-  Axios.prototype[method] = function(url2, config2) {
-    return this.request(mergeConfig(config2 || {}, {
+  Axios.prototype[method] = function(url2, config3) {
+    return this.request(mergeConfig(config3 || {}, {
       method,
       url: url2,
-      data: (config2 || {}).data
+      data: (config3 || {}).data
     }));
   };
 });
 utils_default.forEach(["post", "put", "patch"], function forEachMethodWithData(method) {
   function generateHTTPMethod(isForm) {
-    return function httpMethod(url2, data, config2) {
-      return this.request(mergeConfig(config2 || {}, {
+    return function httpMethod(url2, data, config3) {
+      return this.request(mergeConfig(config3 || {}, {
         method,
         headers: isForm ? {
           "Content-Type": "multipart/form-data"
@@ -73316,11 +73813,11 @@ var CancelToken = class _CancelToken {
       };
       return promise;
     };
-    executor(function cancel(message, config2, request) {
+    executor(function cancel(message, config3, request) {
       if (token.reason) {
         return;
       }
-      token.reason = new CanceledError_default(message, config2, request);
+      token.reason = new CanceledError_default(message, config3, request);
       resolvePromise(token.reason);
     });
   }
@@ -73524,8 +74021,8 @@ var {
 var vscode2 = __toESM(require("vscode"));
 
 // src/core/utils.ts
-var fs = __toESM(require_lib());
-var path7 = __toESM(require("path"));
+var fs2 = __toESM(require_lib());
+var path8 = __toESM(require("path"));
 
 // node_modules/fast-xml-parser/src/util.js
 var nameStartChar = ":A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD";
@@ -74904,9 +75401,9 @@ var XMLParser = class {
     this.options = buildOptions(options);
   }
   /**
-   * Parse XML dats to JS object 
-   * @param {string|Uint8Array} xmlData 
-   * @param {boolean|Object} validationOption 
+   * Parse XML dats to JS object
+   * @param {string|Uint8Array} xmlData
+   * @param {boolean|Object} validationOption
    */
   parse(xmlData, validationOption) {
     if (typeof xmlData !== "string" && xmlData.toString) {
@@ -74929,8 +75426,8 @@ var XMLParser = class {
   }
   /**
    * Add Entity which is not by default supported by this library
-   * @param {string} key 
-   * @param {string} value 
+   * @param {string} key
+   * @param {string} value
    */
   addEntity(key, value) {
     if (value.indexOf("&") !== -1) {
@@ -74946,10 +75443,10 @@ var XMLParser = class {
   /**
    * Returns a Symbol that can be used to access the metadata
    * property on a node.
-   * 
+   *
    * If Symbol is not available in the environment, an ordinary property is used
    * and the name of the property is here returned.
-   * 
+   *
    * The XMLMetaData property is only present when `captureMetaData`
    * is true in the options.
    */
@@ -79053,12 +79550,12 @@ var PathBase = class {
   /**
    * Get the Path object referenced by the string path, resolved from this Path
    */
-  resolve(path19) {
-    if (!path19) {
+  resolve(path20) {
+    if (!path20) {
       return this;
     }
-    const rootPath = this.getRootString(path19);
-    const dir = path19.substring(rootPath.length);
+    const rootPath = this.getRootString(path20);
+    const dir = path20.substring(rootPath.length);
     const dirParts = dir.split(this.splitSep);
     const result = rootPath ? this.getRoot(rootPath).#resolveParts(dirParts) : this.#resolveParts(dirParts);
     return result;
@@ -79810,8 +80307,8 @@ var PathWin32 = class _PathWin32 extends PathBase {
   /**
    * @internal
    */
-  getRootString(path19) {
-    return import_node_path6.win32.parse(path19).root;
+  getRootString(path20) {
+    return import_node_path6.win32.parse(path20).root;
   }
   /**
    * @internal
@@ -79857,8 +80354,8 @@ var PathPosix = class _PathPosix extends PathBase {
   /**
    * @internal
    */
-  getRootString(path19) {
-    return path19.startsWith("/") ? "/" : "";
+  getRootString(path20) {
+    return path20.startsWith("/") ? "/" : "";
   }
   /**
    * @internal
@@ -79907,8 +80404,8 @@ var PathScurryBase = class {
    *
    * @internal
    */
-  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs13 = defaultFS } = {}) {
-    this.#fs = fsFromOption(fs13);
+  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs14 = defaultFS } = {}) {
+    this.#fs = fsFromOption(fs14);
     if (cwd instanceof URL || cwd.startsWith("file://")) {
       cwd = (0, import_node_url3.fileURLToPath)(cwd);
     }
@@ -79947,11 +80444,11 @@ var PathScurryBase = class {
   /**
    * Get the depth of a provided path, string, or the cwd
    */
-  depth(path19 = this.cwd) {
-    if (typeof path19 === "string") {
-      path19 = this.cwd.resolve(path19);
+  depth(path20 = this.cwd) {
+    if (typeof path20 === "string") {
+      path20 = this.cwd.resolve(path20);
     }
-    return path19.depth();
+    return path20.depth();
   }
   /**
    * Return the cache of child entries.  Exposed so subclasses can create
@@ -80438,9 +80935,9 @@ var PathScurryBase = class {
     process10();
     return results;
   }
-  chdir(path19 = this.cwd) {
+  chdir(path20 = this.cwd) {
     const oldCwd = this.cwd;
-    this.cwd = typeof path19 === "string" ? this.cwd.resolve(path19) : path19;
+    this.cwd = typeof path20 === "string" ? this.cwd.resolve(path20) : path20;
     this.cwd[setAsCwd](oldCwd);
   }
 };
@@ -80466,8 +80963,8 @@ var PathScurryWin32 = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs13) {
-    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs13 });
+  newRoot(fs14) {
+    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs14 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -80495,8 +80992,8 @@ var PathScurryPosix = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs13) {
-    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs13 });
+  newRoot(fs14) {
+    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs14 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -80796,8 +81293,8 @@ var MatchRecord = class {
   }
   // match, absolute, ifdir
   entries() {
-    return [...this.store.entries()].map(([path19, n2]) => [
-      path19,
+    return [...this.store.entries()].map(([path20, n2]) => [
+      path20,
       !!(n2 & 2),
       !!(n2 & 1)
     ]);
@@ -81002,9 +81499,9 @@ var GlobUtil = class {
   signal;
   maxDepth;
   includeChildMatches;
-  constructor(patterns, path19, opts) {
+  constructor(patterns, path20, opts) {
     this.patterns = patterns;
-    this.path = path19;
+    this.path = path20;
     this.opts = opts;
     this.#sep = !opts.posix && opts.platform === "win32" ? "\\" : "/";
     this.includeChildMatches = opts.includeChildMatches !== false;
@@ -81023,11 +81520,11 @@ var GlobUtil = class {
       });
     }
   }
-  #ignored(path19) {
-    return this.seen.has(path19) || !!this.#ignore?.ignored?.(path19);
+  #ignored(path20) {
+    return this.seen.has(path20) || !!this.#ignore?.ignored?.(path20);
   }
-  #childrenIgnored(path19) {
-    return !!this.#ignore?.childrenIgnored?.(path19);
+  #childrenIgnored(path20) {
+    return !!this.#ignore?.childrenIgnored?.(path20);
   }
   // backpressure mechanism
   pause() {
@@ -81242,8 +81739,8 @@ var GlobUtil = class {
 };
 var GlobWalker = class extends GlobUtil {
   matches = /* @__PURE__ */ new Set();
-  constructor(patterns, path19, opts) {
-    super(patterns, path19, opts);
+  constructor(patterns, path20, opts) {
+    super(patterns, path20, opts);
   }
   matchEmit(e) {
     this.matches.add(e);
@@ -81280,8 +81777,8 @@ var GlobWalker = class extends GlobUtil {
 };
 var GlobStream = class extends GlobUtil {
   results;
-  constructor(patterns, path19, opts) {
-    super(patterns, path19, opts);
+  constructor(patterns, path20, opts) {
+    super(patterns, path20, opts);
     this.results = new Minipass({
       signal: this.signal,
       objectMode: true
@@ -81574,18 +82071,63 @@ var glob = Object.assign(glob_, {
 });
 glob.glob = glob;
 
+// src/i18n.ts
+var fs = __toESM(require("fs"));
+var path7 = __toESM(require("path"));
+var nls = __toESM(require_main());
+var baseLocalize = nls.config({ messageFormat: nls.MessageFormat.file })();
+var cachedBundle = null;
+var bundleLoadAttempted = false;
+function ensureBundleLoaded() {
+  if (bundleLoadAttempted) {
+    return;
+  }
+  bundleLoadAttempted = true;
+  const bundlePath = path7.join(__dirname, "..", "i18n", "extension.i18n.json");
+  try {
+    let contents = fs.readFileSync(bundlePath, "utf8");
+    if (contents.charCodeAt(0) === 65279) {
+      contents = contents.slice(1);
+    }
+    cachedBundle = JSON.parse(contents);
+  } catch (err) {
+    console.warn("[UAV][i18n] Unable to load fallback bundle:", err);
+    cachedBundle = {};
+  }
+}
+function formatMessage(template, args) {
+  return template.replace(/{(\d+)}/g, (match3, indexRaw) => {
+    const index = Number(indexRaw);
+    if (Number.isNaN(index)) {
+      return match3;
+    }
+    const value = args[index];
+    return value === void 0 ? match3 : String(value);
+  });
+}
+function localize(key, defaultValue, ...args) {
+  const result = baseLocalize(key, defaultValue, ...args);
+  const formattedDefault = formatMessage(defaultValue, args);
+  if (result !== defaultValue && result !== formattedDefault) {
+    return result;
+  }
+  ensureBundleLoaded();
+  const template = cachedBundle?.[key];
+  if (!template) {
+    console.warn(`[UAV][i18n] Clave no encontrada en bundle: ${key}`);
+    return formattedDefault;
+  }
+  return formatMessage(template, args);
+}
+
 // src/core/utils.ts
 var _ctx;
 function setExtensionContext(ctx) {
-  console.log("[UAV][setExtensionContext] ExtensionContext recibido:", !!ctx);
-  console.log("[UAV][setExtensionContext] globalStorageUri:", ctx?.globalStorageUri?.fsPath);
   _ctx = ctx;
 }
 var globalChannel = null;
 var processHandlersRegistered = false;
-var ignoredUnhandledPatterns = [
-  /CreateEmbeddingSupplier/i
-];
+var ignoredUnhandledPatterns = [/CreateEmbeddingSupplier/i];
 var ANSI_ESCAPE_REGEX = /\x1B\[[0-?]*[ -/]*[@-~]/g;
 function parseSfJson(output) {
   const text2 = (output || "").trim();
@@ -81612,18 +82154,19 @@ function shouldIgnoreUnhandled(reason) {
 }
 function getGlobalChannel() {
   if (!globalChannel) {
-    globalChannel = vscode.window.createOutputChannel("Unified Apex Validator");
+    const channelName = localize("channel.uav", "Unified Apex Validator");
+    globalChannel = vscode.window.createOutputChannel(channelName);
     globalChannel.show(true);
   }
   return globalChannel;
 }
 function getStorageRoot() {
-  const base = _ctx?.globalStorageUri?.fsPath || path7.resolve(__dirname, "..", "..");
-  const dir = path7.join(base, ".uav");
+  const base = _ctx?.globalStorageUri?.fsPath || path8.resolve(__dirname, "..", "..");
+  const dir = path8.join(base, ".uav");
   try {
-    fs.ensureDirSync(dir);
+    fs2.ensureDirSync(dir);
   } catch (err) {
-    console.error("[UAV][getStorageRoot] \u274C Error creando directorio", err);
+    console.error(localize("log.utils.storageRootError", "[UAV][getStorageRoot] Error creating directory"), err);
   }
   return dir;
 }
@@ -81631,26 +82174,26 @@ var Logger = class {
   logPath;
   outputChannel;
   prefix;
-  constructor(prefix, autoShow = false, channelName = "Unified Apex Validator") {
+  constructor(prefix, autoShow = false, channelName = localize("channel.uav", "Unified Apex Validator")) {
     this.prefix = prefix;
     const storageRoot = getStorageRoot();
-    console.log(`[UAV][Logger] Creando logger para ${prefix} en ${storageRoot}`);
-    const logDir = path7.join(storageRoot, "logs");
+    console.log(localize("log.utils.loggerCreating", "[UAV][Logger] Creating logger for {0} at {1}", prefix, storageRoot));
+    const logDir = path8.join(storageRoot, "logs");
     try {
-      fs.ensureDirSync(logDir);
+      fs2.ensureDirSync(logDir);
     } catch (err) {
-      console.error("[UAV][Logger] \u274C Error creando carpeta de logs:", err);
+      console.error(localize("log.utils.loggerLogDirError", "[UAV][Logger] Error creating log directory:"), err);
     }
-    this.logPath = path7.join(logDir, `${prefix}.log`);
+    this.logPath = path8.join(logDir, `${prefix}.log`);
     this.outputChannel = getGlobalChannel();
-    if (!fs.existsSync(this.logPath)) {
-      fs.writeFileSync(this.logPath, "\uFEFF", { encoding: "utf8" });
+    if (!fs2.existsSync(this.logPath)) {
+      fs2.writeFileSync(this.logPath, "\uFEFF", { encoding: "utf8" });
     }
     if (autoShow) {
       this.outputChannel.show(true);
-      console.log(`[UAV][Logger] Mostrando canal: ${channelName}`);
+      console.log(localize("log.utils.loggerShowingChannel", "[UAV][Logger] Showing channel: {0}", channelName));
     }
-    console.log(`[UAV][Logger] logPath=${this.logPath}`);
+    console.log(localize("log.utils.loggerPath", "[UAV][Logger] logPath={0}", this.logPath));
     if (!processHandlersRegistered) {
       process.on("uncaughtException", (err) => this.error(`Uncaught Exception: ${err.message}`));
       process.on("unhandledRejection", (reason) => {
@@ -81661,15 +82204,15 @@ var Logger = class {
     }
   }
   clear() {
-    console.log(`[UAV][Logger] Limpiando log: ${this.logPath}`);
-    fs.writeFileSync(this.logPath, "\uFEFF", { encoding: "utf8" });
+    console.log(localize("log.utils.loggerClearing", "[UAV][Logger] Clearing log: {0}", this.logPath));
+    fs2.writeFileSync(this.logPath, "\uFEFF", { encoding: "utf8" });
   }
   write(level, msg) {
     const line = `${(/* @__PURE__ */ new Date()).toISOString()} [${level}] [${this.prefix}] ${msg}`;
     try {
-      fs.appendFileSync(this.logPath, line + "\n", { encoding: "utf8" });
+      fs2.appendFileSync(this.logPath, line + "\n", { encoding: "utf8" });
     } catch (err) {
-      console.error(`[UAV][Logger] \u274C Error escribiendo log ${this.logPath}:`, err);
+      console.error(localize("log.utils.loggerWriteError", "[UAV][Logger] Error writing log {0}:", this.logPath), err);
     }
     this.outputChannel.appendLine(line);
   }
@@ -81691,7 +82234,7 @@ var Logger = class {
 async function parseApexClassesFromPackage(pkgPath, repoDir) {
   const logger6 = new Logger("PackageParser");
   try {
-    const xml = await fs.readFile(pkgPath, "utf8");
+    const xml = await fs2.readFile(pkgPath, "utf8");
     const parser = new XMLParser({ ignoreAttributes: false });
     const json = parser.parse(xml);
     const types2 = json?.Package?.types || [];
@@ -81704,32 +82247,35 @@ async function parseApexClassesFromPackage(pkgPath, repoDir) {
       if (!matches.length) {
         continue;
       }
-      const content = await fs.readFile(matches[0], "utf8");
+      const content = await fs2.readFile(matches[0], "utf8");
       if (/@istest/i.test(content)) {
         testClasses.push(cls);
       } else {
         nonTestClasses.push(cls);
       }
     }
-    logger6.info(`\u{1F9EA} Clases de prueba detectadas (${testClasses.length}): ${testClasses.join(", ") || "Ninguna"}`);
-    logger6.info(`\u{1F4D6} Clases normales detectadas (${nonTestClasses.length}): ${nonTestClasses.join(", ") || "Ninguna"}`);
+    const noneLabel = localize("log.utils.none", "None");
+    const testList = testClasses.length ? testClasses.join(", ") : noneLabel;
+    const nonTestList = nonTestClasses.length ? nonTestClasses.join(", ") : noneLabel;
+    logger6.info(localize("log.utils.testClassesDetected", "Test classes detected ({0}): {1}", testClasses.length, testList));
+    logger6.info(localize("log.utils.nonTestClassesDetected", "Non-test classes detected ({0}): {1}", nonTestClasses.length, nonTestList));
     return { testClasses, nonTestClasses };
   } catch (err) {
-    console.error("[UAV][PackageParser] \u274C Error parseando package.xml:", err);
+    console.error(localize("log.utils.packageParseError", "[UAV][PackageParser] Error parsing package.xml:"), err);
     throw err;
   }
 }
 async function cleanUpFiles(paths, logger6) {
   for (const dir of paths) {
     try {
-      if (await fs.pathExists(dir)) {
-        await fs.emptyDir(dir);
-        logger6?.info(`\u{1F9F9} Carpeta limpiada: ${dir}`);
+      if (await fs2.pathExists(dir)) {
+        await fs2.emptyDir(dir);
+        logger6?.info(localize("log.utils.folderCleaned", "Folder cleaned: {0}", dir));
       } else {
-        logger6?.warn(`\u26A0\uFE0F Carpeta no encontrada: ${dir}`);
+        logger6?.warn(localize("log.utils.folderMissing", "Folder not found: {0}", dir));
       }
     } catch (err) {
-      logger6?.warn(`\u274C No se pudo limpiar ${dir}: ${err.message}`);
+      logger6?.warn(localize("log.utils.folderCleanupFailed", "Unable to clean {0}: {1}", dir, err.message));
     }
   }
 }
@@ -81742,7 +82288,7 @@ async function getDefaultConnectedOrg(logger6) {
     const payload = parseSfJson(stdout) ?? parseSfJson(stderr);
     const result = payload?.result ?? payload;
     if (!result) {
-      logger6?.warn('No se pudo interpretar la salida de "sf org list --json".');
+      logger6?.warn(localize("log.utils.listOrgsParseFailed", 'Could not parse the output of "sf org list --json".'));
       return null;
     }
     const candidates = [];
@@ -81758,11 +82304,11 @@ async function getDefaultConnectedOrg(logger6) {
     }
     const username = typeof selected?.username === "string" ? selected.username.trim() : typeof defaultUsername === "string" ? defaultUsername.trim() : "";
     if (!username) {
-      logger6?.warn("No se detect\xF3 una org con isDefaultUsername en Salesforce CLI.");
+      logger6?.warn(localize("log.utils.noDefaultOrgFlag", "No org with isDefaultUsername was detected in Salesforce CLI."));
       return null;
     }
     const alias = typeof selected?.alias === "string" ? selected.alias.trim() : void 0;
-    logger6?.info(`Se utilizar\xE1 la org por defecto de Salesforce CLI: ${alias || username}.`);
+    logger6?.info(localize("log.utils.usingDefaultOrg", "Using Salesforce CLI default org: {0}.", alias || username));
     return {
       alias: alias || void 0,
       username,
@@ -81771,13 +82317,13 @@ async function getDefaultConnectedOrg(logger6) {
     };
   } catch (err) {
     const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
-    logger6?.warn(`No se pudo obtener la org por defecto desde Salesforce CLI: ${reason}`);
+    logger6?.warn(localize("log.utils.defaultOrgLookupFailed", "Could not obtain the default org from Salesforce CLI: {0}", reason));
     return null;
   }
 }
 function resolveSfCliPath() {
-  const config2 = vscode.workspace.getConfiguration("UnifiedApexValidator");
-  const configured = config2.get("sfCliPath")?.trim();
+  const config3 = vscode.workspace.getConfiguration("UnifiedApexValidator");
+  const configured = config3.get("sfCliPath")?.trim();
   const candidates = [];
   if (configured) candidates.push(configured);
   if (process.platform === "win32") {
@@ -81797,13 +82343,19 @@ function resolveSfCliPath() {
     }
   }
   throw new Error(
-    `No se pudo localizar Salesforce CLI. Revisa UnifiedApexValidator.sfCliPath. Intentos: ${attempts.join("; ")}`
+    localize(
+      "error.utils.sfCliNotFound",
+      "Unable to locate Salesforce CLI. Check UnifiedApexValidator.sfCliPath. Attempts: {0}",
+      attempts.join("; ")
+    )
   );
 }
 async function ensureOrgAliasConnected(alias, logger6) {
   const trimmed = (alias || "").trim();
   if (!trimmed) {
-    vscode.window.showErrorMessage('No se detect\xF3 ninguna org conectada por defecto. Ejecuta "sf org login web" y vuelve a intentarlo.');
+    vscode.window.showErrorMessage(
+      localize("error.utils.noDefaultOrgConnected", 'No default org is connected. Run "sf org login web" and try again.')
+    );
     return false;
   }
   const sfPath = resolveSfCliPath();
@@ -81814,7 +82366,9 @@ async function ensureOrgAliasConnected(alias, logger6) {
       });
       const info = parseSfJson(stdout) ?? parseSfJson(stderr);
       if (!info) {
-        logger6.warn(`No se pudo interpretar la respuesta de Salesforce CLI para la org "${trimmed}".`);
+        logger6.warn(
+          localize("log.utils.orgDisplayParseFailed", 'Could not parse Salesforce CLI response for org "{0}".', trimmed)
+        );
         return false;
       }
       const status = info?.result?.connectedStatus ?? info?.result?.status ?? info?.result?.connected;
@@ -81822,42 +82376,54 @@ async function ensureOrgAliasConnected(alias, logger6) {
       if (isConnected2) {
         return true;
       }
-      const statusLabel = typeof status === "string" ? status : typeof status === "boolean" ? status ? "connected" : "disconnected" : "desconocido";
-      logger6.warn(`Estado de la org "${trimmed}": ${statusLabel}.`);
+      const statusLabel = typeof status === "string" ? status : typeof status === "boolean" ? status ? localize("label.utils.connected", "connected") : localize("label.utils.disconnected", "disconnected") : localize("label.utils.unknown", "unknown");
+      logger6.warn(localize("log.utils.orgStatus", 'Org "{0}" status: {1}.', trimmed, statusLabel));
       return false;
     } catch (err) {
       const parsed = parseSfJson(err?.stdout) ?? parseSfJson(err?.stderr);
       if (parsed?.result?.connectedStatus || parsed?.result?.connected) {
         const status = parsed.result.connectedStatus ?? parsed.result.connected;
         if (typeof status === "string" && status.toLowerCase() === "connected" || status === true) {
-          logger6.info(`Org "${trimmed}" reportada como conectada.`);
+          logger6.info(localize("log.utils.orgReportedConnected", 'Org "{0}" reported as connected.', trimmed));
           return true;
         }
       }
       const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
-      logger6.warn(`No se pudo verificar la org "${trimmed}": ${reason}`);
+      logger6.warn(localize("log.utils.orgVerificationFailed", 'Could not verify org "{0}": {1}', trimmed, reason));
       return false;
     }
   };
   if (await checkAlias()) return true;
-  const answer = await vscode.window.showWarningMessage(
-    `La org con alias "${trimmed}" no aparece conectada en Salesforce CLI. \xBFQuieres iniciar sesion ahora?`,
-    "Conectar ahora",
-    "Cancelar"
+  const connectNowOption = localize("prompt.utils.connectNow", "Connect now");
+  const cancelOption = localize("prompt.utils.cancel", "Cancel");
+  const warningMessage = localize(
+    "warning.utils.orgAliasNotConnected",
+    'The org alias "{0}" is not connected in Salesforce CLI. Do you want to connect now?',
+    trimmed
   );
-  if (answer !== "Conectar ahora") {
-    logger6.warn(`Se cancela la validacion porque la org "${trimmed}" no esta conectada.`);
+  const answer = await vscode.window.showWarningMessage(warningMessage, connectNowOption, cancelOption);
+  if (answer !== connectNowOption) {
+    logger6.warn(
+      localize("log.utils.connectionCancelled", 'Validation cancelled because org "{0}" is not connected.', trimmed)
+    );
     return false;
   }
   try {
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: `Conectando org "${trimmed}"...`,
+        title: localize("progress.utils.connectingOrg", 'Connecting org "{0}"...', trimmed),
+        // Localized string
         cancellable: false
       },
       async () => {
-        logger6.info(`Ejecutando "sf org login web --alias ${trimmed}". Completa el inicio de sesion en el navegador.`);
+        logger6.info(
+          localize(
+            "log.utils.executingOrgLogin",
+            'Running "sf org login web --alias {0}". Complete the sign-in process in your browser.',
+            trimmed
+          )
+        );
         const child = execa(sfPath, ["org", "login", "web", "--alias", trimmed], {
           stdout: "pipe",
           stderr: "pipe",
@@ -81876,16 +82442,26 @@ async function ensureOrgAliasConnected(alias, logger6) {
     );
   } catch (err) {
     const reason = err?.shortMessage || err?.message || String(err);
-    logger6.error(`No se pudo completar el login de la org "${trimmed}": ${reason}`);
-    vscode.window.showErrorMessage(`No se pudo conectar la org "${trimmed}". Revisa el Output de UAV para mas detalles.`);
+    logger6.error(
+      localize("log.utils.orgLoginFailed", 'Could not complete login for org "{0}": {1}', trimmed, reason)
+    );
+    vscode.window.showErrorMessage(
+      localize("error.utils.orgConnectionFailed", 'Failed to connect org "{0}". Check the UAV Output for details.', trimmed)
+    );
     return false;
   }
   if (await checkAlias()) {
-    vscode.window.showInformationMessage(`Org "${trimmed}" conectada correctamente.`);
+    vscode.window.showInformationMessage(
+      localize("info.utils.orgConnected", 'Org "{0}" connected successfully.', trimmed)
+    );
     return true;
   }
   vscode.window.showErrorMessage(
-    `El alias "${trimmed}" sigue sin conexion tras el intento de login. Verifica tus permisos y repite el proceso.`
+    localize(
+      "error.utils.orgStillDisconnected",
+      'Alias "{0}" remains disconnected after the login attempt. Verify your permissions and try again.',
+      trimmed
+    )
   );
   return false;
 }
@@ -81907,13 +82483,13 @@ var IAAnalisis = class {
   domain;
   basePrompt;
   constructor() {
-    const config2 = vscode2.workspace.getConfiguration("UnifiedApexValidator");
-    this.endpoint = config2.get("sfGptEndpoint") ?? "";
-    this.model = config2.get("sfGptModel") ?? "";
-    this.clientId = config2.get("sfClientId") ?? "";
-    this.clientSecret = config2.get("sfClientSecret") ?? "";
-    this.domain = config2.get("sfDomain") ?? "test.salesforce.com";
-    this.basePrompt = config2.get("iaPromptTemplate") ?? "";
+    const config3 = vscode2.workspace.getConfiguration("UnifiedApexValidator");
+    this.endpoint = config3.get("sfGptEndpoint") ?? "";
+    this.model = config3.get("sfGptModel") ?? "";
+    this.clientId = config3.get("sfClientId") ?? "";
+    this.clientSecret = config3.get("sfClientSecret") ?? "";
+    this.domain = config3.get("sfDomain") ?? "test.salesforce.com";
+    this.basePrompt = config3.get("iaPromptTemplate") ?? "";
     this.logger = new Logger("IAAnalisis", true);
   }
   async getAccessToken() {
@@ -81989,7 +82565,7 @@ ${prompt}`;
   }
 };
 function evaluateIaConfig() {
-  const config2 = vscode2.workspace.getConfiguration("UnifiedApexValidator");
+  const config3 = vscode2.workspace.getConfiguration("UnifiedApexValidator");
   const requiredFields = [
     { key: "sfGptEndpoint", label: "sfGptEndpoint" },
     { key: "sfGptModel", label: "sfGptModel" },
@@ -81998,7 +82574,7 @@ function evaluateIaConfig() {
     { key: "iaPromptTemplate", label: "iaPromptTemplate" }
   ];
   const missing = requiredFields.filter(({ key }) => {
-    const value = config2.get(key);
+    const value = config3.get(key);
     return typeof value !== "string" || value.trim().length === 0;
   }).map(({ label }) => label);
   return {
@@ -82167,14 +82743,14 @@ var DependenciesProvider = class {
         return { state: "missing" };
       }
       let pkgPath = entryPath.replace(/dist[\\/].*$/, "package.json");
-      if (!fs2.existsSync(pkgPath)) {
-        pkgPath = path8.join(path8.dirname(entryPath), "package.json");
+      if (!fs3.existsSync(pkgPath)) {
+        pkgPath = path9.join(path9.dirname(entryPath), "package.json");
       }
-      if (!fs2.existsSync(pkgPath)) {
+      if (!fs3.existsSync(pkgPath)) {
         console.warn("[UAV][dependencies] package.json no encontrado para prettier-plugin-apex:", pkgPath);
         return { state: "missing" };
       }
-      const packageJson = JSON.parse(fs2.readFileSync(pkgPath, "utf8"));
+      const packageJson = JSON.parse(fs3.readFileSync(pkgPath, "utf8"));
       const version = packageJson.version;
       if (!version) {
         return { state: "missing" };
@@ -82250,8 +82826,8 @@ function registerDependencyUpdater(context) {
 
 // src/core/uavController.ts
 var vscode7 = __toESM(require("vscode"));
-var path13 = __toESM(require("path"));
-var fs7 = __toESM(require_lib());
+var path14 = __toESM(require("path"));
+var fs8 = __toESM(require_lib());
 
 // node_modules/markdown-it/lib/common/utils.mjs
 var utils_exports2 = {};
@@ -83537,15 +84113,15 @@ function parseLinkTitle(str, start, max, prev_state) {
 
 // node_modules/markdown-it/lib/renderer.mjs
 var default_rules = {};
-default_rules.code_inline = function(tokens, idx, options, env3, slf) {
+default_rules.code_inline = function(tokens, idx, options, env4, slf) {
   const token = tokens[idx];
   return "<code" + slf.renderAttrs(token) + ">" + escapeHtml(token.content) + "</code>";
 };
-default_rules.code_block = function(tokens, idx, options, env3, slf) {
+default_rules.code_block = function(tokens, idx, options, env4, slf) {
   const token = tokens[idx];
   return "<pre" + slf.renderAttrs(token) + "><code>" + escapeHtml(tokens[idx].content) + "</code></pre>\n";
 };
-default_rules.fence = function(tokens, idx, options, env3, slf) {
+default_rules.fence = function(tokens, idx, options, env4, slf) {
   const token = tokens[idx];
   const info = token.info ? unescapeAll(token.info).trim() : "";
   let langName = "";
@@ -83582,9 +84158,9 @@ default_rules.fence = function(tokens, idx, options, env3, slf) {
   return `<pre><code${slf.renderAttrs(token)}>${highlighted}</code></pre>
 `;
 };
-default_rules.image = function(tokens, idx, options, env3, slf) {
+default_rules.image = function(tokens, idx, options, env4, slf) {
   const token = tokens[idx];
-  token.attrs[token.attrIndex("alt")][1] = slf.renderInlineAsText(token.children, options, env3);
+  token.attrs[token.attrIndex("alt")][1] = slf.renderInlineAsText(token.children, options, env4);
   return slf.renderToken(tokens, idx, options);
 };
 default_rules.hardbreak = function(tokens, idx, options) {
@@ -83647,20 +84223,20 @@ Renderer.prototype.renderToken = function renderToken(tokens, idx, options) {
   result += needLf ? ">\n" : ">";
   return result;
 };
-Renderer.prototype.renderInline = function(tokens, options, env3) {
+Renderer.prototype.renderInline = function(tokens, options, env4) {
   let result = "";
   const rules = this.rules;
   for (let i2 = 0, len = tokens.length; i2 < len; i2++) {
     const type = tokens[i2].type;
     if (typeof rules[type] !== "undefined") {
-      result += rules[type](tokens, i2, options, env3, this);
+      result += rules[type](tokens, i2, options, env4, this);
     } else {
       result += this.renderToken(tokens, i2, options);
     }
   }
   return result;
 };
-Renderer.prototype.renderInlineAsText = function(tokens, options, env3) {
+Renderer.prototype.renderInlineAsText = function(tokens, options, env4) {
   let result = "";
   for (let i2 = 0, len = tokens.length; i2 < len; i2++) {
     switch (tokens[i2].type) {
@@ -83668,7 +84244,7 @@ Renderer.prototype.renderInlineAsText = function(tokens, options, env3) {
         result += tokens[i2].content;
         break;
       case "image":
-        result += this.renderInlineAsText(tokens[i2].children, options, env3);
+        result += this.renderInlineAsText(tokens[i2].children, options, env4);
         break;
       case "html_inline":
       case "html_block":
@@ -83683,17 +84259,17 @@ Renderer.prototype.renderInlineAsText = function(tokens, options, env3) {
   }
   return result;
 };
-Renderer.prototype.render = function(tokens, options, env3) {
+Renderer.prototype.render = function(tokens, options, env4) {
   let result = "";
   const rules = this.rules;
   for (let i2 = 0, len = tokens.length; i2 < len; i2++) {
     const type = tokens[i2].type;
     if (type === "inline") {
-      result += this.renderInline(tokens[i2].children, options, env3);
+      result += this.renderInline(tokens[i2].children, options, env4);
     } else if (typeof rules[type] !== "undefined") {
-      result += rules[type](tokens, i2, options, env3, this);
+      result += rules[type](tokens, i2, options, env4, this);
     } else {
-      result += this.renderToken(tokens, i2, options, env3);
+      result += this.renderToken(tokens, i2, options, env4);
     }
   }
   return result;
@@ -83906,9 +84482,9 @@ Token.prototype.attrJoin = function attrJoin(name, value) {
 var token_default = Token;
 
 // node_modules/markdown-it/lib/rules_core/state_core.mjs
-function StateCore(src, md, env3) {
+function StateCore(src, md, env4) {
   this.src = src;
-  this.env = env3;
+  this.env = env4;
   this.tokens = [];
   this.inlineMode = false;
   this.md = md;
@@ -84318,10 +84894,10 @@ Core.prototype.State = state_core_default;
 var parser_core_default = Core;
 
 // node_modules/markdown-it/lib/rules_block/state_block.mjs
-function StateBlock(src, md, env3, tokens) {
+function StateBlock(src, md, env4, tokens) {
   this.src = src;
   this.md = md;
-  this.env = env3;
+  this.env = env4;
   this.tokens = tokens;
   this.bMarks = [];
   this.eMarks = [];
@@ -85662,20 +86238,20 @@ ParserBlock.prototype.tokenize = function(state, startLine, endLine) {
     }
   }
 };
-ParserBlock.prototype.parse = function(src, md, env3, outTokens) {
+ParserBlock.prototype.parse = function(src, md, env4, outTokens) {
   if (!src) {
     return;
   }
-  const state = new this.State(src, md, env3, outTokens);
+  const state = new this.State(src, md, env4, outTokens);
   this.tokenize(state, state.line, state.lineMax);
 };
 ParserBlock.prototype.State = state_block_default;
 var parser_block_default = ParserBlock;
 
 // node_modules/markdown-it/lib/rules_inline/state_inline.mjs
-function StateInline(src, md, env3, outTokens) {
+function StateInline(src, md, env4, outTokens) {
   this.src = src;
-  this.env = env3;
+  this.env = env4;
   this.md = md;
   this.tokens = outTokens;
   this.tokens_meta = Array(outTokens.length);
@@ -86678,8 +87254,8 @@ ParserInline.prototype.tokenize = function(state) {
     state.pushPending();
   }
 };
-ParserInline.prototype.parse = function(str, md, env3, outTokens) {
-  const state = new this.State(str, md, env3, outTokens);
+ParserInline.prototype.parse = function(str, md, env4, outTokens) {
+  const state = new this.State(str, md, env4, outTokens);
   this.tokenize(state);
   const rules = this.ruler2.getRules("");
   const len = rules.length;
@@ -87263,7 +87839,7 @@ var commonmark_default = {
 };
 
 // node_modules/markdown-it/lib/index.mjs
-var config = {
+var config2 = {
   default: default_default,
   zero: zero_default,
   commonmark: commonmark_default
@@ -87333,7 +87909,7 @@ MarkdownIt.prototype.configure = function(presets) {
   const self2 = this;
   if (isString2(presets)) {
     const presetName = presets;
-    presets = config[presetName];
+    presets = config2[presetName];
     if (!presets) {
       throw new Error('Wrong `markdown-it` preset "' + presetName + '", check name');
     }
@@ -87395,51 +87971,65 @@ MarkdownIt.prototype.use = function(plugin) {
   plugin.apply(plugin, args);
   return this;
 };
-MarkdownIt.prototype.parse = function(src, env3) {
+MarkdownIt.prototype.parse = function(src, env4) {
   if (typeof src !== "string") {
     throw new Error("Input data should be a String");
   }
-  const state = new this.core.State(src, this, env3);
+  const state = new this.core.State(src, this, env4);
   this.core.process(state);
   return state.tokens;
 };
-MarkdownIt.prototype.render = function(src, env3) {
-  env3 = env3 || {};
-  return this.renderer.render(this.parse(src, env3), this.options, env3);
+MarkdownIt.prototype.render = function(src, env4) {
+  env4 = env4 || {};
+  return this.renderer.render(this.parse(src, env4), this.options, env4);
 };
-MarkdownIt.prototype.parseInline = function(src, env3) {
-  const state = new this.core.State(src, this, env3);
+MarkdownIt.prototype.parseInline = function(src, env4) {
+  const state = new this.core.State(src, this, env4);
   state.inlineMode = true;
   this.core.process(state);
   return state.tokens;
 };
-MarkdownIt.prototype.renderInline = function(src, env3) {
-  env3 = env3 || {};
-  return this.renderer.render(this.parseInline(src, env3), this.options, env3);
+MarkdownIt.prototype.renderInline = function(src, env4) {
+  env4 = env4 || {};
+  return this.renderer.render(this.parseInline(src, env4), this.options, env4);
 };
 var lib_default = MarkdownIt;
 
 // src/core/validator.ts
 var vscode4 = __toESM(require("vscode"));
-var fs3 = __toESM(require_lib());
-var path9 = __toESM(require("path"));
+var fs4 = __toESM(require_lib());
+var path10 = __toESM(require("path"));
 var logger;
 async function runValidator(uri, progress, repoDir) {
-  console.log("[UAV][Validator] runValidator() inicializado");
+  console.log(localize("log.validator.init", "[UAV][Validator] runValidator() initialized"));
   logger = new Logger("Validator", true);
   try {
     const workspaceFolder = vscode4.workspace.getWorkspaceFolder(uri) || vscode4.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) throw new Error("No se detect\xF3 carpeta de proyecto");
+    if (!workspaceFolder) throw new Error(localize("error.validator.noWorkspace", "No workspace folder detected."));
     const pkgPath = uri.fsPath;
-    progress.report({ message: "Leyendo package.xml..." });
+    progress.report({ message: localize("progress.validator.readingPackage", "Reading package.xml...") });
     const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(pkgPath, repoDir);
-    logger.info(`\u{1F9E9} Clases detectadas: tests=${testClasses.length}, normales=${nonTestClasses.length}`);
+    logger.info(
+      localize(
+        "log.validator.detectedClasses",
+        "Classes detected: tests={0}, non-tests={1}",
+        testClasses.length,
+        nonTestClasses.length
+      )
+    );
     if (!nonTestClasses.length) {
-      logger.warn("\u26A0\uFE0F No se detectaron clases Apex no-test, omitiendo Code Analyzer.");
+      logger.warn(localize("log.validator.noNonTestClasses", "No non-test Apex classes detected; skipping Code Analyzer."));
       return { testClasses, nonTestClasses, codeAnalyzerResults: [], pmdResults: [] };
     }
     const { codeAnalyzerResults, pmdResults } = await runCodeAnalyzer(nonTestClasses, repoDir);
-    logger.info(`\u2705 Code Analyzer completado: ${codeAnalyzerResults.length} violaciones, ${pmdResults.length} duplicaciones.`);
+    logger.info(
+      localize(
+        "log.validator.analyzerSummary",
+        "Code Analyzer completed: {0} violations, {1} duplications.",
+        codeAnalyzerResults.length,
+        pmdResults.length
+      )
+    );
     return {
       testClasses,
       nonTestClasses,
@@ -87447,21 +88037,37 @@ async function runValidator(uri, progress, repoDir) {
       pmdResults
     };
   } catch (err) {
-    logger.error(`\u274C Error en runValidator: ${err.message}`);
+    logger.error(localize("log.validator.error", "Error in runValidator: {0}", err.message));
     return { testClasses: [], nonTestClasses: [], codeAnalyzerResults: [], pmdResults: [] };
   }
 }
 async function runCodeAnalyzer(classes, repoDir) {
-  logger.info(`\u{1F9E0} Analizando ${classes.length} clases con Code Analyzer (PMD + CPD)...`);
+  logger.info(localize("log.validator.analyzingClasses", "Analyzing {0} classes with Code Analyzer (PMD + CPD)...", classes.length));
   const storageRoot = getStorageRoot();
-  const tempDir = path9.join(storageRoot, "temp");
-  await fs3.ensureDir(tempDir);
-  const workspaceRoot = vscode4.workspace.workspaceFolders?.[0]?.uri.fsPath || path9.resolve(repoDir, "../../../..");
-  const embeddedConfig = path9.resolve(__dirname, "resources", "templates", "code-analyzer.yml");
-  const outputFile = path9.join(tempDir, "code_analyzer_output.json");
-  const execLog = path9.join(tempDir, "code_analyzer_exec.log");
-  const targetGlob = path9.join(workspaceRoot, "force-app", "main", "default", "classes", "**", "*.cls");
-  const cmd = ["sf", "code-analyzer", "run", "--workspace", workspaceRoot, "--rule-selector", "pmd:apex", "--rule-selector", "cpd", "--config-file", embeddedConfig, "--target", targetGlob, "--output-file", outputFile];
+  const tempDir = path10.join(storageRoot, "temp");
+  await fs4.ensureDir(tempDir);
+  const workspaceRoot = vscode4.workspace.workspaceFolders?.[0]?.uri.fsPath || path10.resolve(repoDir, "../../../..");
+  const embeddedConfig = path10.resolve(__dirname, "resources", "templates", "code-analyzer.yml");
+  const outputFile = path10.join(tempDir, "code_analyzer_output.json");
+  const execLog = path10.join(tempDir, "code_analyzer_exec.log");
+  const targetGlob = path10.join(workspaceRoot, "force-app", "main", "default", "classes", "**", "*.cls");
+  const cmd = [
+    "sf",
+    "code-analyzer",
+    "run",
+    "--workspace",
+    workspaceRoot,
+    "--rule-selector",
+    "pmd:apex",
+    "--rule-selector",
+    "cpd",
+    "--config-file",
+    embeddedConfig,
+    "--target",
+    targetGlob,
+    "--output-file",
+    outputFile
+  ];
   try {
     const subprocess = execa(cmd[0], cmd.slice(1), {
       cwd: workspaceRoot,
@@ -87471,15 +88077,15 @@ async function runCodeAnalyzer(classes, repoDir) {
       shell: false
     });
     const { all: all3, exitCode } = await subprocess;
-    await fs3.writeFile(execLog, all3 || "(sin salida)", "utf8");
+    await fs4.writeFile(execLog, all3 || localize("log.validator.noOutput", "(no output)"), "utf8");
     if (exitCode !== 0 && exitCode !== void 0) {
-      logger.error(`\u274C Code Analyzer termin\xF3 con c\xF3digo ${exitCode}`);
+      logger.error(localize("log.validator.analyzerExitCode", "Code Analyzer finished with exit code {0}", exitCode));
     }
-    if (!await fs3.pathExists(outputFile)) {
-      logger.warn("\u26A0\uFE0F El Code Analyzer no gener\xF3 el archivo de salida");
+    if (!await fs4.pathExists(outputFile)) {
+      logger.warn(localize("log.validator.outputMissing", "Code Analyzer did not produce an output file."));
       return { codeAnalyzerResults: [], pmdResults: [] };
     }
-    const json = JSON.parse(await fs3.readFile(outputFile, "utf8"));
+    const json = JSON.parse(await fs4.readFile(outputFile, "utf8"));
     const violations = json.violations || json.results || json.runs?.[0]?.results || json.runs?.flatMap((r) => r.results) || [];
     const filtered = await filterAnalyzerFindings(violations, classes);
     const codeAnalyzerResults = filtered.filter((f) => f.tipo === "PMD");
@@ -87489,11 +88095,11 @@ async function runCodeAnalyzer(classes, repoDir) {
       clases: f.archivos,
       codeSnippet: f.codeSnippet
     }));
-    logger.info(`\u{1F3C1} Code Analyzer finalizado: ${filtered.length} hallazgos relevantes.`);
+    logger.info(localize("log.validator.analyzerFindings", "Code Analyzer finished: {0} relevant findings.", filtered.length));
     return { codeAnalyzerResults, pmdResults };
   } catch (err) {
-    logger.error(`\u274C Error ejecutando Code Analyzer: ${err.message}`);
-    await fs3.appendFile(execLog, `
+    logger.error(localize("log.validator.analyzerError", "Error running Code Analyzer: {0}", err.message));
+    await fs4.appendFile(execLog, `
 [ERROR] ${err.stack || err.message}`);
     return { codeAnalyzerResults: [], pmdResults: [] };
   }
@@ -87505,21 +88111,21 @@ async function filterAnalyzerFindings(findings, apexClasses) {
     const locs = f.locations || [];
     if (!Array.isArray(locs) || locs.length === 0) continue;
     const involvedClasses = locs.map(
-      (l) => path9.basename(l.file || "").replace(/\.cls$/, "")
+      (l) => path10.basename(l.file || "").replace(/\.cls$/, "")
     );
     const hasRelevantClass = involvedClasses.some((cls) => apexClasses.includes(cls));
     if (!hasRelevantClass) continue;
     const primary = locs[f.primaryLocationIndex || 0] || locs[0];
     const normalizedPath = (primary.file || "").replace(/\\/g, "/");
-    const baseName = path9.basename(normalizedPath).replace(/(-meta)?\.cls$/, "");
+    const baseName = path10.basename(normalizedPath).replace(/(-meta)?\.cls$/, "");
     if (engine === "pmd") {
       results.push({
         tipo: "PMD",
         clase: baseName,
         linea: primary.startLine || 0,
-        regla: f.rule || "Desconocido",
+        regla: f.rule || localize("log.validator.ruleUnknown", "Unknown"),
         severidad: f.severity || "N/A",
-        descripcion: f.message || "Sin descripci\xF3n",
+        descripcion: f.message || localize("log.validator.descriptionMissing", "No description provided"),
         recurso: Array.isArray(f.resources) && f.resources.length > 0 ? f.resources[0] : null
       });
     } else if (engine === "cpd") {
@@ -87528,11 +88134,11 @@ async function filterAnalyzerFindings(findings, apexClasses) {
         tipo: "CPD",
         clase: baseName,
         regla: f.rule || "DetectCopyPasteForApex",
-        descripcion: f.message || "Duplicaci\xF3n detectada",
+        descripcion: f.message || localize("log.validator.duplicationDetected", "Duplication detected"),
         severidad: f.severity || "N/A",
         lineas: `${primary.startLine}-${primary.endLine}`,
         archivos: locs.map((l) => {
-          const base = path9.basename(l.file);
+          const base = path10.basename(l.file);
           const range2 = l.startLine && l.endLine ? ` (${l.startLine}-${l.endLine})` : "";
           return `${base}${range2}`;
         }).join(",\n "),
@@ -87546,48 +88152,48 @@ async function filterAnalyzerFindings(findings, apexClasses) {
 async function extractCpdSnippet(locations) {
   if (!locations || locations.length === 0) return "";
   const firstLoc = locations[0];
-  const filePath = path9.isAbsolute(firstLoc.file) ? firstLoc.file : path9.join(vscode4.workspace.workspaceFolders?.[0]?.uri.fsPath || "", firstLoc.file);
+  const filePath = path10.isAbsolute(firstLoc.file) ? firstLoc.file : path10.join(vscode4.workspace.workspaceFolders?.[0]?.uri.fsPath || "", firstLoc.file);
   try {
-    const exists = await fs3.pathExists(filePath);
+    const exists = await fs4.pathExists(filePath);
     if (!exists) {
-      logger.warn(`\u26A0\uFE0F Archivo no encontrado para snippet CPD: ${filePath}`);
+      logger.warn(localize("log.validator.cpdFileMissing", "File not found for CPD snippet: {0}", filePath));
       return "";
     }
-    const content = await fs3.readFile(filePath, "utf8");
+    const content = await fs4.readFile(filePath, "utf8");
     const lines = content.split(/\r?\n/);
     const start = Math.max(0, firstLoc.startLine - 1);
     const end = Math.min(lines.length, firstLoc.endLine || lines.length);
     const snippet = lines.slice(start, end).join("\n");
     return snippet.trim();
   } catch (err) {
-    logger.warn(`\u26A0\uFE0F Error al leer fragmento CPD: ${err.message}`);
+    logger.warn(localize("log.validator.cpdSnippetError", "Error reading CPD snippet: {0}", err.message));
     return "";
   }
 }
 
 // src/core/testSuite.ts
-var path10 = __toESM(require("path"));
-var fs4 = __toESM(require_lib());
+var path11 = __toESM(require("path"));
+var fs5 = __toESM(require_lib());
 var TestSuite = class {
   logger;
   sfPath;
   tempDir;
   constructor(workspaceRoot) {
-    this.tempDir = path10.join(workspaceRoot, ".uav", "temp");
+    this.tempDir = path11.join(workspaceRoot, ".uav", "temp");
     this.logger = new Logger("TestSuite", false);
-    this.tempDir = path10.join(getStorageRoot(), "temp");
-    fs4.ensureDirSync(this.tempDir);
+    this.tempDir = path11.join(getStorageRoot(), "temp");
+    fs5.ensureDirSync(this.tempDir);
     this.sfPath = resolveSfCliPath();
   }
   /**
    * Ejecuta un comando Salesforce y devuelve JSON limpio
    */
   async runSfCommand(command, description) {
-    const env3 = { ...process.env, FORCE_COLOR: "0" };
+    const env4 = { ...process.env, FORCE_COLOR: "0" };
     try {
       const child = execa(command[0], command.slice(1), {
         encoding: "utf8",
-        env: env3,
+        env: env4,
         stdout: "pipe",
         stderr: "pipe"
       });
@@ -87606,16 +88212,16 @@ var TestSuite = class {
       }
       const raw = (stdout || stderr || "").trim();
       if (raw) {
-        this.logger.warn(`Warning ${description} devolvio salida no JSON: ${raw}`);
+        this.logger.warn(localize("log.testSuite.nonJsonOutput", "Warning {0} returned non-JSON output: {1}", description, raw));
       }
       return {};
     } catch (err) {
       const parsed = parseSfJson(err?.stdout) ?? parseSfJson(err?.stderr);
       if (parsed) {
-        this.logger.warn(`Warning ${description} finalizo con error pero entrego datos JSON.`);
+        this.logger.warn(localize("log.testSuite.jsonProvidedOnError", "Warning {0} finished with an error but returned JSON data.", description));
         return parsed;
       }
-      this.logger.error(`\u274C Error en ${description}: ${err.shortMessage || err.message}`);
+      this.logger.error(localize("log.testSuite.commandError", "\u274C Error during {0}: {1}", description, err.shortMessage || err.message));
       return {};
     }
   }
@@ -87624,12 +88230,12 @@ var TestSuite = class {
    */
   async executeTests(testClasses, targetOrg) {
     const command = [this.sfPath, "apex", "run", "test", "--json", "--target-org", targetOrg, "--test-level", "RunSpecifiedTests", "--code-coverage", "--class-names", ...testClasses];
-    const result = await this.runSfCommand(command, "ejecucion de pruebas");
+    const result = await this.runSfCommand(command, localize("label.testSuite.runTests", "test execution"));
     const testRunId = result?.result?.testRunId || result?.result?.summary?.testRunId || null;
     if (!testRunId) {
-      this.logger.error("\u274C No se obtuvo testRunId del resultado.");
+      this.logger.error(localize("error.testSuite.noTestRunId", "\u274C The test run did not return a testRunId."));
     } else {
-      this.logger.info(`\u{1F680} TestRun iniciado correctamente (ID: ${testRunId}).`);
+      this.logger.info(localize("log.testSuite.testRunStarted", "\u{1F680} Test run started successfully (ID: {0}).", testRunId));
     }
     return testRunId;
   }
@@ -87637,47 +88243,47 @@ var TestSuite = class {
    * Espera a que el test run finalice
    */
   async waitForTestCompletion(testRunId, targetOrg) {
-    this.logger.info(`\u23F3 Esperando finalizaci\xF3n del testRunId ${testRunId}...`);
+    this.logger.info(localize("log.testSuite.waitingForCompletion", "\u23F3 Waiting for testRunId {0} to complete...", testRunId));
     for (let i2 = 0; i2 < 60; i2++) {
       const command = [this.sfPath, "apex", "get", "test", "--json", "--target-org", targetOrg, "--test-run-id", testRunId];
-      const result = await this.runSfCommand(command, `verificando estado (${i2 + 1}/60)`);
+      const result = await this.runSfCommand(command, localize("label.testSuite.checkingStatus", "checking status ({0}/60)", i2 + 1));
       const summary = result?.result?.summary || {};
-      const outcome = summary.outcome || "Pendiente";
+      const outcome = summary.outcome || localize("label.testSuite.pending", "Pending");
       const ran = Number(summary.testsRan || 0);
       const passing = Number(summary.passing || 0);
       const failing = Number(summary.failing || 0);
       if (ran === passing + failing && ran > 0) {
-        this.logger.info(`\u2705 Ejecuci\xF3n completada para TestRun ${testRunId}.`);
+        this.logger.info(localize("log.testSuite.executionCompleted", "\u2705 Execution completed for testRun {0}.", testRunId));
         return result;
       }
       await new Promise((r) => setTimeout(r, 1e4));
     }
-    this.logger.warn("\u26A0\uFE0F Tiempo de espera agotado. Devolviendo resultado parcial.");
+    this.logger.warn(localize("log.testSuite.waitTimeout", "\u26A0\uFE0F Timeout exceeded. Returning partial result."));
     return {};
   }
   /**
    * Obtiene resultados y cobertura
    */
   async fetchTestResults(testRunId, targetOrg) {
-    const baseFile = path10.join(this.tempDir, `test-result-${testRunId}.json`);
-    const coverageFile = path10.join(this.tempDir, `test-result-${testRunId}-codecoverage.json`);
-    fs4.ensureDirSync(this.tempDir);
-    this.logger.info(`\u{1F4E6} Recuperando resultados del test run ${testRunId}...`);
+    const baseFile = path11.join(this.tempDir, `test-result-${testRunId}.json`);
+    const coverageFile = path11.join(this.tempDir, `test-result-${testRunId}-codecoverage.json`);
+    fs5.ensureDirSync(this.tempDir);
+    this.logger.info(localize("log.testSuite.fetchingResults", "\u{1F4E6} Retrieving test run results for {0}...", testRunId));
     for (let i2 = 0; i2 < 3; i2++) {
       const command = [this.sfPath, "apex", "get", "test", "--json", "--target-org", targetOrg, "--test-run-id", testRunId, "--code-coverage", "--output-dir", this.tempDir];
-      await this.runSfCommand(command, `obtencion cobertura (intento ${i2 + 1})`);
-      if (fs4.existsSync(baseFile)) {
-        const testResult = fs4.readJsonSync(baseFile, { throws: false }) || {};
+      await this.runSfCommand(command, localize("label.testSuite.fetchCoverageAttempt", "fetching coverage (attempt {0})", i2 + 1));
+      if (fs5.existsSync(baseFile)) {
+        const testResult = fs5.readJsonSync(baseFile, { throws: false }) || {};
         const coverageSummary = testResult?.coverage?.coverage || [];
         let coverageDetail = {};
-        if (fs4.existsSync(coverageFile)) {
-          coverageDetail = fs4.readJsonSync(coverageFile, { throws: false }) || {};
+        if (fs5.existsSync(coverageFile)) {
+          coverageDetail = fs5.readJsonSync(coverageFile, { throws: false }) || {};
         }
         return { testResult, coverageSummary, coverageDetail };
       }
       await new Promise((r) => setTimeout(r, 1e4));
     }
-    this.logger.error("\u274C No se pudieron obtener resultados tras varios intentos.");
+    this.logger.error(localize("error.testSuite.resultsAttemptsFailed", "\u274C Could not retrieve results after multiple attempts."));
     return {};
   }
   /**
@@ -87745,30 +88351,30 @@ var TestSuite = class {
    */
   async runTestSuite(testClasses, apexClasses) {
     if (!testClasses?.length) {
-      this.logger.warn("\u26A0\uFE0F No se detectaron clases de prueba en el package.xml.");
-      return { error: "No hay clases test para ejecutar.", coverage_data: [], test_results: [] };
+      this.logger.warn(localize("log.testSuite.noTestClassesInPackage", "\u26A0\uFE0F No test classes were detected in package.xml."));
+      return { error: localize("error.testSuite.noTestClasses", "There are no test classes to run."), coverage_data: [], test_results: [] };
     }
-    this.logger.info(`\u{1F9EA} Ejecutando clases de prueba: ${testClasses.join(", ")}`);
+    this.logger.info(localize("log.testSuite.runningTestClasses", "\u{1F9EA} Running test classes: {0}", testClasses.join(", ")));
     const defaultOrg = await getDefaultConnectedOrg(this.logger);
     if (!defaultOrg) {
-      const message = "No se detect\xF3 una org por defecto conectada en Salesforce CLI.";
+      const message = localize("error.testSuite.noDefaultOrg", "No default org connected in Salesforce CLI.");
       this.logger.error(message);
       return { error: message, coverage_data: [], test_results: [] };
     }
     const targetOrg = defaultOrg.alias || defaultOrg.username;
     const displayOrg = defaultOrg.alias && defaultOrg.alias !== defaultOrg.username ? `${defaultOrg.alias} (${defaultOrg.username})` : defaultOrg.username;
-    this.logger.info(`\u{1F310} Usando la org por defecto: ${displayOrg}.`);
+    this.logger.info(localize("log.testSuite.usingDefaultOrg", "\u{1F310} Using default org: {0}.", displayOrg));
     const testRunId = await this.executeTests(testClasses, targetOrg);
-    if (!testRunId) return { error: "No se pudo iniciar pruebas.", coverage_data: [], test_results: [] };
-    this.logger.info(`\u{1F50D} Monitoreando progreso del testRunId ${testRunId}...`);
+    if (!testRunId) return { error: localize("error.testSuite.testsNotStarted", "Tests could not be started."), coverage_data: [], test_results: [] };
+    this.logger.info(localize("log.testSuite.monitoringProgress", "\u{1F50D} Monitoring progress for testRunId {0}...", testRunId));
     await this.waitForTestCompletion(testRunId, targetOrg);
-    this.logger.info("\u{1F4C8} Ejecuci\xF3n de pruebas finalizada. Obteniendo resultados y cobertura...");
+    this.logger.info(localize("log.testSuite.runCompleted", "\u{1F4C8} Test execution finished. Retrieving results and coverage..."));
     const results = await this.fetchTestResults(testRunId, targetOrg);
     if (!results || Object.keys(results).length === 0) {
-      this.logger.error("\u274C No se pudieron obtener resultados del test run.");
-      return { error: "No se pudo obtener resultados.", coverage_data: [], test_results: [] };
+      this.logger.error(localize("error.testSuite.noResults", "\u274C Could not retrieve test run results."));
+      return { error: localize("error.testSuite.resultsUnavailable", "Results could not be retrieved."), coverage_data: [], test_results: [] };
     }
-    this.logger.info("\u{1F4DD} Procesando datos de cobertura y resultados individuales...");
+    this.logger.info(localize("log.testSuite.processingData", "\u{1F4DD} Processing coverage data and individual results..."));
     const testResult = results.testResult || {};
     const coverageSummary = results.coverageSummary || [];
     const coverageDetail = results.coverageDetail || {};
@@ -87779,63 +88385,166 @@ var TestSuite = class {
     const passed = tests.filter((t) => t.outcome === "Pass").length;
     const failed = tests.filter((t) => t.outcome === "Fail").length;
     const skipped = tests.filter((t) => t.outcome === "Skip").length;
-    this.logger.info(`\u{1F4CB} Resumen: ${passed} pasados, ${failed} fallidos, ${skipped} omitidos, total ${total}.`);
+    this.logger.info(localize("log.testSuite.summary", "\u{1F4CB} Summary: {0} passed, {1} failed, {2} skipped, {3} total.", passed, failed, skipped, total));
     for (const test3 of tests) {
       const statusIcon = test3.outcome === "Pass" ? "\u2705" : test3.outcome === "Fail" ? "\u274C" : "\u26A0\uFE0F";
-      this.logger.info(`${statusIcon} ${test3.class_name}.${test3.method_name} \u2192 ${test3.outcome}`);
+      this.logger.info(localize("log.testSuite.testOutcome", "{0} {1}.{2} \u2192 {3}", statusIcon, test3.class_name, test3.method_name, test3.outcome));
       if (test3.outcome === "Fail" && test3.message) {
-        this.logger.warn(`   \u{1F4AC} Motivo: ${test3.message}`);
+        this.logger.warn(localize("log.testSuite.failureReason", "   \u{1F4AC} Reason: {0}", test3.message));
       }
     }
-    this.logger.info("\u{1F389} Fin de la ejecuci\xF3n de pruebas Apex.");
+    this.logger.info(localize("log.testSuite.testsFinished", "\u{1F389} Apex test execution completed."));
     return { coverage_data: coverage, test_results: tests };
   }
 };
 
 // src/core/reportGenerator.ts
-var fs5 = __toESM(require_lib());
-var path11 = __toESM(require("path"));
+var fs6 = __toESM(require_lib());
+var path12 = __toESM(require("path"));
 var vscode5 = __toESM(require("vscode"));
 var nunjucks = __toESM(require_nunjucks());
 var child_process = __toESM(require("child_process"));
 var logger2 = new Logger("ReportGenerator", false);
+var REPORT_TRANSLATIONS = {
+  es: {
+    "page-title": "Unified Apex Validator Report",
+    "header-title": "Unified Apex Validator Report",
+    "header-subtitle": "Panorama general del estado de calidad y pruebas para tu organizaci\xF3n Salesforce.",
+    "badge-updated": "Actualizado {date}",
+    "search-placeholder": "Filtrar resultados...",
+    "search-aria": "Buscar en el reporte",
+    "search-no-results": "\u26A0\uFE0F Sin coincidencias para la b\xFAsqueda.",
+    "language-selector": "Selector de idioma",
+    "card-issues-title": "\u{1F6A8} Problemas",
+    "card-issues-subtitle": "Reglas que requieren atenci\xF3n",
+    "card-tests-title": "\u{1F9EA} Pruebas ejecutadas",
+    "card-tests-subtitle": "Resultados de clases de prueba",
+    "card-coverage-title": "\u{1F4C9} Cobertura < 75%",
+    "card-coverage-subtitle": "Clases por debajo del umbral",
+    "card-dup-title": "\u{1F4D1} C\xF3digo duplicado",
+    "card-dup-subtitle": "Clases con coincidencias detectadas",
+    "heading-issues": "Problemas Detectados",
+    "heading-coverage": "Cobertura de C\xF3digo",
+    "heading-tests": "Resultados de Pruebas",
+    "heading-dup": "C\xF3digo duplicado",
+    "heading-ai": "\u{1F9E0} An\xE1lisis IA",
+    "column-class": "Clase",
+    "column-line": "L\xEDnea",
+    "column-rule": "Regla",
+    "column-severity": "Severidad",
+    "column-description": "Descripci\xF3n",
+    "column-view-rule": "Ver Regla",
+    "link-open": "\u{1F517} Abrir",
+    "column-total-lines": "L\xEDneas Totales",
+    "column-covered": "Cubiertas",
+    "column-coverage-percent": "Cobertura %",
+    "column-method": "M\xE9todo",
+    "column-result": "Resultado",
+    "column-message": "Mensaje",
+    "column-duplicate-lines": "L\xEDneas duplicadas",
+    "column-snippet": "Fragmento",
+    "column-reference": "Referencia",
+    "empty-no-issues": "\u2705 No se encontraron problemas.",
+    "empty-no-coverage": "\u2139\uFE0F No hay datos de cobertura.",
+    "empty-no-tests": "\u26A0\uFE0F No se ejecutaron pruebas.",
+    "empty-no-duplicates": "\u2705 No se encontraron duplicados.",
+    "empty-no-ai": "\u{1F916} El an\xE1lisis IA fue omitido o no se encontraron resultados.",
+    "pdf-title": "Reporte de Validaciones Salesforce Apex",
+    "pdf-header-title": "Reporte de Validaciones Salesforce Apex"
+  },
+  en: {
+    "page-title": "Unified Apex Validator Report",
+    "header-title": "Unified Apex Validator Report",
+    "header-subtitle": "High-level view of quality and testing status for your Salesforce org.",
+    "badge-updated": "Updated {date}",
+    "search-placeholder": "Filter results...",
+    "search-aria": "Search the report",
+    "search-no-results": "\u26A0\uFE0F No matches for the search.",
+    "language-selector": "Language selector",
+    "card-issues-title": "\u{1F6A8} Issues",
+    "card-issues-subtitle": "Rules that need attention",
+    "card-tests-title": "\u{1F9EA} Tests executed",
+    "card-tests-subtitle": "Test class outcomes",
+    "card-coverage-title": "\u{1F4C9} Coverage < 75%",
+    "card-coverage-subtitle": "Classes below the threshold",
+    "card-dup-title": "\u{1F4D1} Duplicate code",
+    "card-dup-subtitle": "Classes with matches detected",
+    "heading-issues": "Detected Issues",
+    "heading-coverage": "Code Coverage",
+    "heading-tests": "Test Results",
+    "heading-dup": "Duplicate Code",
+    "heading-ai": "\u{1F9E0} AI Analysis",
+    "column-class": "Class",
+    "column-line": "Line",
+    "column-rule": "Rule",
+    "column-severity": "Severity",
+    "column-description": "Description",
+    "column-view-rule": "View Rule",
+    "link-open": "\u{1F517} Open",
+    "column-total-lines": "Total Lines",
+    "column-covered": "Covered",
+    "column-coverage-percent": "Coverage %",
+    "column-method": "Method",
+    "column-result": "Result",
+    "column-message": "Message",
+    "column-duplicate-lines": "Duplicate Lines",
+    "column-snippet": "Snippet",
+    "column-reference": "Reference",
+    "empty-no-issues": "\u2705 No issues found.",
+    "empty-no-coverage": "\u2139\uFE0F No coverage data available.",
+    "empty-no-tests": "\u26A0\uFE0F No tests were executed.",
+    "empty-no-duplicates": "\u2705 No duplicates detected.",
+    "empty-no-ai": "\u{1F916} AI analysis was skipped or returned no results.",
+    "pdf-title": "Salesforce Apex Validation Report",
+    "pdf-header-title": "Salesforce Apex Validation Report"
+  }
+};
 async function generateReport(outputDir, data) {
   try {
-    const config2 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
+    const config3 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
     const workspaceRoot = vscode5.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
-    const outputSetting = config2.get("outputDir")?.trim();
+    const outputSetting = config3.get("outputDir")?.trim();
     if (!outputSetting) {
-      const msg = '\xE2\x9D\u0152 No se ha configurado el par\xC3\xA1metro "UnifiedApexValidator.outputDir" en Settings.';
-      logger2.error(msg);
-      vscode5.window.showErrorMessage(msg);
-      throw new Error(msg);
+      const message = localize(
+        "error.reportGenerator.outputDirMissing",
+        'The "UnifiedApexValidator.outputDir" setting is not configured.'
+      );
+      logger2.error(message);
+      vscode5.window.showErrorMessage(message);
+      throw new Error(message);
     }
-    const finalOutputDir = path11.resolve(outputSetting);
-    await fs5.ensureDir(finalOutputDir);
-    const currentExt = vscode5.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
-    const extensionPath = currentExt?.extensionPath || __dirname;
+    const finalOutputDir = path12.resolve(outputSetting);
+    await fs6.ensureDir(finalOutputDir);
+    const extension = vscode5.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
+    const extensionPath = extension?.extensionPath || __dirname;
     if (!extensionPath) {
-      throw new Error("No se pudo determinar la ruta de la extensi\xC3\xB3n.");
+      throw new Error(localize("error.reportGenerator.extensionPathMissing", "Could not determine the extension path."));
     }
-    let templatePath = path11.join(extensionPath, "dist", "resources", "templates", "reportTemplate.html");
-    if (!fs5.existsSync(templatePath)) {
-      templatePath = path11.join(extensionPath, "src", "resources", "templates", "reportTemplate.html");
+    let templatePath = path12.join(extensionPath, "dist", "resources", "templates", "reportTemplate.html");
+    if (!fs6.existsSync(templatePath)) {
+      templatePath = path12.join(extensionPath, "src", "resources", "templates", "reportTemplate.html");
     }
-    if (!fs5.existsSync(templatePath)) {
-      throw new Error(`No se encontr\xC3\xB3 el template empaquetado ni en dist ni en src (${templatePath})`);
+    if (!fs6.existsSync(templatePath)) {
+      throw new Error(
+        localize("error.reportGenerator.templateNotFound", "Could not find report template at {0}.", templatePath)
+      );
     }
-    const coverageData = (data.testResults?.coverage_data || []).map((c3) => ({
-      ...c3,
-      isLowCoverage: (c3.CoveragePercentageInt ?? 0) < 75
+    const coverageData = (data.testResults?.coverage_data || []).map((entry) => ({
+      ...entry,
+      isLowCoverage: (entry.CoveragePercentageInt ?? 0) < 75
     }));
-    const lowCoverageCount = coverageData.filter((c3) => c3.isLowCoverage).length;
+    const reportLanguageSetting = config3.get("reportLanguage") || "auto";
+    const reportLanguage = resolveReportLanguage(reportLanguageSetting);
+    const reportLabels = REPORT_TRANSLATIONS[reportLanguage];
+    const reportTranslationsJson = JSON.stringify(REPORT_TRANSLATIONS);
+    const lowCoverageCount = coverageData.filter((entry) => entry.isLowCoverage).length;
     const iaFormatted = formatIAResults(data.iaResults || []);
     const duplicatedClasses = /* @__PURE__ */ new Set();
     for (const dup of data.pmdResults || []) {
-      const classes = (dup.clases || "").split(",").map((c3) => c3.trim()).filter((c3) => c3.length > 0);
-      classes.forEach((c3) => duplicatedClasses.add(c3));
+      const names = (dup.clases || "").split(",").map((value) => value.trim()).filter((value) => value.length > 0);
+      names.forEach((value) => duplicatedClasses.add(value));
     }
-    const duplicate_class_count = duplicatedClasses.size;
+    const duplicateClassCount = duplicatedClasses.size;
     const context = {
       apex_results: data.codeAnalyzerResults || [],
       pmd_results: data.pmdResults || [],
@@ -87843,43 +88552,61 @@ async function generateReport(outputDir, data) {
       test_coverage: coverageData,
       low_coverage_count: lowCoverageCount,
       einsteinAnalysis: iaFormatted,
-      duplicate_class_count,
+      duplicate_class_count: duplicateClassCount,
       generatedAt: data?.generatedAt ?? formatGeneratedAt(/* @__PURE__ */ new Date())
     };
-    const env3 = nunjucks.configure(path11.dirname(templatePath), { autoescape: true });
-    const html = env3.render("reportTemplate.html", context);
-    const htmlFilePath = path11.join(finalOutputDir, "reporte_validaciones.html");
-    await fs5.writeFile(htmlFilePath, html, "utf8");
+    const templateContext = {
+      ...context,
+      reportLanguage,
+      reportLanguagePreference: reportLanguageSetting,
+      reportLabels,
+      reportTranslationsJson
+    };
+    const env4 = nunjucks.configure(path12.dirname(templatePath), { autoescape: true });
+    const html = env4.render("reportTemplate.html", templateContext);
+    const htmlFilePath = path12.join(finalOutputDir, "reporte_validaciones.html");
+    await fs6.writeFile(htmlFilePath, html, "utf8");
     let pdfHtmlPath = htmlFilePath;
     let pdfHtmlTempCreated = false;
-    const pdfTemplatePath = path11.join(path11.dirname(templatePath), "reportTemplate_pdf.html");
-    if (fs5.existsSync(pdfTemplatePath)) {
+    const pdfTemplatePath = path12.join(path12.dirname(templatePath), "reportTemplate_pdf.html");
+    if (fs6.existsSync(pdfTemplatePath)) {
       try {
-        const pdfHtml = env3.render("reportTemplate_pdf.html", context);
-        pdfHtmlPath = path11.join(finalOutputDir, "reporte_validaciones_pdf.html");
-        await fs5.writeFile(pdfHtmlPath, pdfHtml, "utf8");
+        const pdfHtml = env4.render("reportTemplate_pdf.html", templateContext);
+        pdfHtmlPath = path12.join(finalOutputDir, "reporte_validaciones_pdf.html");
+        await fs6.writeFile(pdfHtmlPath, pdfHtml, "utf8");
         pdfHtmlTempCreated = true;
       } catch (renderError) {
-        logger2.warn(`No se pudo renderizar el template PDF dedicado: ${renderError.message}. Se usar\xE1 el HTML principal.`);
+        logger2.warn(
+          localize(
+            "log.reportGenerator.pdfTemplateRenderFailed",
+            "Unable to render dedicated PDF template: {0}. Falling back to primary HTML.",
+            renderError.message
+          )
+        );
         pdfHtmlPath = htmlFilePath;
       }
     }
-    const pdfFilePath = path11.join(finalOutputDir, "reporte_validaciones.pdf");
-    const pdfOk = await tryGeneratePdfHybrid(pdfHtmlPath, pdfFilePath, logger2);
+    const pdfFilePath = path12.join(finalOutputDir, "reporte_validaciones.pdf");
+    const pdfGenerated = await tryGeneratePdfHybrid(pdfHtmlPath, pdfFilePath, logger2);
     if (pdfHtmlTempCreated) {
       try {
-        await fs5.remove(pdfHtmlPath);
+        await fs6.remove(pdfHtmlPath);
       } catch {
       }
     }
-    if (!pdfOk) {
-      logger2.warn("No se gener\xF3 PDF (no se encontr\xF3 motor compatible). Se deja solo HTML.");
+    if (!pdfGenerated) {
+      logger2.warn(
+        localize(
+          "log.reportGenerator.pdfNotGenerated",
+          "PDF was not generated because no compatible engine was found. HTML output only."
+        )
+      );
     }
     return { htmlFilePath, pdfFilePath };
   } catch (error) {
-    const msg = `Error generando reporte: ${error.message}`;
-    logger2.error(msg);
-    vscode5.window.showErrorMessage(msg);
+    const message = localize("error.reportGenerator.generateFailed", "Error generating report: {0}", error.message);
+    logger2.error(message);
+    vscode5.window.showErrorMessage(message);
     throw error;
   }
 }
@@ -87887,36 +88614,36 @@ async function tryGeneratePdfHybrid(htmlPath, pdfPath, logger6) {
   try {
     const wkPath = await findWkhtmltopdfPath();
     if (!wkPath) {
-      logger6.warn("\u26A0\uFE0F wkhtmltopdf no encontrado en PATH.");
+      logger6.warn(localize("log.reportGenerator.wkhtmltopdfMissing", "wkhtmltopdf was not found on PATH."));
       return false;
     }
-    logger6.info(`\u{1F9E9} Generando PDF con wkhtmltopdf (${wkPath})...`);
+    logger6.info(localize("log.reportGenerator.wkhtmltopdfStart", "Generating PDF with wkhtmltopdf at {0}...", wkPath));
     await new Promise((resolve7, reject) => {
       child_process.execFile(wkPath, [htmlPath, pdfPath], (err) => err ? reject(err) : resolve7());
     });
-    logger6.info("\u{1F5A8}\uFE0F PDF generado correctamente con wkhtmltopdf.");
+    logger6.info(localize("log.reportGenerator.wkhtmltopdfSuccess", "PDF generated successfully with wkhtmltopdf."));
     return true;
-  } catch (e) {
-    logger6.warn(`\u26A0\uFE0F Error usando wkhtmltopdf: ${e.message}`);
+  } catch (error) {
+    logger6.warn(localize("log.reportGenerator.wkhtmltopdfError", "Error using wkhtmltopdf: {0}", error.message));
+    return false;
   }
-  return false;
 }
 async function findWkhtmltopdfPath() {
   try {
     const cmd = process.platform === "win32" ? "where" : "which";
     const { stdout } = await execa(cmd, ["wkhtmltopdf"]);
     const candidate = stdout.split(/\r?\n/)[0].trim();
-    if (candidate && fs5.existsSync(candidate)) {
+    if (candidate && fs6.existsSync(candidate)) {
       return candidate;
     }
   } catch {
-    logger2.warn(`\xE2\u0161\xA0\xEF\xB8\x8F wkhtmltopdf no encontrado`);
+    logger2.warn(localize("log.reportGenerator.wkhtmltopdfMissing", "wkhtmltopdf was not found on PATH."));
   }
   return null;
 }
 function formatGeneratedAt(date) {
   try {
-    return date.toLocaleString("es-ES", {
+    return date.toLocaleString("en-US", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -87929,64 +88656,102 @@ function formatGeneratedAt(date) {
 }
 function formatIAResults(iaResults) {
   const map = {};
-  for (const r of iaResults) {
-    if (r.Clase) {
-      map[r.Clase] = {
-        resumenHtml: r.resumenHtml || `<p>${r.resumen || "Sin resumen"}</p>`
+  for (const result of iaResults) {
+    if (result.Clase) {
+      map[result.Clase] = {
+        resumenHtml: result.resumenHtml || `<p>${result.resumen || localize("info.reportGenerator.noSummary", "No summary provided.")}</p>`
       };
     }
   }
   return map;
 }
+function resolveReportLanguage(preference) {
+  if (preference === "es" || preference === "en") {
+    return preference;
+  }
+  const editorLanguage = vscode5.env.language?.toLowerCase() ?? "";
+  return editorLanguage.startsWith("es") ? "es" : "en";
+}
 async function generateComparisonReport(outputDir, orgAlias, comparisonResults) {
   try {
-    const config2 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
+    const config3 = vscode5.workspace.getConfiguration("UnifiedApexValidator");
     const workspaceRoot = vscode5.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
     const extension = vscode5.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
     const extensionPath = extension?.extensionPath || __dirname;
-    let templatePath = path11.join(extensionPath, "dist", "resources", "templates", "class_comparison_report.html");
-    if (!fs5.existsSync(templatePath)) {
-      templatePath = path11.join(extensionPath, "src", "resources", "templates", "class_comparison_report.html");
+    let templatePath = path12.join(extensionPath, "dist", "resources", "templates", "class_comparison_report.html");
+    if (!fs6.existsSync(templatePath)) {
+      templatePath = path12.join(extensionPath, "src", "resources", "templates", "class_comparison_report.html");
     }
-    if (!fs5.existsSync(templatePath)) {
-      throw new Error(`No se encontr\xC3\xB3 el template HTML (${templatePath})`);
+    if (!fs6.existsSync(templatePath)) {
+      throw new Error(
+        localize("error.reportGenerator.comparisonTemplateMissing", "Could not find class comparison template at {0}", templatePath)
+      );
     }
-    await fs5.ensureDir(outputDir);
-    const env3 = nunjucks.configure(path11.dirname(templatePath), { autoescape: false });
-    env3.addFilter("tojson", function(value) {
+    await fs6.ensureDir(outputDir);
+    const env4 = nunjucks.configure(path12.dirname(templatePath), { autoescape: false });
+    env4.addFilter("tojson", (value) => {
       try {
-        return JSON.stringify(value || "").replace(/</g, "\\u003c");
+        return JSON.stringify(value || "").replace(/</g, "<");
       } catch {
         return '""';
       }
     });
-    const match_count = comparisonResults.filter((r) => r.Status === "Match").length;
-    const mismatch_count = comparisonResults.filter((r) => r.Status === "Mismatch").length;
-    const not_in_local_count = comparisonResults.filter((r) => r.Status === "Solo en Local").length;
-    const not_in_salesforce_count = comparisonResults.filter((r) => r.Status === "Solo en Org").length;
-    const html = env3.render(path11.basename(templatePath), {
+    const statusMatchLabel = localize("compare.status.match", "Match");
+    const statusMismatchLabel = localize("compare.status.mismatch", "Mismatch");
+    const statusOnlyLocalLabel = localize("compare.status.onlyLocal", "Only in Local");
+    const statusOnlyOrgLabel = localize("compare.status.onlyOrg", "Only in Org");
+    const statusMissingBothLabel = localize("compare.status.missingBoth", "Missing in both");
+    const resolveStatusKey = (status, statusKey) => {
+      if (statusKey) return statusKey;
+      switch (status) {
+        case statusMatchLabel:
+        case "Match":
+          return "match";
+        case statusMismatchLabel:
+        case "Mismatch":
+          return "mismatch";
+        case statusOnlyLocalLabel:
+        case "Solo en Local":
+          return "onlyLocal";
+        case statusOnlyOrgLabel:
+        case "Solo en Org":
+          return "onlyOrg";
+        case statusMissingBothLabel:
+        case "No existe en ninguno":
+          return "missingBoth";
+        default:
+          return "unknown";
+      }
+    };
+    const matchCount = comparisonResults.filter((r) => resolveStatusKey(r.Status, r.StatusKey) === "match").length;
+    const mismatchCount = comparisonResults.filter((r) => resolveStatusKey(r.Status, r.StatusKey) === "mismatch").length;
+    const notInLocalCount = comparisonResults.filter((r) => resolveStatusKey(r.Status, r.StatusKey) === "onlyLocal").length;
+    const notInSalesforceCount = comparisonResults.filter((r) => resolveStatusKey(r.Status, r.StatusKey) === "onlyOrg").length;
+    const html = env4.render(path12.basename(templatePath), {
       results: comparisonResults,
-      match_count,
-      mismatch_count,
-      not_in_local_count,
-      not_in_salesforce_count
+      match_count: matchCount,
+      mismatch_count: mismatchCount,
+      not_in_local_count: notInLocalCount,
+      not_in_salesforce_count: notInSalesforceCount
     });
-    const fileName = `compare_${orgAlias}_${(/* @__PURE__ */ new Date()).getTime()}.html`;
-    const htmlFilePath = path11.join(outputDir, fileName);
-    await fs5.writeFile(htmlFilePath, html, "utf8");
-    vscode5.window.showInformationMessage(`\xF0\u0178\u201C\u0160 Reporte HTML de comparaci\xC3\xB3n generado: ${htmlFilePath}`);
+    const fileName = `compare_${orgAlias}_${Date.now()}.html`;
+    const htmlFilePath = path12.join(outputDir, fileName);
+    await fs6.writeFile(htmlFilePath, html, "utf8");
+    vscode5.window.showInformationMessage(
+      localize("info.reportGenerator.comparisonGenerated", "Comparison HTML report generated: {0}", htmlFilePath)
+    );
     return htmlFilePath;
   } catch (err) {
-    const msg = `\xE2\x9D\u0152 Error generando reporte de comparaci\xC3\xB3n: ${err.message}`;
-    vscode5.window.showErrorMessage(msg);
+    const message = localize("error.reportGenerator.comparisonFailed", "Error generating comparison report: {0}", err.message);
+    vscode5.window.showErrorMessage(message);
     throw err;
   }
 }
 
 // src/core/reportViewer.ts
 var vscode6 = __toESM(require("vscode"));
-var fs6 = __toESM(require("fs"));
-var path12 = __toESM(require("path"));
+var fs7 = __toESM(require("fs"));
+var path13 = __toESM(require("path"));
 function getVSCodeThemeClass() {
   const themeKind = vscode6.window.activeColorTheme.kind;
   switch (themeKind) {
@@ -88002,7 +88767,7 @@ function getVSCodeThemeClass() {
 }
 function showReport(htmlPath, title = "Reporte de Validaci\xF3n Apex") {
   try {
-    if (!fs6.existsSync(htmlPath)) {
+    if (!fs7.existsSync(htmlPath)) {
       vscode6.window.showErrorMessage(`No se encontr\xF3 el archivo: ${htmlPath}`);
       return;
     }
@@ -88013,11 +88778,11 @@ function showReport(htmlPath, title = "Reporte de Validaci\xF3n Apex") {
       {
         enableScripts: true,
         retainContextWhenHidden: true,
-        localResourceRoots: [vscode6.Uri.file(path12.dirname(htmlPath))]
+        localResourceRoots: [vscode6.Uri.file(path13.dirname(htmlPath))]
       }
     );
-    const html = fs6.readFileSync(htmlPath, "utf8");
-    const dirUri = vscode6.Uri.file(path12.dirname(htmlPath));
+    const html = fs7.readFileSync(htmlPath, "utf8");
+    const dirUri = vscode6.Uri.file(path13.dirname(htmlPath));
     const baseUri = panel.webview.asWebviewUri(dirUri);
     const themeClass = getVSCodeThemeClass();
     const content = html.replace(
@@ -88046,48 +88811,49 @@ async function runUAV(uri) {
     const channel = getGlobalChannel();
     if (channel) channel.clear();
     const storageRoot = getStorageRoot();
-    const logDir = path13.join(storageRoot, "logs");
-    const tempDir = path13.join(storageRoot, "temp");
-    await fs7.ensureDir(logDir);
-    await fs7.ensureDir(tempDir);
-    await fs7.emptyDir(tempDir);
-    const mainLog = path13.join(logDir, "Validator.log");
-    if (await fs7.pathExists(mainLog)) await fs7.writeFile(mainLog, "");
-    console.log(`[UAV][Controller] Limpieza previa completada en ${storageRoot}`);
+    const logDir = path14.join(storageRoot, "logs");
+    const tempDir = path14.join(storageRoot, "temp");
+    await fs8.ensureDir(logDir);
+    await fs8.ensureDir(tempDir);
+    await fs8.emptyDir(tempDir);
+    const mainLog = path14.join(logDir, "Validator.log");
+    if (await fs8.pathExists(mainLog)) await fs8.writeFile(mainLog, "");
+    console.log(localize("log.uavController.preCleanupDone", "[UAV][Controller] Pre-run cleanup completed at {0}", storageRoot));
   } catch (err) {
-    console.warn("[UAV][Controller] \u26A0\uFE0F No se pudo limpiar logs/temp antes de la ejecuci\xF3n:", err);
+    console.warn(localize("log.uavController.preCleanupFailed", "[UAV][Controller] \u26A0\uFE0F Could not clean logs/temp before execution."), err);
   }
   const logger6 = new Logger("UAVController", true);
-  logger6.info("\u{1F680} Iniciando ejecuci\xF3n del Unified Apex Validator...");
+  logger6.info(localize("log.uavController.start", "\u{1F680} Starting Unified Apex Validator run..."));
   let tempPackagePath;
   let sourceUri;
   let packageUri;
   await vscode7.window.withProgress(
     {
       location: vscode7.ProgressLocation.Notification,
-      title: "Unified Apex Validator",
+      title: localize("progress.uavController.title", "Unified Apex Validator"),
+      // Localized string
       cancellable: true
     },
     async (progress) => {
       try {
         sourceUri = uri && uri.scheme === "file" ? uri : vscode7.window.activeTextEditor?.document?.uri;
         if (!sourceUri || sourceUri.scheme !== "file") {
-          throw new Error("Selecciona un package.xml o una clase Apex (.cls) dentro del workspace.");
+          throw new Error(localize("error.uavController.selectSource", "Select a package.xml or Apex (.cls) file within the workspace."));
         }
         const workspaceFolder = vscode7.workspace.getWorkspaceFolder(sourceUri) || vscode7.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) throw new Error("No se detect\xF3 carpeta de proyecto");
-        const config2 = vscode7.workspace.getConfiguration("UnifiedApexValidator");
-        let repoDir = config2.get("sfRepositoryDir")?.trim() || "";
+        if (!workspaceFolder) throw new Error(localize("error.uavController.noWorkspace", "No workspace folder detected."));
+        const config3 = vscode7.workspace.getConfiguration("UnifiedApexValidator");
+        let repoDir = config3.get("sfRepositoryDir")?.trim() || "";
         if (!repoDir) {
           repoDir = workspaceFolder.uri.fsPath;
-          logger6.warn("\u26A0\uFE0F sfRepositoryDir no configurado. Usando ra\xEDz del workspace.");
+          logger6.warn(localize("log.uavController.repoDirFallbackWorkspace", "\u26A0\uFE0F sfRepositoryDir not configured. Using workspace root."));
         }
         packageUri = sourceUri;
-        const ext2 = path13.extname(sourceUri.fsPath).toLowerCase();
+        const ext2 = path14.extname(sourceUri.fsPath).toLowerCase();
         if (ext2 === ".cls") {
-          const className = path13.basename(sourceUri.fsPath, ".cls");
-          const tempDirWS = path13.join(workspaceFolder.uri.fsPath, ".uav", "temp");
-          await fs7.ensureDir(tempDirWS);
+          const className = path14.basename(sourceUri.fsPath, ".cls");
+          const tempDirWS = path14.join(workspaceFolder.uri.fsPath, ".uav", "temp");
+          await fs8.ensureDir(tempDirWS);
           const packageXml = [
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<Package xmlns="http://soap.sforce.com/2006/04/metadata">',
@@ -88095,42 +88861,42 @@ async function runUAV(uri) {
             `        <members>${className}</members>`,
             "        <name>ApexClass</name>",
             "    </types>",
-            "    <version>59.0</version>",
+            "    <version>64.0</version>",
             "</Package>",
             ""
           ].join("\n");
-          tempPackagePath = path13.join(tempDirWS, `package-${className}-${Date.now()}.xml`);
-          await fs7.writeFile(tempPackagePath, packageXml, "utf8");
+          tempPackagePath = path14.join(tempDirWS, `package-${className}-${Date.now()}.xml`);
+          await fs8.writeFile(tempPackagePath, packageXml, "utf8");
           packageUri = vscode7.Uri.file(tempPackagePath);
-          logger6.info(`Generado package.xml temporal para la clase ${className}: ${tempPackagePath}`);
+          logger6.info(localize("log.uavController.tempPackageCreated", "Generated temporary package.xml for class {0}: {1}", className, tempPackagePath));
         }
-        if (!fs7.existsSync(path13.join(repoDir, "sfdx-project.json"))) {
-          logger6.warn("\u26A0\uFE0F No se encontr\xF3 sfdx-project.json. Ajustando repoDir al workspace ra\xEDz.");
+        if (!fs8.existsSync(path14.join(repoDir, "sfdx-project.json"))) {
+          logger6.warn(localize("log.uavController.noSfdxProject", "\u26A0\uFE0F sfdx-project.json not found. Falling back to workspace root for repoDir."));
           repoDir = workspaceFolder.uri.fsPath;
         }
         const pkgPath = packageUri.fsPath;
         const storageRoot = getStorageRoot();
-        const tempDir = path13.join(storageRoot, "temp");
-        const logDir = path13.join(storageRoot, "logs");
-        await fs7.ensureDir(tempDir);
-        await fs7.ensureDir(logDir);
-        const content = await fs7.readFile(pkgPath, "utf8");
+        const tempDir = path14.join(storageRoot, "temp");
+        const logDir = path14.join(storageRoot, "logs");
+        await fs8.ensureDir(tempDir);
+        await fs8.ensureDir(logDir);
+        const content = await fs8.readFile(pkgPath, "utf8");
         if (!content.includes("<name>ApexClass</name>")) {
-          const msg = "\u274C No se encontraron clases Apex en este XML.";
+          const msg = localize("error.uavController.noApexClasses", "\u274C No Apex classes were found in this XML.");
           logger6.error(msg);
           throw new Error(msg);
         }
-        progress.report({ message: "Analizando package.xml..." });
-        logger6.info("\u{1F4E6} Analizando package.xml...");
+        progress.report({ message: localize("progress.uavController.analyzingPackage", "Analyzing package.xml...") });
+        logger6.info(localize("log.uavController.analyzingPackage", "\u{1F4E6} Analyzing package.xml..."));
         if (!repoDir) {
-          repoDir = path13.join(workspaceFolder.uri.fsPath, "force-app", "main", "default", "classes");
-          logger6.warn(`\u26A0\uFE0F sfRepositoryDir no configurado. Usando ruta por defecto: ${repoDir}`);
+          repoDir = path14.join(workspaceFolder.uri.fsPath, "force-app", "main", "default", "classes");
+          logger6.warn(localize("log.uavController.repoDirFallbackDefault", "\u26A0\uFE0F sfRepositoryDir not configured. Using default path: {0}", repoDir));
         } else {
-          logger6.info(`\u{1F4C1} Repositorio configurado: ${repoDir}`);
+          logger6.info(localize("log.uavController.repoDirConfigured", "\u{1F4C1} Repository configured: {0}", repoDir));
         }
         const defaultOrg = await getDefaultConnectedOrg(logger6);
         if (!defaultOrg) {
-          const message = 'No se detect\xF3 una org por defecto conectada en Salesforce CLI. Ejecuta "sf org login web" e intenta nuevamente.';
+          const message = localize("error.uavController.noDefaultOrg", 'No default org connected in Salesforce CLI. Run "sf org login web" and try again.');
           logger6.error(message);
           vscode7.window.showErrorMessage(message);
           return;
@@ -88138,38 +88904,38 @@ async function runUAV(uri) {
         const targetOrg = defaultOrg.alias || defaultOrg.username;
         const aliasReady = await ensureOrgAliasConnected(targetOrg, logger6);
         if (!aliasReady) {
-          logger6.warn(`\u26A0\uFE0F Se cancela la ejecuci\xF3n: la org "${targetOrg}" no est\xE1 conectada.`);
+          logger6.warn(localize("log.uavController.orgNotConnected", '\u26A0\uFE0F Execution cancelled: org "{0}" is not connected.', targetOrg));
           return;
         }
         const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(pkgPath, repoDir);
-        logger6.info("\u{1F9E0} Llamando a runValidator...");
+        logger6.info(localize("log.uavController.runValidator", "\u{1F9E0} Invoking runValidator..."));
         const { codeAnalyzerResults, pmdResults } = await runValidator(packageUri, progress, repoDir);
-        progress.report({ message: "Ejecutando pruebas Apex..." });
-        logger6.info("\u{1F9EA} Ejecutando pruebas Apex...");
+        progress.report({ message: localize("progress.uavController.runningTests", "Running Apex tests...") });
+        logger6.info(localize("log.uavController.runningTests", "\u{1F9EA} Executing Apex tests..."));
         const testSuite = new TestSuite(workspaceFolder.uri.fsPath);
         const testResults = await testSuite.runTestSuite(testClasses, nonTestClasses);
-        const skipIASetting = config2.get("skipIAAnalysis") ?? false;
+        const skipIASetting = config3.get("skipIAAnalysis") ?? false;
         const iaStatus = evaluateIaConfig();
         const skipIA = skipIASetting || !iaStatus.ready;
         let iaResults = [];
         if (!skipIA) {
-          const sfGptPrompt = config2.get("iaPromptTemplate") ?? "Analiza la clase {class_name}:\n{truncated_body}";
-          const sfGptMaxChar = config2.get("maxIAClassChars") ?? 25e3;
-          progress.report({ message: "Ejecutando analisis IA..." });
-          logger6.info("Ejecutando analisis de IA con Einstein GPT...");
+          const sfGptPrompt = config3.get("iaPromptTemplate") ?? "Analiza la clase {class_name}:\n{truncated_body}";
+          const sfGptMaxChar = config3.get("maxIAClassChars") ?? 25e3;
+          progress.report({ message: localize("progress.uavController.runningAi", "Running AI analysis...") });
+          logger6.info(localize("log.uavController.runningAi", "Running AI analysis with Einstein GPT..."));
           const ia = new IAAnalisis();
           for (const cls of nonTestClasses) {
-            const clsPath = path13.join(repoDir, "force-app", "main", "default", "classes", `${cls}.cls`);
-            if (!fs7.existsSync(clsPath)) {
-              logger6.warn(`Clase no encontrada: ${clsPath}`);
+            const clsPath = path14.join(repoDir, "force-app", "main", "default", "classes", `${cls}.cls`);
+            if (!fs8.existsSync(clsPath)) {
+              logger6.warn(localize("log.uavController.classMissing", "Class not found: {0}", clsPath));
               continue;
             }
             try {
-              logger6.info(`Enviando clase a IA: ${cls}`);
-              const content2 = await fs7.readFile(clsPath, "utf8");
+              logger6.info(localize("log.uavController.sendingClassToAi", "Sending class to AI: {0}", cls));
+              const content2 = await fs8.readFile(clsPath, "utf8");
               const truncated = content2.length > sfGptMaxChar ? content2.slice(0, sfGptMaxChar) : content2;
               if (content2.length > sfGptMaxChar) {
-                logger6.warn(`Clase ${cls} truncada a ${sfGptMaxChar} caracteres para analisis.`);
+                logger6.warn(localize("log.uavController.classTruncated", "Class {0} truncated to {1} characters for analysis.", cls, sfGptMaxChar));
               }
               const prompt = sfGptPrompt.replace("{class_name}", cls).replace("{truncated_body}", truncated);
               const analysis = await ia.generate(prompt);
@@ -88182,19 +88948,19 @@ async function runUAV(uri) {
               iaResults.push({ Clase: cls, resumenHtml });
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err);
-              logger6.warn(`IA fallo para ${cls}: ${message}`);
+              logger6.warn(localize("log.uavController.aiFailed", "AI analysis failed for {0}: {1}", cls, message));
             }
           }
-          logger6.info(`Analisis IA finalizado - clases procesadas: ${iaResults.length}`);
+          logger6.info(localize("log.uavController.aiCompleted", "AI analysis finished - classes processed: {0}", iaResults.length));
         } else if (skipIASetting) {
-          logger6.info("Analisis IA omitido por configuracion (skipIAAnalysis=true).");
+          logger6.info(localize("log.uavController.aiSkippedSetting", "AI analysis skipped by configuration (skipIAAnalysis=true)."));
         } else {
-          logger6.info(`IA deshabilitada - faltan parametros: ${iaStatus.missing.join(", ")}`);
+          logger6.info(localize("log.uavController.aiDisabledParams", "AI analysis disabled - missing parameters: {0}", iaStatus.missing.join(", ")));
         }
-        progress.report({ message: "Generando reportes..." });
-        logger6.info("\u{1F4CA} Generando reportes...");
-        const outputDir = config2.get("outputDir")?.trim() || path13.join(storageRoot, "output");
-        await fs7.ensureDir(outputDir);
+        progress.report({ message: localize("progress.uavController.generatingReports", "Generating reports...") });
+        logger6.info(localize("log.uavController.generatingReports", "\u{1F4CA} Generating reports..."));
+        const outputDir = config3.get("outputDir")?.trim() || path14.join(storageRoot, "output");
+        await fs8.ensureDir(outputDir);
         await generateReport(
           outputDir,
           {
@@ -88204,36 +88970,37 @@ async function runUAV(uri) {
             iaResults
           }
         );
-        logger6.info(`\u2705 UAV completado. Reporte generado en: ${outputDir}`);
-        vscode7.window.showInformationMessage(`\u2705 UAV completado. Reporte generado en ${outputDir}.`);
-        const htmlReport = path13.join(outputDir, "reporte_validaciones.html");
-        if (fs7.existsSync(htmlReport)) {
-          showReport(htmlReport, "Reporte de Validaci\xF3n Apex");
+        logger6.info(localize("log.uavController.runCompleted", "\u2705 UAV completed. Report saved at: {0}", outputDir));
+        vscode7.window.showInformationMessage(localize("info.uavController.runCompleted", "\u2705 UAV completed. Report generated in {0}.", outputDir));
+        const htmlReport = path14.join(outputDir, "reporte_validaciones.html");
+        if (fs8.existsSync(htmlReport)) {
+          showReport(htmlReport, localize("ui.reportViewer.validationTitle", "Apex Validation Report"));
         } else {
-          logger6.warn(`\u26A0\uFE0F No se encontr\xF3 el reporte HTML en ${htmlReport}`);
+          logger6.warn(localize("log.uavController.reportMissing", "\u26A0\uFE0F HTML report not found at {0}", htmlReport));
         }
-        const keepLogFiles = config2.get("keepLogFiles") ?? false;
+        const keepLogFiles = config3.get("keepLogFiles") ?? false;
         if (!keepLogFiles) {
           await cleanUpFiles([tempDir, logDir], logger6);
-          logger6.info("\u{1F9FC} Archivos temporales y logs eliminados tras ejecuci\xF3n exitosa.");
+          logger6.info(localize("log.uavController.cleanupDone", "\u{1F9FC} Temporary files and logs removed after successful execution."));
         } else {
-          logger6.info("\u2705 Ejecuci\xF3n exitosa. Se conservaron los logs por configuraci\xF3n.");
+          logger6.info(localize("log.uavController.logsKept", "\u2705 Successful execution. Logs kept per configuration."));
         }
       } catch (err) {
-        if (err.message.includes("No se encontraron clases Apex")) {
+        const noApexMessage = localize("error.uavController.noApexClasses", "\u274C No Apex classes were found in this XML.");
+        if (err.message.includes(noApexMessage)) {
           vscode7.window.showWarningMessage(err.message);
           const failedPath = packageUri?.fsPath || sourceUri?.fsPath || "N/A";
-          logger6.warn(`\u26A0\uFE0F UAV finalizado sin ApexClass (${failedPath})`);
+          logger6.warn(localize("log.uavController.noApexInPackage", "\u26A0\uFE0F UAV finished without ApexClass ({0})", failedPath));
         } else {
-          logger6.error(`\u274C Error en proceso UAV: ${err.message}`);
-          vscode7.window.showErrorMessage(`Error en UAV: ${err.message}`);
+          logger6.error(localize("log.uavController.runFailed", "\u274C Error during UAV run: {0}", err.message));
+          vscode7.window.showErrorMessage(localize("error.uavController.runFailed", "Error in UAV: {0}", err.message));
         }
       } finally {
         if (tempPackagePath) {
           try {
-            await fs7.remove(tempPackagePath);
+            await fs8.remove(tempPackagePath);
           } catch (cleanupErr) {
-            logger6.warn(`No se pudo limpiar el package temporal (${tempPackagePath}): ${cleanupErr}`);
+            logger6.warn(localize("log.uavController.tempPackageCleanupFailed", "Could not clean temporary package ({0}): {1}", tempPackagePath, String(cleanupErr)));
           }
         }
       }
@@ -88339,7 +89106,8 @@ var FileItem = class extends vscode7.TreeItem {
     if (clickable) {
       this.command = {
         command: "uav.openFile",
-        title: "Abrir archivo",
+        title: localize("command.openFile.title", "Open file"),
+        // Localized string
         arguments: [vscode7.Uri.file(filePath)]
       };
     }
@@ -88348,8 +89116,8 @@ var FileItem = class extends vscode7.TreeItem {
 
 // src/core/compareController.ts
 var vscode8 = __toESM(require("vscode"));
-var path14 = __toESM(require("path"));
-var fs8 = __toESM(require_lib());
+var path15 = __toESM(require("path"));
+var fs9 = __toESM(require_lib());
 
 // node_modules/diff/libesm/diff/base.js
 var Diff = class {
@@ -88451,16 +89219,16 @@ var Diff = class {
       }
     }
   }
-  addToPath(path19, added, removed, oldPosInc, options) {
-    const last = path19.lastComponent;
+  addToPath(path20, added, removed, oldPosInc, options) {
+    const last = path20.lastComponent;
     if (last && !options.oneChangePerToken && last.added === added && last.removed === removed) {
       return {
-        oldPos: path19.oldPos + oldPosInc,
+        oldPos: path20.oldPos + oldPosInc,
         lastComponent: { count: last.count + 1, added, removed, previousComponent: last.previousComponent }
       };
     } else {
       return {
-        oldPos: path19.oldPos + oldPosInc,
+        oldPos: path20.oldPos + oldPosInc,
         lastComponent: { count: 1, added, removed, previousComponent: last }
       };
     }
@@ -88610,14 +89378,14 @@ async function fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, lo
   if (!classNames.length) {
     return retrievedNames;
   }
-  await fs8.ensureDir(fallbackDir);
-  await fs8.emptyDir(fallbackDir);
+  await fs9.ensureDir(fallbackDir);
+  await fs9.emptyDir(fallbackDir);
   const chunkSize = 100;
   for (let i2 = 0; i2 < classNames.length; i2 += chunkSize) {
     const chunk = classNames.slice(i2, i2 + chunkSize);
     const inClause = chunk.map((name) => `'${name.replace(/'/g, "\\'")}'`).join(", ");
     const query = `SELECT Name, Body FROM ApexClass WHERE Name IN (${inClause})`;
-    logger6.info(`\u{1FA84} Consulta fallback (Tooling API): ${query}`);
+    logger6.info(localize("log.compareController.fallbackQuery", "\u{1FA84} Fallback query (Tooling API): {0}", query));
     try {
       const { stdout } = await execa(
         "sf",
@@ -88627,93 +89395,94 @@ async function fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, lo
       const parsed = JSON.parse(stdout);
       const records = parsed?.result?.records;
       if (!Array.isArray(records) || records.length === 0) {
-        logger6.warn("\u26A0\uFE0F Fallback sin resultados para este bloque de clases.");
+        logger6.warn(localize("log.compareController.fallbackNoResults", "\u26A0\uFE0F Fallback returned no results for this batch of classes."));
         continue;
       }
       for (const record of records) {
         const name = record?.Name;
         const body = record?.Body;
         if (typeof name !== "string" || typeof body !== "string") {
-          logger6.warn("\u26A0\uFE0F Registro de ApexClass sin Name o Body v\xE1lido, se omite.");
+          logger6.warn(localize("log.compareController.invalidApexRecord", "\u26A0\uFE0F ApexClass record missing a valid Name or Body, skipping."));
           continue;
         }
-        const targetPath = path14.join(fallbackDir, `${name}.cls`);
-        await fs8.writeFile(targetPath, body, "utf8");
+        const targetPath = path15.join(fallbackDir, `${name}.cls`);
+        await fs9.writeFile(targetPath, body, "utf8");
         retrievedNames.add(name);
-        logger6.info(`\u2705 Clase ${name} recuperada mediante fallback.`);
+        logger6.info(localize("log.compareController.fallbackRetrievedClass", "\u2705 Class {0} retrieved via fallback.", name));
       }
     } catch (error) {
-      logger6.error(`\u274C Error ejecutando consulta fallback: ${error.message}`);
-      if (error.stdout) logger6.error(`\u{1F4C4} STDOUT: ${error.stdout}`);
-      if (error.stderr) logger6.error(`\u26A0\uFE0F STDERR: ${error.stderr}`);
+      logger6.error(localize("log.compareController.fallbackError", "\u274C Error executing fallback query: {0}", error.message));
+      if (error.stdout) logger6.error(localize("log.compareController.fallbackStdout", "\u{1F4C4} STDOUT: {0}", error.stdout));
+      if (error.stderr) logger6.error(localize("log.compareController.fallbackStderr", "\u26A0\uFE0F STDERR: {0}", error.stderr));
     }
   }
   if (!retrievedNames.size) {
-    logger6.error("\u274C Ninguna clase pudo recuperarse mediante fallback ApexClass.Body.");
+    logger6.error(localize("log.compareController.fallbackNoClasses", "\u274C No classes could be retrieved via fallback ApexClass.Body."));
   }
   return retrievedNames;
 }
 async function runCompareApexClasses(uri) {
   const logger6 = new Logger("compareController", true);
-  logger6.info("\u{1F680} Iniciando Comparaci\xF3n de Clases...");
+  logger6.info(localize("log.compareController.start", "\u{1F680} Starting class comparison..."));
   const workspace14 = vscode8.workspace.workspaceFolders?.[0];
   if (!workspace14) {
-    vscode8.window.showErrorMessage("No hay un workspace abierto.");
-    logger6.error("\u274C No se detect\xF3 workspace activo.");
+    vscode8.window.showErrorMessage(localize("error.compareController.noWorkspace", "No workspace is open."));
+    logger6.error(localize("log.compareController.noWorkspace", "\u274C No active workspace detected."));
     return;
   }
   const baseDir = workspace14.uri.fsPath;
   const settings = vscode8.workspace.getConfiguration("UnifiedApexValidator");
   const repoDir = settings.get("sfRepositoryDir") || "";
-  const outputDir = settings.get("outputDir") || path14.join(baseDir, "output");
-  logger6.info(`\u{1F4C1} Workspace: ${baseDir}`);
-  logger6.info(`\u{1F4E6} Repositorio configurado: ${repoDir}`);
-  logger6.info(`\u{1F4C2} Carpeta de salida: ${outputDir}`);
+  const outputDir = settings.get("outputDir") || path15.join(baseDir, "output");
+  logger6.info(localize("log.compareController.workspacePath", "\u{1F4C1} Workspace: {0}", baseDir));
+  logger6.info(localize("log.compareController.repoPath", "\u{1F4E6} Configured repository: {0}", repoDir));
+  logger6.info(localize("log.compareController.outputPath", "\u{1F4C2} Output folder: {0}", outputDir));
   let classNames = [];
   if (uri && uri.fsPath.endsWith(".xml")) {
-    logger6.info(`\u{1F9E9} Analizando package.xml: ${uri.fsPath}`);
+    logger6.info(localize("log.compareController.analyzingPackageXml", "\u{1F9E9} Analyzing package.xml: {0}", uri.fsPath));
     const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(uri.fsPath, repoDir);
     classNames = [...testClasses, ...nonTestClasses];
   } else if (uri && uri.fsPath.endsWith(".cls")) {
-    const className = path14.basename(uri.fsPath, ".cls");
-    logger6.info(`\u{1F4D8} Comparando una sola clase: ${className}`);
+    const className = path15.basename(uri.fsPath, ".cls");
+    logger6.info(localize("log.compareController.singleClass", "\u{1F4D8} Comparing a single class: {0}", className));
     classNames = [className];
   } else {
-    vscode8.window.showWarningMessage("Abre un package.xml o un archivo .cls para comparar.");
-    logger6.warn("\u26A0\uFE0F Comando ejecutado sin archivo .xml ni .cls v\xE1lido.");
+    vscode8.window.showWarningMessage(localize("warning.compareController.selectSource", "Open a package.xml or .cls file to compare."));
+    logger6.warn(localize("log.compareController.invalidSelection", "\u26A0\uFE0F Command executed without a valid .xml or .cls file."));
     return;
   }
   if (classNames.length === 0) {
-    vscode8.window.showWarningMessage("No se encontraron clases Apex en el archivo seleccionado.");
-    logger6.warn("\u26A0\uFE0F No se encontraron clases Apex en el archivo.");
+    vscode8.window.showWarningMessage(localize("warning.compareController.noClassesFound", "No Apex classes were found in the selected file."));
+    logger6.warn(localize("log.compareController.noClassesFound", "\u26A0\uFE0F No Apex classes were found in the selected file."));
     return;
   }
-  logger6.info("\u{1F50D} Listando organizaciones conectadas con Salesforce CLI...");
+  logger6.info(localize("log.compareController.listingOrgs", "\u{1F50D} Listing Salesforce CLI connected orgs..."));
   const { stdout: orgListJson } = await execa("sf", ["org", "list", "--json"], {
     env: { ...process.env, FORCE_COLOR: "0" }
   });
   const orgList = JSON.parse(orgListJson).result.nonScratchOrgs.filter((o2) => o2.connectedStatus === "Connected").map((o2) => o2.alias || o2.username);
   if (!orgList.length) {
-    vscode8.window.showErrorMessage("No hay orgs conectadas.");
-    logger6.error("\u274C No se encontraron orgs conectadas.");
+    vscode8.window.showErrorMessage(localize("error.compareController.noConnectedOrgs", "No connected orgs found."));
+    logger6.error(localize("log.compareController.noConnectedOrgs", "\u274C No connected orgs were found."));
     return;
   }
   const orgAlias = await vscode8.window.showQuickPick(orgList, {
-    placeHolder: "Selecciona la organizaci\xF3n contra la que comparar"
+    placeHolder: localize("prompt.compareController.selectOrg", "Select the organization to compare against")
+    // Localized string
   });
   if (!orgAlias) {
-    logger6.warn("\u26A0\uFE0F Comparaci\xF3n cancelada: no se seleccion\xF3 ninguna org.");
+    logger6.warn(localize("log.compareController.orgSelectionCanceled", "\u26A0\uFE0F Comparison cancelled: no org was selected."));
     return;
   }
-  const tempDir = path14.join(getStorageRoot(), "temp", "compare");
-  await fs8.ensureDir(tempDir);
-  logger6.info(`\u{1F4C2} Carpeta temporal creada: ${tempDir}`);
-  const fallbackDir = path14.join(tempDir, "fallback");
+  const tempDir = path15.join(getStorageRoot(), "temp", "compare");
+  await fs9.ensureDir(tempDir);
+  logger6.info(localize("log.compareController.tempDirCreated", "\u{1F4C2} Temporary folder created: {0}", tempDir));
+  const fallbackDir = path15.join(tempDir, "fallback");
   let fallbackUsed = false;
   let fallbackAttempted = false;
   let fallbackWarned = false;
   let fallbackRetrievedNames = /* @__PURE__ */ new Set();
-  logger6.info(`\u2B07\uFE0F Recuperando ${classNames.length} clases desde org '${orgAlias}'...`);
+  logger6.info(localize("log.compareController.retrievingClasses", '\u2B07\uFE0F Retrieving {0} classes from org "{1}"...', classNames.length, orgAlias));
   const retrieveCmd = [
     "project",
     "retrieve",
@@ -88727,42 +89496,49 @@ async function runCompareApexClasses(uri) {
   for (const cls of classNames) {
     retrieveCmd.push("--metadata", `ApexClass:${cls}`);
   }
-  logger6.info(`\u{1F9E9} Ejecutando comando: sf ${retrieveCmd.join(" ")}`);
+  logger6.info(localize("log.compareController.executeRetrieve", "\u{1F9E9} Running command: sf {0}", retrieveCmd.join(" ")));
   try {
     const { stdout } = await execa("sf", retrieveCmd, {
       env: { ...process.env, FORCE_COLOR: "0" }
     });
     const result = JSON.parse(stdout);
-    logger6.info(`\u2705 Retrieve completado (${result.result.files?.length || 0} archivos).`);
+    logger6.info(localize("log.compareController.retrieveComplete", "\u2705 Retrieve completed ({0} files).", result.result.files?.length || 0));
   } catch (err) {
-    logger6.error(`\u274C Error en retrieve: ${err.message}`);
-    if (err.stdout) logger6.error(`\u{1F4C4} STDOUT: ${err.stdout}`);
-    if (err.stderr) logger6.error(`\u26A0\uFE0F STDERR: ${err.stderr}`);
+    logger6.error(localize("log.compareController.retrieveError", "\u274C Error during retrieve: {0}", err.message));
+    if (err.stdout) logger6.error(localize("log.compareController.retrieveStdout", "\u{1F4C4} STDOUT: {0}", err.stdout));
+    if (err.stderr) logger6.error(localize("log.compareController.retrieveStderr", "\u26A0\uFE0F STDERR: {0}", err.stderr));
     fallbackAttempted = true;
     fallbackRetrievedNames = await fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, logger6);
     fallbackUsed = fallbackRetrievedNames.size > 0;
     if (fallbackUsed) {
       fallbackWarned = true;
-      logger6.warn("\u26A0\uFE0F Se us\xF3 fallback ApexClass.Body por error en retrieve.");
-      vscode8.window.showWarningMessage("No se pudo recuperar metadata; se consult\xF3 ApexClass.Body como alternativa.");
+      logger6.warn(localize("log.compareController.retrieveFallbackUsed", "\u26A0\uFE0F Fallback ApexClass.Body was used due to retrieve failure."));
+      vscode8.window.showWarningMessage(localize("warning.compareController.retrieveFallbackUsed", "Metadata could not be retrieved; ApexClass.Body was queried as an alternative."));
     } else {
-      vscode8.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
+      vscode8.window.showErrorMessage(localize("error.compareController.retrieveFailed", "Error retrieving classes: {0}", err.message));
       return;
     }
   }
-  logger6.info(`\u{1F52C} Iniciando comparaci\xF3n de ${classNames.length} clases...`);
+  logger6.info(localize("log.compareController.comparisonStart", "\u{1F52C} Starting comparison for {0} classes...", classNames.length));
   const results = [];
+  const statusLabels = {
+    match: localize("compare.status.match", "Match"),
+    mismatch: localize("compare.status.mismatch", "Mismatch"),
+    onlyOrg: localize("compare.status.onlyOrg", "Only in Org"),
+    onlyLocal: localize("compare.status.onlyLocal", "Only in Local"),
+    missingBoth: localize("compare.status.missingBoth", "Missing in both")
+  };
   for (const className of classNames) {
-    const localPath = path14.join(repoDir, `${className}.cls`);
-    let retrievedPath = path14.join(tempDir, "force-app", "main", "default", "classes", `${className}.cls`);
-    if (!await fs8.pathExists(retrievedPath)) {
-      const altPath = path14.join(tempDir, "classes", `${className}.cls`);
-      if (await fs8.pathExists(altPath)) {
-        logger6.warn(`\u{1F4E6} Archivo recuperado detectado en ruta alternativa: ${altPath}`);
+    const localPath = path15.join(repoDir, `${className}.cls`);
+    let retrievedPath = path15.join(tempDir, "force-app", "main", "default", "classes", `${className}.cls`);
+    if (!await fs9.pathExists(retrievedPath)) {
+      const altPath = path15.join(tempDir, "classes", `${className}.cls`);
+      if (await fs9.pathExists(altPath)) {
+        logger6.warn(localize("log.compareController.altPathDetected", "\u{1F4E6} Retrieved file detected in alternate path: {0}", altPath));
         retrievedPath = altPath;
       }
     }
-    let existsRemote = await fs8.pathExists(retrievedPath);
+    let existsRemote = await fs9.pathExists(retrievedPath);
     if (!existsRemote) {
       if (!fallbackAttempted) {
         fallbackAttempted = true;
@@ -88770,63 +89546,67 @@ async function runCompareApexClasses(uri) {
         fallbackUsed = fallbackRetrievedNames.size > 0;
         if (fallbackUsed && !fallbackWarned) {
           fallbackWarned = true;
-          logger6.warn("\u26A0\uFE0F Se us\xF3 fallback ApexClass.Body para completar clases faltantes.");
-          vscode8.window.showWarningMessage("Algunas clases se consultaron usando ApexClass.Body porque no estaban disponibles v\xEDa retrieve.");
+          logger6.warn(localize("log.compareController.fallbackUsedForMissing", "\u26A0\uFE0F Fallback ApexClass.Body was used to complete missing classes."));
+          vscode8.window.showWarningMessage(localize("warning.compareController.fallbackUsedForMissing", "Some classes were queried using ApexClass.Body because they were not available via retrieve."));
         }
       }
       if (fallbackUsed && fallbackRetrievedNames.has(className)) {
-        retrievedPath = path14.join(fallbackDir, `${className}.cls`);
-        existsRemote = await fs8.pathExists(retrievedPath);
+        retrievedPath = path15.join(fallbackDir, `${className}.cls`);
+        existsRemote = await fs9.pathExists(retrievedPath);
       }
     }
-    const existsLocal = await fs8.pathExists(localPath);
-    logger6.info(`\u{1F9E9} Procesando clase: ${className}`);
-    logger6.info(`\u{1F539} Local: ${existsLocal ? "\u2705" : "\u274C"} ${localPath}`);
-    logger6.info(`\u{1F539} Remote: ${existsRemote ? "\u2705" : "\u274C"} ${retrievedPath}`);
+    const existsLocal = await fs9.pathExists(localPath);
+    logger6.info(localize("log.compareController.processingClass", "\u{1F9E9} Processing class: {0}", className));
+    const localIndicator = existsLocal ? "\u2705" : "\u274C";
+    const remoteIndicator = existsRemote ? "\u2705" : "\u274C";
+    logger6.info(localize("log.compareController.localPathStatus", "\u{1F539} Local: {0} {1}", localIndicator, localPath));
+    logger6.info(localize("log.compareController.remotePathStatus", "\u{1F539} Remote: {0} {1}", remoteIndicator, retrievedPath));
     if (!existsLocal && !existsRemote) {
-      logger6.warn(`\u26A0\uFE0F ${className} no existe ni en local ni en org.`);
-      results.push({ ClassName: className, Status: "No existe en ninguno" });
+      logger6.warn(localize("log.compareController.missingEverywhere", "\u26A0\uFE0F {0} does not exist locally or in the org.", className));
+      results.push({ ClassName: className, Status: statusLabels.missingBoth, StatusKey: "missingBoth" });
       continue;
     }
     if (!existsLocal) {
-      logger6.warn(`\u26A0\uFE0F ${className} existe solo en la org.`);
-      results.push({ ClassName: className, Status: "Solo en Org" });
+      logger6.warn(localize("log.compareController.onlyInOrg", "\u26A0\uFE0F {0} exists only in the org.", className));
+      results.push({ ClassName: className, Status: statusLabels.onlyOrg, StatusKey: "onlyOrg" });
       continue;
     }
     if (!existsRemote) {
-      logger6.warn(`\u26A0\uFE0F ${className} existe solo en local.`);
-      results.push({ ClassName: className, Status: "Solo en Local" });
+      logger6.warn(localize("log.compareController.onlyLocal", "\u26A0\uFE0F {0} exists only locally.", className));
+      results.push({ ClassName: className, Status: statusLabels.onlyLocal, StatusKey: "onlyLocal" });
       continue;
     }
-    const localBodyRaw = await fs8.readFile(localPath, "utf8");
-    const remoteBodyRaw = await fs8.readFile(retrievedPath, "utf8");
+    const localBodyRaw = await fs9.readFile(localPath, "utf8");
+    const remoteBodyRaw = await fs9.readFile(retrievedPath, "utf8");
     const localBody = normalizeForComparison(localBodyRaw);
     const remoteBody = normalizeForComparison(remoteBodyRaw);
     if (localBody === remoteBody) {
-      logger6.info(`\u2705 ${className}: Match`);
-      results.push({ ClassName: className, Status: "Match" });
+      logger6.info(localize("log.compareController.match", "\u2705 {0}: Match", className));
+      results.push({ ClassName: className, Status: statusLabels.match, StatusKey: "match" });
     } else {
-      logger6.info(`\u26A1 ${className}: Diferencias detectadas`);
+      logger6.info(localize("log.compareController.differencesFound", "\u26A1 {0}: Differences detected", className));
       const diff = diffLines(localBodyRaw, remoteBodyRaw).map((part) => {
         const sign = part.added ? "+" : part.removed ? "-" : " ";
         return part.value.split("\n").map((line) => `${sign} ${line}`).join("\n");
       }).join("\n");
       results.push({
         ClassName: className,
-        Status: "Mismatch",
+        Status: statusLabels.mismatch,
+        StatusKey: "mismatch",
         Differences: diff,
         LocalVersion: localBodyRaw,
         SalesforceVersion: remoteBodyRaw
       });
     }
   }
-  logger6.info("\u{1F4CA} Generando reporte HTML de comparaci\xF3n...");
+  logger6.info(localize("log.compareController.generatingHtmlReport", "\u{1F4CA} Generating comparison HTML report..."));
   const htmlReport = await generateComparisonReport(outputDir, orgAlias, results);
-  const htmlContent = await fs8.readFile(htmlReport, "utf8");
+  const htmlContent = await fs9.readFile(htmlReport, "utf8");
+  const panelTitle = localize("ui.compareController.webviewTitle", "Comparison - {0}", orgAlias);
   const panel = vscode8.window.createWebviewPanel(
     "uavComparisonReport",
     // ID interno
-    `Comparaci\xF3n - ${orgAlias}`,
+    panelTitle,
     // título visible
     vscode8.ViewColumn.One,
     // dónde se abre
@@ -88834,15 +89614,18 @@ async function runCompareApexClasses(uri) {
     // permitir JS (para el Monaco, etc.)
   );
   panel.webview.html = htmlContent;
-  vscode8.window.setStatusBarMessage(`\u2705 Reporte cargado en VS Code: ${path14.basename(htmlReport)}`, 5e3);
-  logger6.info(`\u2705 Reporte abierto dentro de VS Code.`);
+  vscode8.window.setStatusBarMessage(
+    localize("status.compareController.reportLoaded", "\u2705 Report loaded in VS Code: {0}", path15.basename(htmlReport)),
+    5e3
+  );
+  logger6.info(localize("log.compareController.reportOpened", "\u2705 Report opened inside VS Code."));
 }
 
 // src/core/generateApexDocChunked.ts
 var vscode11 = __toESM(require("vscode"));
 
 // src/core/apexAstParser.ts
-var fs9 = __toESM(require("fs"));
+var fs10 = __toESM(require("fs"));
 var import_apex_parser = __toESM(require_lib3());
 var import_antlr4ts = __toESM(require_antlr4ts());
 var vscodeModule;
@@ -88889,7 +89672,7 @@ function sanitizeForParser(source) {
 }
 var ApexAstParser = class _ApexAstParser {
   static parseFile(filePath) {
-    let code2 = fs9.readFileSync(filePath, "utf8");
+    let code2 = fs10.readFileSync(filePath, "utf8");
     if (code2.startsWith("\uFEFF")) {
       code2 = code2.slice(1);
     }
@@ -88899,8 +89682,11 @@ var ApexAstParser = class _ApexAstParser {
     const lexer = new import_apex_parser.ApexLexer(inputStream);
     const tokenStream = new import_antlr4ts.CommonTokenStream(lexer);
     const parser = new import_apex_parser.ApexParser(tokenStream);
-    const config2 = vscodeModule?.workspace.getConfiguration("UnifiedApexValidator");
-    const traceAst = config2?.get("traceAst") ?? false;
+    const config3 = vscodeModule?.workspace.getConfiguration("UnifiedApexValidator");
+    const traceAst = config3?.get("traceAst") ?? false;
+    const traceLogger = traceAst ? new Logger("ApexAstParser") : void 0;
+    const traceInfo = traceLogger ? (message) => traceLogger.info(message) : (_message) => void 0;
+    const traceWarn = traceLogger ? (message) => traceLogger.warn(message) : (_message) => void 0;
     const syntaxErrors = [];
     const chunks = [];
     const extract = (start, end) => code2.substring(start, end);
@@ -88974,7 +89760,7 @@ var ApexAstParser = class _ApexAstParser {
         const fn = node?.[method];
         if (typeof fn === "function") return fn.apply(node, args);
       } catch (err) {
-        console.warn(`[ApexAST] getName call failed for ${method}: ${err.message}`);
+        traceWarn(`[ApexAST] getName call failed for ${method}: ${err.message}`);
       }
       return void 0;
     };
@@ -89036,7 +89822,7 @@ var ApexAstParser = class _ApexAstParser {
       const stopIdx = typeof stopToken?.stopIndex === "number" ? stopToken.stopIndex : typeof stopToken?.stop === "number" ? stopToken.stop : start;
       const end = Math.min((stopIdx ?? start) + 1, code2.length);
       if (traceAst)
-        console.log(`[ApexAST][Depth:${depth}] -> ${type} (${start}-${end})`);
+        traceInfo(`[ApexAST][Depth:${depth}] -> ${type} (${start}-${end})`);
       try {
         const text2 = extract(start, end);
         switch (type) {
@@ -89045,7 +89831,7 @@ var ApexAstParser = class _ApexAstParser {
             const parentType = node.parent?.constructor?.name;
             const isInner = parentType === "MemberDeclarationContext" || parentType === "TriggerMemberDeclarationContext";
             if (traceAst)
-              console.log(`[ApexAST] Class found: ${className} (inner=${isInner})`);
+              traceInfo(`[ApexAST] Class found: ${className} (inner=${isInner})`);
             chunks.push({
               kind: isInner ? "innerClass" : "classHeader",
               name: className,
@@ -89059,8 +89845,7 @@ var ApexAstParser = class _ApexAstParser {
           }
           case "FieldDeclarationContext": {
             const fieldName = extractFirstVariableName(node) ?? getName(node);
-            if (traceAst)
-              console.log(`[ApexAST] Field found: ${fieldName}`);
+            traceInfo(`[ApexAST] Field found: ${fieldName}`);
             chunks.push({
               kind: "field",
               name: fieldName,
@@ -89073,8 +89858,7 @@ var ApexAstParser = class _ApexAstParser {
             break;
           }
           case "ConstructorDeclarationContext":
-            if (traceAst)
-              console.log(`[ApexAST] Constructor found: ${getName(node)}`);
+            traceInfo(`[ApexAST] Constructor found: ${getName(node)}`);
             chunks.push({
               kind: "constructor",
               name: getName(node),
@@ -89087,8 +89871,7 @@ var ApexAstParser = class _ApexAstParser {
             break;
           case "MethodDeclarationContext": {
             const methodName = getIdText(node) ?? getName(node);
-            if (traceAst)
-              console.log(`[ApexAST] Method found: ${methodName}`);
+            traceInfo(`[ApexAST] Method found: ${methodName}`);
             chunks.push({
               kind: "method",
               name: methodName,
@@ -89102,8 +89885,7 @@ var ApexAstParser = class _ApexAstParser {
           }
           case "PropertyDeclarationContext": {
             const propertyName = getIdText(node) ?? getName(node);
-            if (traceAst)
-              console.log(`[ApexAST] Property found: ${propertyName}`);
+            traceInfo(`[ApexAST] Property found: ${propertyName}`);
             chunks.push({
               kind: "field",
               name: propertyName,
@@ -89117,8 +89899,7 @@ var ApexAstParser = class _ApexAstParser {
           }
         }
       } catch (err) {
-        if (traceAst)
-          console.warn(`[ApexAST] Error parsing node ${type}: ${err.message}`);
+        traceWarn(`[ApexAST] Error parsing node ${type}: ${err.message}`);
       }
       for (const key of Object.keys(node)) {
         const val = node[key];
@@ -89131,30 +89912,30 @@ var ApexAstParser = class _ApexAstParser {
           traverse(val, depth + 1);
         }
       }
-      if (traceAst && depth === 0)
-        console.log(`[ApexAST] Finalizo recorrido raiz con ${chunks.length} chunks`);
+      if (depth === 0)
+        traceInfo(`[ApexAST] Finalizo recorrido raiz con ${chunks.length} chunks`);
     };
     traverse(ast);
     chunks.sort((a2, b) => a2.start - b.start);
     if (traceAst) {
       if (syntaxErrors.length) {
-        console.warn("[ApexAST] Syntax errors detectados:");
+        traceWarn("[ApexAST] Syntax errors detectados:");
         for (const err of syntaxErrors) {
-          console.warn(`  ! ${err}`);
+          traceWarn(`  ! ${err}`);
         }
       }
-      console.log("\n[ApexAST] Resumen de chunks detectados:");
+      traceInfo("\n[ApexAST] Resumen de chunks detectados:");
       for (const ch of chunks) {
         const status = ch.needsDoc ? "sin doc" : "con doc";
-        console.log(`  - ${ch.kind.padEnd(14)} ${ch.name.padEnd(60)} (${ch.start}-${ch.end})  ${status}`);
+        traceInfo(`  - ${ch.kind.padEnd(14)} ${ch.name.padEnd(60)} (${ch.start}-${ch.end})  ${status}`);
       }
-      console.log(`[ApexAST] Total: ${chunks.length} elementos`);
+      traceInfo(`[ApexAST] Total: ${chunks.length} elementos`);
     }
     return chunks;
   }
   static parseDocument(doc) {
     const tempFile = doc.uri.fsPath;
-    fs9.writeFileSync(tempFile, doc.getText(), "utf8");
+    fs10.writeFileSync(tempFile, doc.getText(), "utf8");
     return _ApexAstParser.parseFile(tempFile);
   }
 };
@@ -89350,12 +90131,18 @@ var PatchApplier = class _PatchApplier {
 async function generateApexDocChunked() {
   const editor = vscode11.window.activeTextEditor;
   if (!editor) {
-    vscode11.window.showErrorMessage("No hay ningun archivo abierto.");
+    vscode11.window.showErrorMessage(localize("error.generateApexDoc.noEditor", "\u274C No hay ning\xFAn archivo abierto."));
     return;
   }
   const iaStatus = evaluateIaConfig();
   if (!iaStatus.ready) {
-    vscode11.window.showWarningMessage(`Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(", ")}`);
+    vscode11.window.showWarningMessage(
+      localize(
+        "warn.generateApexDoc.iaDisabled",
+        "\u26A0\uFE0F Generaci\xF3n de ApexDoc deshabilitada. Faltan par\xE1metros IA: {0}",
+        iaStatus.missing.join(", ")
+      )
+    );
     return;
   }
   const logger6 = new Logger("GenerateApexDoc", true);
@@ -89364,23 +90151,36 @@ async function generateApexDocChunked() {
   let working = original;
   const chunks = ApexAstParser.parseDocument(doc);
   const traceAst = vscode11.workspace.getConfiguration("UnifiedApexValidator").get("traceAst") ?? false;
-  logger6.info(`[GenerateApexDoc] Chunks detectados: ${chunks.length}`);
+  logger6.info(localize("log.generateApexDoc.chunksDetected", "\u{1F9E9} Chunks detectados: {0}", chunks.length));
   if (traceAst) {
+    const statusPending = localize("log.generateApexDoc.docPending", "pendiente");
+    const statusOk = localize("log.generateApexDoc.docOk", "ok");
     for (const ch of chunks) {
+      const status = ch.needsDoc ? statusPending : statusOk;
       logger6.info(
-        `  \u2022 ${ch.kind.padEnd(12)} ${ch.name.padEnd(60)} (${ch.start}-${ch.end})  doc=${ch.needsDoc ? "pendiente" : "ok"}`
+        localize(
+          "log.generateApexDoc.chunkDetail",
+          "  \u2022 {0} {1} ({2}-{3}) doc={4}",
+          ch.kind.padEnd(12),
+          ch.name.padEnd(60),
+          ch.start,
+          ch.end,
+          status
+        )
       );
     }
   }
   const missing = chunks.filter((c3) => c3.needsDoc);
   let fatalError;
   if (!missing.length) {
-    vscode11.window.showInformationMessage("Todos los elementos ya tienen ApexDoc.");
+    vscode11.window.showInformationMessage(
+      localize("info.generateApexDoc.allDocumented", "\u2705 Todos los elementos ya tienen ApexDoc.")
+    );
     return;
   }
   const progressOptions = {
     location: vscode11.ProgressLocation.Notification,
-    title: "Revisi\xF3n de ApexDoc generados",
+    title: localize("progress.generateApexDoc.title", "Revisi\xF3n de ApexDoc generados"),
     cancellable: true
   };
   await vscode11.window.withProgress(progressOptions, async (progress, token) => {
@@ -89402,15 +90202,38 @@ async function generateApexDocChunked() {
       if (token.isCancellationRequested) {
         break;
       }
-      progress.report({ message: `Procesando ${chunk.kind} "${chunk.name}" (${++done}/${total})` });
-      logger6.info(`Generando doc para: ${chunk.kind} "${chunk.name}"`);
+      done += 1;
+      progress.report({
+        message: localize(
+          "progress.generateApexDoc.processing",
+          'Procesando {0} "{1}" ({2}/{3})',
+          chunk.kind,
+          chunk.name,
+          done,
+          total
+        )
+      });
+      logger6.info(
+        localize(
+          "log.generateApexDoc.generating",
+          '\u270F\uFE0F Generando doc para: {0} "{1}"',
+          chunk.kind,
+          chunk.name
+        )
+      );
       const snippet = chunk.text;
       let realStart = locateChunk(working, snippet, searchCursor);
       if (realStart === -1) {
         realStart = locateChunk(working, snippet, 0);
       }
       if (realStart === -1) {
-        logger6.warn(`No se encontro el fragmento actualizado para ${chunk.name}; se omite.`);
+        logger6.warn(
+          localize(
+            "warn.generateApexDoc.chunkMissing",
+            "\u2757 No se encontr\xF3 el fragmento actualizado para {0}; se omite.",
+            chunk.name
+          )
+        );
         continue;
       }
       const realEnd = realStart + snippet.length;
@@ -89419,12 +90242,19 @@ async function generateApexDocChunked() {
       const result = await AiDocChunkRunner.processChunk(working, localChunk);
       if (result.ok && result.patchedText) {
         try {
-          const config2 = vscode11.workspace.getConfiguration("UnifiedApexValidator");
-          const outputDir = config2.get("outputDir") || vscode11.workspace.workspaceFolders?.[0]?.uri.fsPath || __dirname;
+          const config3 = vscode11.workspace.getConfiguration("UnifiedApexValidator");
+          const outputDir = config3.get("outputDir") || vscode11.workspace.workspaceFolders?.[0]?.uri.fsPath || __dirname;
           const safeName = `${chunk.kind}_${chunk.name.replace(/[^a-zA-Z0-9_]/g, "_")}.txt`;
           const rawPath = vscode11.Uri.file(`${outputDir}/ApexDoc_Debug_${safeName}`);
           await vscode11.workspace.fs.writeFile(rawPath, Buffer.from(result.patchedText, "utf8"));
-          logger6.info(`Guardado bloque IA crudo para ${chunk.name} en ${rawPath.fsPath}`);
+          logger6.info(
+            localize(
+              "log.generateApexDoc.rawSaved",
+              "\u{1F4BE} Guardado bloque IA crudo para {0} en {1}",
+              chunk.name,
+              rawPath.fsPath
+            )
+          );
           const matches = [...result.patchedText.matchAll(/\/\*\*[\s\S]*?\*\//g)];
           if (matches.length > 0) {
             for (let i2 = 0; i2 < matches.length; i2++) {
@@ -89442,19 +90272,53 @@ async function generateApexDocChunked() {
             }
             working = PatchApplier.applyInMemory(working, localChunk, docBlock);
             searchCursor = realStart + docBlock.length + snippet.length;
-            logger6.info(`Documentacion insertada para ${chunk.name} (${matches.length} bloque(s) detectados)`);
+            logger6.info(
+              localize(
+                "log.generateApexDoc.docInserted",
+                "\u{1F4DD} Documentaci\xF3n insertada para {0} ({1} bloque(s) detectados)",
+                chunk.name,
+                matches.length
+              )
+            );
           } else {
-            logger6.warn(`No se detectaron bloques ApexDoc en la respuesta para ${chunk.name}`);
+            logger6.warn(
+              localize(
+                "warn.generateApexDoc.noBlocks",
+                "\u26A0\uFE0F No se detectaron bloques ApexDoc en la respuesta para {0}",
+                chunk.name
+              )
+            );
           }
         } catch (err) {
-          logger6.warn(`Error guardando/insertando doc para ${chunk.name}: ${err.message}`);
+          logger6.warn(
+            localize(
+              "warn.generateApexDoc.saveError",
+              "\u26A0\uFE0F Error guardando/insertando doc para {0}: {1}",
+              chunk.name,
+              err.message
+            )
+          );
         }
       } else if (result.fatal) {
-        fatalError = result.error || "Error fatal al invocar el servicio de IA.";
-        logger6.error(`Proceso detenido para ${chunk.name}: ${fatalError}`);
+        fatalError = result.error || localize("error.generateApexDoc.fatal", "\u274C Error fatal al invocar el servicio de IA.");
+        logger6.error(
+          localize(
+            "error.generateApexDoc.processStopped",
+            "\u{1F6AB} Proceso detenido para {0}: {1}",
+            chunk.name,
+            fatalError
+          )
+        );
         break;
       } else {
-        logger6.warn(`Fallo ${chunk.name}: ${result.error}`);
+        logger6.warn(
+          localize(
+            "warn.generateApexDoc.failure",
+            "\u26A0\uFE0F Fallo {0}: {1}",
+            chunk.name,
+            result.error
+          )
+        );
       }
       if (searchCursor < realStart + snippet.length) {
         searchCursor = realStart + snippet.length;
@@ -89465,19 +90329,24 @@ async function generateApexDocChunked() {
     }
   });
   if (fatalError) {
-    vscode11.window.showErrorMessage(`No se pudo generar ApexDoc: ${fatalError}`);
+    vscode11.window.showErrorMessage(
+      localize("error.generateApexDoc.final", "\u274C No se pudo generar ApexDoc: {0}", fatalError)
+    );
     return;
   }
-  await PatchApplier.openFinalDiff(original, working, doc.uri, "Comparar documentacion generada (chunked)");
+  const diffTitle = localize("ui.generateApexDoc.diffTitle", "Comparar documentaci\xF3n generada (chunked)");
+  await PatchApplier.openFinalDiff(original, working, doc.uri, diffTitle);
+  const applyQuestion = localize(
+    "prompt.generateApexDoc.applyQuestion",
+    "Revisa el diff abierto. \xBFQuieres aplicar la documentaci\xF3n generada al archivo?"
+  );
+  const applyOption = localize("prompt.generateApexDoc.apply", "Aplicar");
+  const skipOption = localize("prompt.generateApexDoc.skip", "Omitir");
   let applyAnswer;
   while (!applyAnswer) {
-    applyAnswer = await vscode11.window.showInformationMessage(
-      "Revisa el diff abierto. \xBFQuieres aplicar la documentacion generada al archivo?",
-      "Aplicar",
-      "Omitir"
-    );
+    applyAnswer = await vscode11.window.showInformationMessage(applyQuestion, applyOption, skipOption);
   }
-  if (applyAnswer === "Aplicar") {
+  if (applyAnswer === applyOption) {
     const targetEditor = await vscode11.window.showTextDocument(doc, { preview: false });
     const applied = await targetEditor.edit((editBuilder) => {
       const start = new vscode11.Position(0, 0);
@@ -89486,12 +90355,20 @@ async function generateApexDocChunked() {
       editBuilder.replace(new vscode11.Range(start, end), working);
     });
     if (applied) {
-      logger6.info("Documentacion aplicada al archivo.");
+      logger6.info(localize("log.generateApexDoc.docsApplied", "\u2705 Documentaci\xF3n aplicada al archivo."));
+      await doc.save();
     } else {
-      logger6.warn("No fue posible aplicar la documentacion al archivo.");
+      logger6.warn(
+        localize(
+          "warn.generateApexDoc.applyFailed",
+          "\u26A0\uFE0F No fue posible aplicar la documentaci\xF3n al archivo."
+        )
+      );
     }
   } else {
-    logger6.info("Documentacion generada omitida por el usuario.");
+    logger6.info(
+      localize("log.generateApexDoc.userSkipped", "\u2139\uFE0F Documentaci\xF3n generada omitida por el usuario.")
+    );
   }
 }
 function analyzeDocBlock(docBlock) {
@@ -89510,8 +90387,8 @@ function analyzeDocBlock(docBlock) {
   return { lines, closingLineIndex, indent };
 }
 function normalizeTags(settingKey, fallback) {
-  const config2 = vscode11.workspace.getConfiguration("UnifiedApexValidator");
-  const configured = config2.get(settingKey) ?? fallback;
+  const config3 = vscode11.workspace.getConfiguration("UnifiedApexValidator");
+  const configured = config3.get(settingKey) ?? fallback;
   return configured.map((tag) => tag.startsWith("@") ? tag : `@${tag}`).map((tag) => tag.trim()).filter((tag, index, array) => tag.length > 1 && array.indexOf(tag) === index);
 }
 function docBlockHasTag(docBlock, tag) {
@@ -89741,8 +90618,8 @@ function extractParamName(param) {
 }
 
 // src/core/apexAllmanFormatter.ts
-var fs10 = __toESM(require("fs"));
-var path15 = __toESM(require("path"));
+var fs11 = __toESM(require("fs"));
+var path16 = __toESM(require("path"));
 var vscode12 = __toESM(require("vscode"));
 var import_url2 = require("url");
 var logger3 = new Logger("apexAllmanFormatter");
@@ -89799,17 +90676,18 @@ async function loadPrettier(hints = []) {
   }
   const resolved = resolveModule("prettier", hints);
   if (!resolved) {
-    logger3.error("No se pudo resolver el modulo prettier en el workspace.");
-    throw new Error('No se pudo cargar "prettier". Instala prettier en tu workspace.');
+    logger3.error(localize("log.allman.prettierModuleMissing", 'Could not resolve the "prettier" module in this workspace.'));
+    throw new Error(localize("error.allman.prettierMissing", 'Unable to load "prettier". Install prettier in your workspace.'));
   }
   try {
     const mod = await import((0, import_url2.pathToFileURL)(resolved).href);
     prettierInstance = mod.default ?? mod;
-    logger3.info(`Prettier cargado desde ${resolved}.`);
+    logger3.info(localize("log.allman.prettierLoaded", "Prettier loaded from {0}.", resolved));
     return prettierInstance;
   } catch (err) {
-    logger3.error(`Error importando Prettier desde ${resolved}: ${err}`);
-    throw new Error('No se pudo cargar "prettier". Instala prettier en tu workspace.');
+    const message = err instanceof Error ? err.message : String(err);
+    logger3.error(localize("log.allman.prettierImportError", "Error importing Prettier from {0}: {1}", resolved, message));
+    throw new Error(localize("error.allman.prettierMissing", 'Unable to load "prettier". Install prettier in your workspace.'));
   }
 }
 function resolveApexPlugin(hints = []) {
@@ -89818,23 +90696,25 @@ function resolveApexPlugin(hints = []) {
   }
   const resolved = resolveModule("prettier-plugin-apex", hints);
   if (!resolved) {
-    logger3.error("No se encontro prettier-plugin-apex en el workspace.");
-    throw new Error('No se encontro "prettier-plugin-apex". Instala prettier prettier-plugin-apex.');
+    logger3.error(localize("log.allman.pluginMissing", 'Could not find "prettier-plugin-apex" in this workspace.'));
+    throw new Error(
+      localize("error.allman.pluginMissing", 'Unable to load "prettier-plugin-apex". Install prettier-plugin-apex in your workspace.')
+    );
   }
   apexPluginPathCache = resolved;
-  logger3.info(`Plugin prettier-plugin-apex localizado en ${resolved}.`);
+  logger3.info(localize("log.allman.pluginFound", '"prettier-plugin-apex" located at {0}.', resolved));
   return apexPluginPathCache;
 }
 function resolveModule(moduleName, additionalPaths = []) {
   const searchPaths = /* @__PURE__ */ new Set();
   for (const hint of additionalPaths) {
     searchPaths.add(hint);
-    searchPaths.add(path15.join(hint, "node_modules"));
+    searchPaths.add(path16.join(hint, "node_modules"));
   }
   if (vscode12.workspace.workspaceFolders) {
     for (const folder of vscode12.workspace.workspaceFolders) {
       searchPaths.add(folder.uri.fsPath);
-      searchPaths.add(path15.join(folder.uri.fsPath, "node_modules"));
+      searchPaths.add(path16.join(folder.uri.fsPath, "node_modules"));
     }
   }
   searchPaths.add(process.cwd());
@@ -89842,7 +90722,8 @@ function resolveModule(moduleName, additionalPaths = []) {
   try {
     return require.resolve(moduleName, { paths: Array.from(searchPaths) });
   } catch (error) {
-    logger3.debug(`No se pudo resolver ${moduleName} con rutas personalizadas: ${error}`);
+    const message = error instanceof Error ? error.message : String(error);
+    logger3.debug(localize("log.allman.moduleResolveFailed", "Could not resolve {0} using custom paths: {1}", moduleName, message));
     return null;
   }
 }
@@ -89913,27 +90794,27 @@ function convertToAllmanStyle(code2) {
 `;
 }
 async function applyAllmanStyleToCode(source, spacesPerTab = 4, hints = []) {
-  logger3.info("Formateando codigo Apex en memoria.");
+  logger3.info(localize("log.allman.formattingInMemory", "Formatting Apex code in memory."));
   const normalized = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const prettified = await formatWithPrettier(normalized, spacesPerTab, hints);
   return convertToAllmanStyle(prettified);
 }
 async function applyAllmanStyleToFile(filePath, hints) {
-  logger3.info(`Procesando archivo ${filePath}.`);
-  const original = await fs10.promises.readFile(filePath, "utf8");
-  const localHints = [path15.dirname(filePath), ...hints];
+  logger3.info(localize("log.allman.processingFile", "Processing file {0}.", filePath));
+  const original = await fs11.promises.readFile(filePath, "utf8");
+  const localHints = [path16.dirname(filePath), ...hints];
   const formatted = await applyAllmanStyleToCode(original, 4, localHints);
   if (formatted.trim().length === 0) {
-    logger3.warn(`El archivo ${filePath} quedo vacio tras el formateo. Se omite.`);
+    logger3.warn(localize("log.allman.formattedEmpty", "File {0} became empty after formatting. Skipping.", filePath));
     return false;
   }
   const usesWindowsNewlines = /\r\n/.test(original);
   const finalOutput = usesWindowsNewlines ? formatted.replace(/\n/g, "\r\n") : formatted;
   if (finalOutput === original) {
-    logger3.debug(`El archivo ${filePath} no requiere cambios.`);
+    logger3.debug(localize("log.allman.noChangesDebug", "File {0} does not require changes.", filePath));
     return false;
   }
-  await fs10.promises.writeFile(filePath, finalOutput, "utf8");
+  await fs11.promises.writeFile(filePath, finalOutput, "utf8");
   return true;
 }
 function gatherTargets(target, selected) {
@@ -89951,10 +90832,10 @@ function gatherTargets(target, selected) {
 }
 function collectFilesFromUri(uri) {
   const files = [];
-  const stats = fs10.statSync(uri.fsPath);
+  const stats = fs11.statSync(uri.fsPath);
   if (stats.isDirectory()) {
-    for (const entry of fs10.readdirSync(uri.fsPath)) {
-      const childPath = path15.join(uri.fsPath, entry);
+    for (const entry of fs11.readdirSync(uri.fsPath)) {
+      const childPath = path16.join(uri.fsPath, entry);
       files.push(...collectFilesFromUri(vscode12.Uri.file(childPath)));
     }
   } else if (uri.fsPath.endsWith(".cls") || uri.fsPath.endsWith(".trigger")) {
@@ -89963,22 +90844,30 @@ function collectFilesFromUri(uri) {
   return files;
 }
 async function formatApexAllman(target, selected) {
-  logger3.info("Comando de formateo Allman invocado.");
+  logger3.info(localize("log.allman.commandInvoked", "Allman formatting command invoked."));
   const targets = gatherTargets(target, selected);
   if (targets.length === 0) {
-    void vscode12.window.showInformationMessage("Selecciona un archivo Apex o una carpeta para aplicar el formato.");
+    void vscode12.window.showInformationMessage(localize("info.allman.selectTarget", "Select an Apex file or folder to format."));
     return;
   }
-  logger3.debug(`Targets recibidos: ${targets.map((t) => t.fsPath).join(", ") || "ninguno"}.`);
+  logger3.debug(
+    localize(
+      "log.allman.targetsReceived",
+      "Targets received: {0}.",
+      targets.map((t) => t.fsPath).join(", ") || localize("log.allman.none", "none")
+    )
+  );
   const files = targets.flatMap(collectFilesFromUri);
   if (files.length === 0) {
-    void vscode12.window.showInformationMessage("No se encontraron archivos .cls o .trigger en la seleccion.");
+    void vscode12.window.showInformationMessage(
+      localize("info.allman.noFilesFound", "No .cls or .trigger files were found in the selection.")
+    );
     return;
   }
-  logger3.info(`Archivos a procesar: ${files.length}.`);
+  logger3.info(localize("log.allman.filesToProcess", "Files to process: {0}.", files.length));
   const hintPaths = /* @__PURE__ */ new Set();
   for (const file of files) {
-    const dir = path15.dirname(file);
+    const dir = path16.dirname(file);
     hintPaths.add(dir);
   }
   const hints = Array.from(hintPaths);
@@ -89988,29 +90877,36 @@ async function formatApexAllman(target, selected) {
       const changed = await applyAllmanStyleToFile(filePath, hints);
       if (changed) {
         updated++;
-        logger3.info(`Archivo formateado: ${filePath}`);
+        logger3.info(localize("log.allman.fileFormatted", "Formatted file: {0}", filePath));
       } else {
-        logger3.debug(`Sin cambios en: ${filePath}`);
+        logger3.debug(localize("log.allman.noChanges", "No changes for file: {0}", filePath));
       }
     } catch (err) {
-      logger3.error(`Error formateando ${filePath}: ${err?.message || err}`);
-      void vscode12.window.showErrorMessage(`Error formateando ${path15.basename(filePath)}: ${err.message}`);
+      const reason = err?.message || String(err);
+      logger3.error(localize("log.allman.formatError", "Error formatting {0}: {1}", filePath, reason));
+      void vscode12.window.showErrorMessage(
+        localize("error.allman.fileFormat", "Error formatting {0}: {1}", path16.basename(filePath), reason)
+      );
     }
   }
   if (updated === 0) {
-    void vscode12.window.showInformationMessage("No se realizaron cambios en los archivos seleccionados.");
+    void vscode12.window.showInformationMessage(
+      localize("info.allman.noChangesApplied", "No changes were made to the selected files.")
+    );
     return;
   }
-  void vscode12.window.showInformationMessage(`Formato Allman aplicado a ${updated} archivo(s) Apex.`);
+  void vscode12.window.showInformationMessage(
+    localize("info.allman.summary", "Allman format applied to {0} Apex file(s).", updated)
+  );
 }
 
 // src/core/whereUsedPanel.ts
 var vscode14 = __toESM(require("vscode"));
-var path17 = __toESM(require("path"));
+var path18 = __toESM(require("path"));
 
 // src/core/whereUsedReport.ts
-var path16 = __toESM(require("path"));
-var fs11 = __toESM(require_lib());
+var path17 = __toESM(require("path"));
+var fs12 = __toESM(require_lib());
 var nunjucks2 = __toESM(require_nunjucks());
 var vscode13 = __toESM(require("vscode"));
 var CATEGORY_DEFINITIONS = [
@@ -90026,15 +90922,15 @@ async function generateWhereUsedReport(results, options) {
     throw new Error("No se recibieron resultados para generar el reporte.");
   }
   const templatePath = resolveTemplatePath();
-  const env3 = nunjucks2.configure(path16.dirname(templatePath), { autoescape: true });
+  const env4 = nunjucks2.configure(path17.dirname(templatePath), { autoescape: true });
   const viewModel = buildViewModel(results, options.displayTimestamp);
-  const html = env3.render(path16.basename(templatePath), viewModel);
+  const html = env4.render(path17.basename(templatePath), viewModel);
   let savedPath;
   if (options.outputDir) {
     try {
-      await fs11.ensureDir(options.outputDir);
-      savedPath = path16.join(options.outputDir, `where-is-used_${options.timestamp}.html`);
-      await fs11.writeFile(savedPath, html, "utf8");
+      await fs12.ensureDir(options.outputDir);
+      savedPath = path17.join(options.outputDir, `where-is-used_${options.timestamp}.html`);
+      await fs12.writeFile(savedPath, html, "utf8");
     } catch (err) {
       logger4.warn(`No se pudo guardar el reporte en disco: ${err.message}`);
     }
@@ -90043,13 +90939,13 @@ async function generateWhereUsedReport(results, options) {
 }
 function resolveTemplatePath() {
   const extension = vscode13.extensions.getExtension("ozkrgonzalez.unifiedapexvalidator");
-  const basePath = extension?.extensionPath || path16.resolve(__dirname, "..");
-  const distPath = path16.join(basePath, "dist", "resources", "templates", "whereUsed_template.html");
-  if (fs11.existsSync(distPath)) {
+  const basePath = extension?.extensionPath || path17.resolve(__dirname, "..");
+  const distPath = path17.join(basePath, "dist", "resources", "templates", "whereUsed_template.html");
+  if (fs12.existsSync(distPath)) {
     return distPath;
   }
-  const srcPath = path16.join(basePath, "src", "resources", "templates", "whereUsed_template.html");
-  if (fs11.existsSync(srcPath)) {
+  const srcPath = path17.join(basePath, "src", "resources", "templates", "whereUsed_template.html");
+  if (fs12.existsSync(srcPath)) {
     return srcPath;
   }
   throw new Error("No se encontr\xF3 el template whereUsed_template.html en dist ni en src.");
@@ -90097,10 +90993,10 @@ async function showWhereUsedPanel(results) {
   const now = /* @__PURE__ */ new Date();
   const safeTimestamp = formatTimestampForFile(now);
   const displayTimestamp = formatTimestampForDisplay(now);
-  const config2 = vscode14.workspace.getConfiguration("UnifiedApexValidator");
-  let outputDir = config2.get("outputDir")?.trim();
+  const config3 = vscode14.workspace.getConfiguration("UnifiedApexValidator");
+  let outputDir = config3.get("outputDir")?.trim();
   if (outputDir) {
-    outputDir = path17.resolve(outputDir);
+    outputDir = path18.resolve(outputDir);
   } else {
     outputDir = void 0;
   }
@@ -90121,7 +91017,7 @@ async function showWhereUsedPanel(results) {
   const themeClass = getVSCodeThemeClass2();
   panel.webview.html = applyThemeClass(html, themeClass);
   if (savedPath) {
-    logger5.info(`Reporte guardado en ${savedPath}`);
+    logger5.info(localize("info.whereUsedPanel.savedAt", "Report Saved at: {0}", savedPath));
   }
 }
 function formatTimestampForFile(date) {
@@ -90169,8 +91065,8 @@ function applyThemeClass(html, themeClass) {
 
 // src/extension.ts
 async function activate(context) {
-  console.log("[UAV][extension] Unified Apex Validator activado.");
-  console.log("[UAV][extension] globalStorageUri:", context.globalStorageUri.fsPath);
+  console.log(localize("log.extension.activated", "[UAV][extension] Unified Apex Validator activated."));
+  console.log(localize("log.extension.storagePath", "[UAV][extension] globalStorageUri: {0}", context.globalStorageUri.fsPath));
   const dependenciesProvider = new DependenciesProvider(context);
   vscode15.window.registerTreeDataProvider("uav.dependenciesView", dependenciesProvider);
   const dependencyStatusItem = vscode15.window.createStatusBarItem(
@@ -90231,7 +91127,7 @@ async function activate(context) {
     const iaStatus = evaluateIaConfig();
     void vscode15.commands.executeCommand("setContext", "uav.iaReady", iaStatus.ready);
     if (!iaStatus.ready) {
-      console.warn(`[UAV][extension] IA deshabilitada. Faltan parametros: ${iaStatus.missing.join(", ")}`);
+      console.warn(localize("log.extension.aiDisabled", "[UAV][extension] AI disabled. Missing parameters: {0}", iaStatus.missing.join(", ")));
     }
   };
   syncIaContext();
@@ -90244,8 +91140,8 @@ async function activate(context) {
       }
     })
   );
-  const outputDir = vscode15.workspace.getConfiguration("UnifiedApexValidator").get("outputDir") || path18.join(context.globalStorageUri.fsPath, "output");
-  const logDir = path18.join(context.globalStorageUri.fsPath, ".uav", "logs");
+  const outputDir = vscode15.workspace.getConfiguration("UnifiedApexValidator").get("outputDir") || path19.join(context.globalStorageUri.fsPath, "output");
+  const logDir = path19.join(context.globalStorageUri.fsPath, ".uav", "logs");
   await vscode15.workspace.fs.createDirectory(vscode15.Uri.file(outputDir));
   await vscode15.workspace.fs.createDirectory(vscode15.Uri.file(logDir));
   const reportsProvider = new FolderViewProvider(outputDir, "html|pdf", "Reportes");
@@ -90297,22 +91193,22 @@ async function activate(context) {
     vscode15.commands.registerCommand("uav.openFile", (uri) => vscode15.env.openExternal(uri))
   );
   setExtensionContext(context);
-  console.log("[UAV][extension] Contexto registrado.");
+  console.log(localize("log.extension.contextRegistered", "[UAV][extension] Context registered."));
   try {
     await vscode15.workspace.fs.createDirectory(context.globalStorageUri);
-    console.log("[UAV][extension] Carpeta global creada o existente.");
+    console.log(localize("log.extension.globalFolderReady", "[UAV][extension] Global storage folder ready."));
   } catch (err) {
-    console.error("[UAV][extension] Error creando carpeta global:", err);
+    console.error(localize("log.extension.globalFolderError", "[UAV][extension] Error creating global folder."), err);
   }
   const validateApexCmd = vscode15.commands.registerCommand(
     "UnifiedApexValidator.validateApex",
     async (uri) => {
       try {
-        console.log("[UAV][extension] Ejecutando runUAV()...");
+        console.log(localize("log.extension.runUav.start", "[UAV][extension] Running runUAV()..."));
         await runUAV(uri);
       } catch (error) {
-        console.error("[UAV][extension] Error ejecutando UAV:", error);
-        vscode15.window.showErrorMessage(`Error ejecutando UAV: ${error.message}`);
+        console.error(localize("log.extension.runUav.error", "[UAV][extension] Error running UAV:"), error);
+        vscode15.window.showErrorMessage(localize("command.validate.error", "Error running UAV: {0}", error.message));
       }
     }
   );
@@ -90322,15 +91218,16 @@ async function activate(context) {
       await vscode15.window.withProgress(
         {
           location: vscode15.ProgressLocation.Notification,
-          title: "Comparando clases Apex contra la organizaci\xF3n seleccionada...",
+          title: localize("progress.compareApex.title", "Comparing Apex classes against the selected org..."),
+          // Localized string
           cancellable: false
         },
         async () => {
           try {
             await runCompareApexClasses(uri);
           } catch (err) {
-            console.error("[UAV][extension] Error en comparaci\xF3n:", err);
-            vscode15.window.showErrorMessage(`\u274C Error al comparar clases: ${err.message}`);
+            console.error(localize("log.compare.error", "[UAV][extension] Error during comparison:"), err);
+            vscode15.window.showErrorMessage(localize("command.compare.error", "\u274C Error comparing classes: {0}", err.message));
           }
         }
       );
@@ -90342,17 +91239,17 @@ async function activate(context) {
       try {
         await generateApexDocChunked();
       } catch (error) {
-        console.error("[UAV][extension] Error en generaci\xF3n de ApexDoc:", error);
-        vscode15.window.showErrorMessage(`\u274C Error generando ApexDoc: ${error.message}`);
+        console.error(localize("log.apexdoc.error", "[UAV][extension] Error generating ApexDoc:"), error);
+        vscode15.window.showErrorMessage(localize("command.apexdoc.error", "\u274C Error generating ApexDoc: {0}", error.message));
       }
     }
   );
   const formatApexAllmanCmd = vscode15.commands.registerCommand(
     "UnifiedApexValidator.formatApexAllman",
     async (uri, uris) => {
-      const config2 = vscode15.workspace.getConfiguration("UnifiedApexValidator");
-      if (!(config2.get("enableAllmanFormatter") ?? true)) {
-        void vscode15.window.showInformationMessage("El formateador Allman est\xE1 deshabilitado en la configuraci\xF3n.");
+      const config3 = vscode15.workspace.getConfiguration("UnifiedApexValidator");
+      if (!(config3.get("enableAllmanFormatter") ?? true)) {
+        void vscode15.window.showInformationMessage(localize("info.allman.disabled", "The Allman formatter is disabled in the settings."));
         return;
       }
       await formatApexAllman(uri, uris);
@@ -90364,7 +91261,7 @@ async function activate(context) {
       const logger6 = new Logger("WhereIsUsed");
       const selectedUris = collectClsUris(uri, uris);
       if (!selectedUris.length) {
-        vscode15.window.showWarningMessage("Selecciona al menos una clase Apex (.cls) para analizar su uso.");
+        vscode15.window.showWarningMessage(localize("warning.whereUsed.selectClass", "Select at least one Apex (.cls) file to analyze its usage."));
         return;
       }
       let success = false;
@@ -90372,11 +91269,12 @@ async function activate(context) {
         await vscode15.window.withProgress(
           {
             location: vscode15.ProgressLocation.Notification,
-            title: "Scanning project for class usage...",
+            title: localize("progress.whereUsed.title", "Scanning project for class usage..."),
+            // Localized string
             cancellable: false
           },
           async (progress) => {
-            progress.report({ message: "Analizando referencias en Apex, Flows y LWC..." });
+            progress.report({ message: localize("progress.whereUsed.analyzing", "Analyzing references across Apex, Flows, and LWC...") });
             const repoDir = await resolveWhereUsedRepoDir(logger6);
             const workerPath = resolveWhereUsedWorkerPath(context);
             const targetPaths = selectedUris.map((item) => item.fsPath);
@@ -90384,18 +91282,18 @@ async function activate(context) {
               repoDir,
               classIdentifiers: targetPaths
             }, logger6);
-            progress.report({ message: "Generando reporte visual..." });
+            progress.report({ message: localize("progress.whereUsed.rendering", "Rendering visual report...") });
             await showWhereUsedPanel(results);
             success = true;
           }
         );
       } catch (err) {
         const reason = err?.message || String(err);
-        logger6.error(`Error generando Where is Used: ${reason}`);
-        vscode15.window.showErrorMessage(`Error generando Where is Used: ${reason}`);
+        logger6.error(localize("log.whereUsed.error", "Error generating Where is Used report: {0}", reason));
+        vscode15.window.showErrorMessage(localize("error.whereUsed.failed", "Error generating Where is Used: {0}", reason));
       }
       if (success) {
-        vscode15.window.showInformationMessage("Where is Used report generated.");
+        vscode15.window.showInformationMessage(localize("info.whereUsed.generated", "Where is Used report generated."));
       }
     }
   );
@@ -90434,32 +91332,32 @@ function collectClsUris(primary, multiSelect) {
 async function resolveWhereUsedRepoDir(logger6) {
   const workspaceFolder = vscode15.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) {
-    throw new Error("No se detect\uFFFD un workspace abierto.");
+    throw new Error(localize("error.whereUsed.noWorkspace", "No workspace folder detected."));
   }
-  const config2 = vscode15.workspace.getConfiguration("UnifiedApexValidator");
-  let repoDir = config2.get("sfRepositoryDir")?.trim() || "";
+  const config3 = vscode15.workspace.getConfiguration("UnifiedApexValidator");
+  let repoDir = config3.get("sfRepositoryDir")?.trim() || "";
   if (!repoDir) {
     repoDir = workspaceFolder.uri.fsPath;
-    logger6.warn("sfRepositoryDir no configurado. Se usara la raiz del workspace.");
+    logger6.warn(localize("log.whereUsed.repoDirDefault", "sfRepositoryDir not configured. Using workspace root."));
   }
-  repoDir = path18.resolve(repoDir);
-  if (!fs12.existsSync(repoDir)) {
-    throw new Error("La ruta configurada no existe: " + repoDir);
+  repoDir = path19.resolve(repoDir);
+  if (!fs13.existsSync(repoDir)) {
+    throw new Error(localize("error.whereUsed.repoMissing", "Configured repository path does not exist: {0}", repoDir));
   }
   return repoDir;
 }
 function resolveWhereUsedWorkerPath(context) {
   const candidates = [
-    path18.join(__dirname, "core", "whereUsedWorkerProcess.js"),
-    path18.join(context.extensionPath, "out", "core", "whereUsedWorkerProcess.js"),
-    path18.join(context.extensionPath, "dist", "core", "whereUsedWorkerProcess.js")
+    path19.join(__dirname, "core", "whereUsedWorkerProcess.js"),
+    path19.join(context.extensionPath, "out", "core", "whereUsedWorkerProcess.js"),
+    path19.join(context.extensionPath, "dist", "core", "whereUsedWorkerProcess.js")
   ];
   for (const candidate of candidates) {
-    if (fs12.existsSync(candidate)) {
+    if (fs13.existsSync(candidate)) {
       return candidate;
     }
   }
-  throw new Error("No se encontro el componente whereUsedWorkerProcess.js.");
+  throw new Error(localize("error.whereUsed.workerMissing", "Could not find whereUsedWorkerProcess.js component."));
 }
 function runWhereIsUsedWorker(workerPath, payload, logger6) {
   return new Promise((resolve7, reject) => {
@@ -90467,12 +91365,14 @@ function runWhereIsUsedWorker(workerPath, payload, logger6) {
     const child = (0, import_child_process.fork)(workerPath, [], {
       stdio: ["ignore", "pipe", "pipe", "ipc"]
     });
+    child.stdout?.setEncoding("utf8");
+    child.stderr?.setEncoding("utf8");
     const timeoutMs = 1e3 * 60 * 10;
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
       child.kill();
-      reject(new Error("Where is Used worker timeout tras 10 minutos."));
+      reject(new Error(localize("error.whereUsed.timeout", "Where is Used worker timed out after 10 minutes.")));
     }, timeoutMs);
     const clearAll = () => {
       clearTimeout(timer);
@@ -90481,15 +91381,21 @@ function runWhereIsUsedWorker(workerPath, payload, logger6) {
       child.stderr?.removeAllListeners();
     };
     child.stdout?.on("data", (data) => {
-      const text2 = data.toString().trim();
-      if (text2) {
-        logger6.info(`[WhereIsUsedWorker] ${text2}`);
+      const lines = data.toString().split(/\r?\n/);
+      for (const raw of lines) {
+        const text2 = raw.trim();
+        if (!text2) continue;
+        const message = text2.startsWith("[WhereIsUsedWorker]") ? text2 : `[WhereIsUsedWorker] ${text2}`;
+        logger6.info(message);
       }
     });
     child.stderr?.on("data", (data) => {
-      const text2 = data.toString().trim();
-      if (text2) {
-        logger6.warn(`[WhereIsUsedWorker] ${text2}`);
+      const lines = data.toString().split(/\r?\n/);
+      for (const raw of lines) {
+        const text2 = raw.trim();
+        if (!text2) continue;
+        const message = text2.startsWith("[WhereIsUsedWorker]") ? text2 : `[WhereIsUsedWorker] ${text2}`;
+        logger6.warn(message);
       }
     });
     child.on("message", (message) => {
@@ -90501,7 +91407,8 @@ function runWhereIsUsedWorker(workerPath, payload, logger6) {
       } else {
         settled = true;
         clearAll();
-        reject(new Error(message.message || "Where is Used worker reporto un error."));
+        const fallbackMessage = localize("error.whereUsed.workerGeneric", "Where is Used worker reported an error.");
+        reject(new Error(message.message || fallbackMessage));
       }
     });
     child.on("error", (err) => {
@@ -90517,14 +91424,15 @@ function runWhereIsUsedWorker(workerPath, payload, logger6) {
       if (code2 === 0) {
         resolve7([]);
       } else {
-        reject(new Error(`Where is Used worker finalizo con codigo ${code2 ?? "desconocido"}.`));
+        const exitCode = code2 ?? localize("common.unknown", "unknown");
+        reject(new Error(localize("error.whereUsed.workerExit", "Where is Used worker exited with code {0}.", exitCode)));
       }
     });
     child.send(payload);
   });
 }
 function deactivate() {
-  vscode15.window.showInformationMessage("Unified Apex Validator desactivado.");
+  vscode15.window.showInformationMessage(localize("info.extension.deactivated", "Unified Apex Validator deactivated."));
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {

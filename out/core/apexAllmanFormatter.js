@@ -40,6 +40,7 @@ const path = __importStar(require("path"));
 const vscode = __importStar(require("vscode"));
 const url_1 = require("url");
 const utils_1 = require("./utils");
+const i18n_1 = require("../i18n");
 const logger = new utils_1.Logger('apexAllmanFormatter');
 patchWindowsBatSpawn();
 let prettierInstance = null;
@@ -98,18 +99,19 @@ async function loadPrettier(hints = []) {
     }
     const resolved = resolveModule('prettier', hints);
     if (!resolved) {
-        logger.error('No se pudo resolver el modulo prettier en el workspace.');
-        throw new Error('No se pudo cargar "prettier". Instala prettier en tu workspace.');
+        logger.error((0, i18n_1.localize)('log.allman.prettierModuleMissing', 'Could not resolve the "prettier" module in this workspace.'));
+        throw new Error((0, i18n_1.localize)('error.allman.prettierMissing', 'Unable to load "prettier". Install prettier in your workspace.'));
     }
     try {
         const mod = await Promise.resolve(`${(0, url_1.pathToFileURL)(resolved).href}`).then(s => __importStar(require(s)));
         prettierInstance = mod.default ?? mod;
-        logger.info(`Prettier cargado desde ${resolved}.`);
+        logger.info((0, i18n_1.localize)('log.allman.prettierLoaded', 'Prettier loaded from {0}.', resolved));
         return prettierInstance;
     }
     catch (err) {
-        logger.error(`Error importando Prettier desde ${resolved}: ${err}`);
-        throw new Error('No se pudo cargar "prettier". Instala prettier en tu workspace.');
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error((0, i18n_1.localize)('log.allman.prettierImportError', 'Error importing Prettier from {0}: {1}', resolved, message));
+        throw new Error((0, i18n_1.localize)('error.allman.prettierMissing', 'Unable to load "prettier". Install prettier in your workspace.'));
     }
 }
 function resolveApexPlugin(hints = []) {
@@ -118,11 +120,11 @@ function resolveApexPlugin(hints = []) {
     }
     const resolved = resolveModule('prettier-plugin-apex', hints);
     if (!resolved) {
-        logger.error('No se encontro prettier-plugin-apex en el workspace.');
-        throw new Error('No se encontro "prettier-plugin-apex". Instala prettier prettier-plugin-apex.');
+        logger.error((0, i18n_1.localize)('log.allman.pluginMissing', 'Could not find "prettier-plugin-apex" in this workspace.'));
+        throw new Error((0, i18n_1.localize)('error.allman.pluginMissing', 'Unable to load "prettier-plugin-apex". Install prettier-plugin-apex in your workspace.'));
     }
     apexPluginPathCache = resolved;
-    logger.info(`Plugin prettier-plugin-apex localizado en ${resolved}.`);
+    logger.info((0, i18n_1.localize)('log.allman.pluginFound', '"prettier-plugin-apex" located at {0}.', resolved));
     return apexPluginPathCache;
 }
 function resolveModule(moduleName, additionalPaths = []) {
@@ -143,7 +145,8 @@ function resolveModule(moduleName, additionalPaths = []) {
         return require.resolve(moduleName, { paths: Array.from(searchPaths) });
     }
     catch (error) {
-        logger.debug(`No se pudo resolver ${moduleName} con rutas personalizadas: ${error}`);
+        const message = error instanceof Error ? error.message : String(error);
+        logger.debug((0, i18n_1.localize)('log.allman.moduleResolveFailed', 'Could not resolve {0} using custom paths: {1}', moduleName, message));
         return null;
     }
 }
@@ -214,24 +217,24 @@ function convertToAllmanStyle(code) {
     return formatted.endsWith('\n') ? formatted : `${formatted}\n`;
 }
 async function applyAllmanStyleToCode(source, spacesPerTab = 4, hints = []) {
-    logger.info('Formateando codigo Apex en memoria.');
+    logger.info((0, i18n_1.localize)('log.allman.formattingInMemory', 'Formatting Apex code in memory.'));
     const normalized = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const prettified = await formatWithPrettier(normalized, spacesPerTab, hints);
     return convertToAllmanStyle(prettified);
 }
 async function applyAllmanStyleToFile(filePath, hints) {
-    logger.info(`Procesando archivo ${filePath}.`);
+    logger.info((0, i18n_1.localize)('log.allman.processingFile', 'Processing file {0}.', filePath));
     const original = await fs.promises.readFile(filePath, 'utf8');
     const localHints = [path.dirname(filePath), ...hints];
     const formatted = await applyAllmanStyleToCode(original, 4, localHints);
     if (formatted.trim().length === 0) {
-        logger.warn(`El archivo ${filePath} quedo vacio tras el formateo. Se omite.`);
+        logger.warn((0, i18n_1.localize)('log.allman.formattedEmpty', 'File {0} became empty after formatting. Skipping.', filePath));
         return false;
     }
     const usesWindowsNewlines = /\r\n/.test(original);
     const finalOutput = usesWindowsNewlines ? formatted.replace(/\n/g, '\r\n') : formatted;
     if (finalOutput === original) {
-        logger.debug(`El archivo ${filePath} no requiere cambios.`);
+        logger.debug((0, i18n_1.localize)('log.allman.noChangesDebug', 'File {0} does not require changes.', filePath));
         return false;
     }
     await fs.promises.writeFile(filePath, finalOutput, 'utf8');
@@ -265,19 +268,19 @@ function collectFilesFromUri(uri) {
     return files;
 }
 async function formatApexAllman(target, selected) {
-    logger.info('Comando de formateo Allman invocado.');
+    logger.info((0, i18n_1.localize)('log.allman.commandInvoked', 'Allman formatting command invoked.'));
     const targets = gatherTargets(target, selected);
     if (targets.length === 0) {
-        void vscode.window.showInformationMessage('Selecciona un archivo Apex o una carpeta para aplicar el formato.');
+        void vscode.window.showInformationMessage((0, i18n_1.localize)('info.allman.selectTarget', 'Select an Apex file or folder to format.'));
         return;
     }
-    logger.debug(`Targets recibidos: ${targets.map((t) => t.fsPath).join(', ') || 'ninguno'}.`);
+    logger.debug((0, i18n_1.localize)('log.allman.targetsReceived', 'Targets received: {0}.', targets.map((t) => t.fsPath).join(', ') || (0, i18n_1.localize)('log.allman.none', 'none')));
     const files = targets.flatMap(collectFilesFromUri);
     if (files.length === 0) {
-        void vscode.window.showInformationMessage('No se encontraron archivos .cls o .trigger en la seleccion.');
+        void vscode.window.showInformationMessage((0, i18n_1.localize)('info.allman.noFilesFound', 'No .cls or .trigger files were found in the selection.'));
         return;
     }
-    logger.info(`Archivos a procesar: ${files.length}.`);
+    logger.info((0, i18n_1.localize)('log.allman.filesToProcess', 'Files to process: {0}.', files.length));
     const hintPaths = new Set();
     for (const file of files) {
         const dir = path.dirname(file);
@@ -290,20 +293,21 @@ async function formatApexAllman(target, selected) {
             const changed = await applyAllmanStyleToFile(filePath, hints);
             if (changed) {
                 updated++;
-                logger.info(`Archivo formateado: ${filePath}`);
+                logger.info((0, i18n_1.localize)('log.allman.fileFormatted', 'Formatted file: {0}', filePath));
             }
             else {
-                logger.debug(`Sin cambios en: ${filePath}`);
+                logger.debug((0, i18n_1.localize)('log.allman.noChanges', 'No changes for file: {0}', filePath));
             }
         }
         catch (err) {
-            logger.error(`Error formateando ${filePath}: ${err?.message || err}`);
-            void vscode.window.showErrorMessage(`Error formateando ${path.basename(filePath)}: ${err.message}`);
+            const reason = err?.message || String(err);
+            logger.error((0, i18n_1.localize)('log.allman.formatError', 'Error formatting {0}: {1}', filePath, reason));
+            void vscode.window.showErrorMessage((0, i18n_1.localize)('error.allman.fileFormat', 'Error formatting {0}: {1}', path.basename(filePath), reason));
         }
     }
     if (updated === 0) {
-        void vscode.window.showInformationMessage('No se realizaron cambios en los archivos seleccionados.');
+        void vscode.window.showInformationMessage((0, i18n_1.localize)('info.allman.noChangesApplied', 'No changes were made to the selected files.'));
         return;
     }
-    void vscode.window.showInformationMessage(`Formato Allman aplicado a ${updated} archivo(s) Apex.`);
+    void vscode.window.showInformationMessage((0, i18n_1.localize)('info.allman.summary', 'Allman format applied to {0} Apex file(s).', updated));
 }
