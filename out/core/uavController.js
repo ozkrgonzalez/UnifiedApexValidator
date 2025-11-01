@@ -278,39 +278,92 @@ class FolderViewProvider {
     label;
     _onDidChangeTreeData = new vscode.EventEmitter();
     onDidChangeTreeData = this._onDidChangeTreeData.event;
+    normalizedExtensions;
     constructor(folderPath, fileExtension, label) {
         this.folderPath = folderPath;
         this.fileExtension = fileExtension;
         this.label = label;
+        this.normalizedExtensions = fileExtension
+            .split('|')
+            .map((ext) => ext.trim().toLowerCase())
+            .filter(Boolean);
     }
     refresh() {
         this._onDidChangeTreeData.fire();
+    }
+    async getItemCount() {
+        const result = await this.collectFiles();
+        return result.kind === 'files' ? result.files.length : 0;
+    }
+    async clearAll() {
+        const action = await vscode.window.showWarningMessage(`Eliminar todos los ${this.label.toLowerCase()}?`, 'Eliminar', 'Cancelar');
+        if (action !== 'Eliminar') {
+            return;
+        }
+        try {
+            const result = await this.collectFiles();
+            if (result.kind === 'missing') {
+                vscode.window.showInformationMessage(`Carpeta de ${this.label.toLowerCase()} no encontrada.`);
+                this.refresh();
+                return;
+            }
+            if (result.kind === 'error') {
+                vscode.window.showErrorMessage(`No se pudieron eliminar los ${this.label.toLowerCase()}.`);
+                this.refresh();
+                return;
+            }
+            if (!result.files.length) {
+                vscode.window.showInformationMessage(`${this.label}: sin archivos para eliminar.`);
+                this.refresh();
+                return;
+            }
+            await Promise.all(result.files.map((fileName) => fs.remove(path.join(this.folderPath, fileName))));
+            this.refresh();
+            vscode.window.showInformationMessage(`${this.label}: archivos eliminados.`);
+        }
+        catch (error) {
+            console.error(`[UAV][${this.label}] Error eliminando archivos:`, error);
+            vscode.window.showErrorMessage(`No se pudieron eliminar los ${this.label.toLowerCase()}.`);
+        }
     }
     getTreeItem(element) {
         return element;
     }
     async getChildren() {
-        try {
-            if (!this.folderPath || !(await fs.pathExists(this.folderPath))) {
-                return [new FileItem(`No se encontró carpeta: ${this.folderPath}`, '', false)];
-            }
-            const files = await fs.readdir(this.folderPath, { withFileTypes: true });
-            const filtered = files
-                .filter(f => {
-                if (!f.isFile())
-                    return false;
-                const ext = path.extname(f.name).toLowerCase();
-                return this.fileExtension.split('|').some(e => ext === `.${e.trim()}`);
-            })
-                .map(f => new FileItem(f.name, path.join(this.folderPath, f.name), true));
-            if (!filtered.length) {
-                return [new FileItem('Sin archivos disponibles', '', false)];
-            }
-            return filtered;
+        const result = await this.collectFiles();
+        if (result.kind === 'missing') {
+            return [new FileItem(`No se encontró carpeta: ${this.folderPath}`, '', false)];
         }
-        catch (err) {
-            console.error(`[UAV][${this.label}] Error leyendo archivos:`, err);
+        if (result.kind === 'error') {
             return [new FileItem('Error leyendo carpeta', '', false)];
+        }
+        if (!result.files.length) {
+            return [new FileItem('Sin archivos disponibles', '', false)];
+        }
+        return result.files.map((name) => new FileItem(name, path.join(this.folderPath, name), true));
+    }
+    async collectFiles() {
+        if (!this.folderPath || !(await fs.pathExists(this.folderPath))) {
+            return { kind: 'missing' };
+        }
+        try {
+            const entries = await fs.readdir(this.folderPath, { withFileTypes: true });
+            const files = entries
+                .filter((entry) => {
+                if (!entry.isFile())
+                    return false;
+                if (!this.normalizedExtensions.length)
+                    return true;
+                const ext = path.extname(entry.name).toLowerCase();
+                return this.normalizedExtensions.some((value) => `.${value}` === ext);
+            })
+                .map((entry) => entry.name)
+                .sort((a, b) => a.localeCompare(b));
+            return { kind: 'files', files };
+        }
+        catch (error) {
+            console.error(`[UAV][${this.label}] Error leyendo archivos:`, error);
+            return { kind: 'error', error };
         }
     }
 }

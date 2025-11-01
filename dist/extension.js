@@ -82022,6 +82022,58 @@ var DependenciesProvider = class {
   }
   async getChildren() {
     const dependencies = [];
+    const records = await this.collectDependencies();
+    for (const { dep, status, info } of records) {
+      const item = new UavDependencyItem(dep, status);
+      const iconMap = {
+        ok: new vscode3.ThemeIcon("check", new vscode3.ThemeColor("testing.iconPassed")),
+        outdated: new vscode3.ThemeIcon("triangle-right", new vscode3.ThemeColor("editorWarning.foreground")),
+        missing: new vscode3.ThemeIcon("close", new vscode3.ThemeColor("errorForeground"))
+      };
+      item.iconPath = iconMap[status.state];
+      if (status.state !== "ok" && dep.installCmd) {
+        item.command = {
+          title: "Actualizar dependencia",
+          command: "uav.updateDependency",
+          arguments: [dep]
+        };
+        item.tooltip = item.tooltip ? `${item.tooltip} | Actualizar ${dep.label}` : `Actualizar ${dep.label}`;
+      }
+      if (info?.type === "ia") {
+        if (info.ready) {
+          item.description = "Actualizado";
+          item.tooltip = "Credenciales IA configuradas.";
+        } else {
+          const missingList = info.missing.join(", ");
+          item.description = `Faltan: ${missingList}`;
+          item.tooltip = `Configura los siguientes campos: ${missingList}`;
+        }
+      }
+      dependencies.push(item);
+    }
+    return dependencies;
+  }
+  async getDependencySummary() {
+    const records = await this.collectDependencies();
+    const worstState = records.reduce(
+      (current, record) => this.getSeverityRank(record.status.state) > this.getSeverityRank(current) ? record.status.state : current,
+      "ok"
+    );
+    return { state: worstState, records };
+  }
+  getSeverityRank(state) {
+    switch (state) {
+      case "missing":
+        return 3;
+      case "outdated":
+        return 2;
+      case "ok":
+      default:
+        return 1;
+    }
+  }
+  async collectDependencies() {
+    const records = [];
     const checks = [
       { label: "Node.js", cmd: "node --version", minVersion: "18.0.0", installCmd: "npm install -g node" },
       { label: "Salesforce CLI (sf)", cmd: "sf --version", minVersion: "2.0.0", installCmd: "npm install -g @salesforce/cli" },
@@ -82036,37 +82088,22 @@ var DependenciesProvider = class {
       { label: "wkhtmltopdf", cmd: "wkhtmltopdf --version", minVersion: "0.12.6", installCmd: "brew install wkhtmltopdf" }
     ];
     for (const dep of checks) {
-      const state = await this.checkCommand(dep);
-      const item = new UavDependencyItem(dep.label, state);
-      const iconMap = {
-        ok: new vscode3.ThemeIcon("check", new vscode3.ThemeColor("testing.iconPassed")),
-        outdated: new vscode3.ThemeIcon("triangle-right", new vscode3.ThemeColor("editorWarning.foreground")),
-        missing: new vscode3.ThemeIcon("close", new vscode3.ThemeColor("errorForeground"))
-      };
-      item.iconPath = iconMap[state];
-      if (state !== "ok" && dep.installCmd) {
-        item.command = {
-          title: "Actualizar dependencia",
-          command: "uav.updateDependency",
-          arguments: [dep]
-        };
-        item.tooltip = `Actualizar ${dep.label}`;
-      }
-      dependencies.push(item);
+      const status = await this.checkCommand(dep);
+      records.push({ dep, status });
     }
     const iaStatus = evaluateIaConfig();
-    const iaItem = new UavDependencyItem("IA Configuracion", iaStatus.ready ? "ok" : "missing");
-    iaItem.iconPath = iaStatus.ready ? new vscode3.ThemeIcon("check", new vscode3.ThemeColor("testing.iconPassed")) : new vscode3.ThemeIcon("close", new vscode3.ThemeColor("errorForeground"));
-    if (iaStatus.ready) {
-      iaItem.description = "Actualizado";
-      iaItem.tooltip = "Credenciales IA configuradas.";
-    } else {
-      const missingList = iaStatus.missing.join(", ");
-      iaItem.description = `Faltan: ${missingList}`;
-      iaItem.tooltip = `Configura los siguientes campos: ${missingList}`;
-    }
-    dependencies.push(iaItem);
-    return dependencies;
+    const iaDep = { label: "IA Configuracion" };
+    const iaItemStatus = { state: iaStatus.ready ? "ok" : "missing" };
+    records.push({
+      dep: iaDep,
+      status: iaItemStatus,
+      info: {
+        type: "ia",
+        ready: iaStatus.ready,
+        missing: iaStatus.missing
+      }
+    });
+    return records;
   }
   async checkCommand(dep) {
     if (dep.customCheck) {
@@ -82074,22 +82111,24 @@ var DependenciesProvider = class {
         return await dep.customCheck(dep.minVersion);
       } catch (error) {
         console.error("[UAV][dependencies] Error revisando dependencia personalizada:", error);
-        return "missing";
+        return { state: "missing" };
       }
     }
     try {
       if (!dep.cmd) {
-        return "missing";
+        return { state: "missing" };
       }
       const { stdout, stderr } = await execa(dep.cmd, { shell: true });
       const output = stdout || stderr || "";
       const match3 = output.match(/\d+(\.\d+)+/);
+      const detectedVersion = match3 ? match3[0] : void 0;
       if (match3 && dep.minVersion) {
-        return this.compareVersions(match3[0], dep.minVersion) >= 0 ? "ok" : "outdated";
+        const state = this.compareVersions(match3[0], dep.minVersion) >= 0 ? "ok" : "outdated";
+        return { state, detectedVersion };
       }
-      return "ok";
+      return { state: "ok", detectedVersion };
     } catch {
-      return "missing";
+      return { state: "missing" };
     }
   }
   compareVersions(a2, b) {
@@ -82125,7 +82164,7 @@ var DependenciesProvider = class {
         entryPath = this.resolveModule("prettier-plugin-apex");
       }
       if (!entryPath) {
-        return "missing";
+        return { state: "missing" };
       }
       let pkgPath = entryPath.replace(/dist[\\/].*$/, "package.json");
       if (!fs2.existsSync(pkgPath)) {
@@ -82133,29 +82172,31 @@ var DependenciesProvider = class {
       }
       if (!fs2.existsSync(pkgPath)) {
         console.warn("[UAV][dependencies] package.json no encontrado para prettier-plugin-apex:", pkgPath);
-        return "missing";
+        return { state: "missing" };
       }
       const packageJson = JSON.parse(fs2.readFileSync(pkgPath, "utf8"));
       const version = packageJson.version;
       if (!version) {
-        return "missing";
+        return { state: "missing" };
       }
       if (minVersion) {
-        return this.compareVersions(version, minVersion) >= 0 ? "ok" : "outdated";
+        const state = this.compareVersions(version, minVersion) >= 0 ? "ok" : "outdated";
+        return { state, detectedVersion: version };
       }
-      return "ok";
+      return { state: "ok", detectedVersion: version };
     } catch (error) {
       console.warn("[UAV][dependencies] No se pudo resolver prettier-plugin-apex:", error);
-      return "missing";
+      return { state: "missing" };
     }
   }
 };
 var UavDependencyItem = class extends vscode3.TreeItem {
-  constructor(label, state) {
-    super(label, vscode3.TreeItemCollapsibleState.None);
-    this.label = label;
-    this.state = state;
-    this.description = this.getDescription(state);
+  constructor(dep, status) {
+    super(dep.label, vscode3.TreeItemCollapsibleState.None);
+    this.dep = dep;
+    this.status = status;
+    this.description = this.getDescription(status.state);
+    this.tooltip = this.buildTooltip(dep, status);
   }
   getDescription(state) {
     switch (state) {
@@ -82166,6 +82207,27 @@ var UavDependencyItem = class extends vscode3.TreeItem {
       case "missing":
         return "No instalado";
     }
+  }
+  buildTooltip(dep, status) {
+    const parts = [dep.label];
+    if (status.detectedVersion) {
+      parts.push(`Detectado ${status.detectedVersion}`);
+    }
+    if (dep.minVersion) {
+      parts.push(`Minimo ${dep.minVersion}`);
+    }
+    switch (status.state) {
+      case "ok":
+        parts.push("Actualizado");
+        break;
+      case "outdated":
+        parts.push("Desactualizado");
+        break;
+      case "missing":
+        parts.push("No instalado");
+        break;
+    }
+    return parts.join(" | ");
   }
 };
 function registerDependencyUpdater(context) {
@@ -88183,33 +88245,86 @@ var FolderViewProvider = class {
     this.folderPath = folderPath;
     this.fileExtension = fileExtension;
     this.label = label;
+    this.normalizedExtensions = fileExtension.split("|").map((ext2) => ext2.trim().toLowerCase()).filter(Boolean);
   }
   _onDidChangeTreeData = new vscode7.EventEmitter();
   onDidChangeTreeData = this._onDidChangeTreeData.event;
+  normalizedExtensions;
   refresh() {
     this._onDidChangeTreeData.fire();
+  }
+  async getItemCount() {
+    const result = await this.collectFiles();
+    return result.kind === "files" ? result.files.length : 0;
+  }
+  async clearAll() {
+    const action = await vscode7.window.showWarningMessage(
+      `Eliminar todos los ${this.label.toLowerCase()}?`,
+      "Eliminar",
+      "Cancelar"
+    );
+    if (action !== "Eliminar") {
+      return;
+    }
+    try {
+      const result = await this.collectFiles();
+      if (result.kind === "missing") {
+        vscode7.window.showInformationMessage(`Carpeta de ${this.label.toLowerCase()} no encontrada.`);
+        this.refresh();
+        return;
+      }
+      if (result.kind === "error") {
+        vscode7.window.showErrorMessage(`No se pudieron eliminar los ${this.label.toLowerCase()}.`);
+        this.refresh();
+        return;
+      }
+      if (!result.files.length) {
+        vscode7.window.showInformationMessage(`${this.label}: sin archivos para eliminar.`);
+        this.refresh();
+        return;
+      }
+      await Promise.all(
+        result.files.map((fileName) => fs7.remove(path13.join(this.folderPath, fileName)))
+      );
+      this.refresh();
+      vscode7.window.showInformationMessage(`${this.label}: archivos eliminados.`);
+    } catch (error) {
+      console.error(`[UAV][${this.label}] Error eliminando archivos:`, error);
+      vscode7.window.showErrorMessage(`No se pudieron eliminar los ${this.label.toLowerCase()}.`);
+    }
   }
   getTreeItem(element) {
     return element;
   }
   async getChildren() {
-    try {
-      if (!this.folderPath || !await fs7.pathExists(this.folderPath)) {
-        return [new FileItem(`No se encontr\xF3 carpeta: ${this.folderPath}`, "", false)];
-      }
-      const files = await fs7.readdir(this.folderPath, { withFileTypes: true });
-      const filtered = files.filter((f) => {
-        if (!f.isFile()) return false;
-        const ext2 = path13.extname(f.name).toLowerCase();
-        return this.fileExtension.split("|").some((e) => ext2 === `.${e.trim()}`);
-      }).map((f) => new FileItem(f.name, path13.join(this.folderPath, f.name), true));
-      if (!filtered.length) {
-        return [new FileItem("Sin archivos disponibles", "", false)];
-      }
-      return filtered;
-    } catch (err) {
-      console.error(`[UAV][${this.label}] Error leyendo archivos:`, err);
+    const result = await this.collectFiles();
+    if (result.kind === "missing") {
+      return [new FileItem(`No se encontr\xF3 carpeta: ${this.folderPath}`, "", false)];
+    }
+    if (result.kind === "error") {
       return [new FileItem("Error leyendo carpeta", "", false)];
+    }
+    if (!result.files.length) {
+      return [new FileItem("Sin archivos disponibles", "", false)];
+    }
+    return result.files.map((name) => new FileItem(name, path13.join(this.folderPath, name), true));
+  }
+  async collectFiles() {
+    if (!this.folderPath || !await fs7.pathExists(this.folderPath)) {
+      return { kind: "missing" };
+    }
+    try {
+      const entries = await fs7.readdir(this.folderPath, { withFileTypes: true });
+      const files = entries.filter((entry) => {
+        if (!entry.isFile()) return false;
+        if (!this.normalizedExtensions.length) return true;
+        const ext2 = path13.extname(entry.name).toLowerCase();
+        return this.normalizedExtensions.some((value) => `.${value}` === ext2);
+      }).map((entry) => entry.name).sort((a2, b) => a2.localeCompare(b));
+      return { kind: "files", files };
+    } catch (error) {
+      console.error(`[UAV][${this.label}] Error leyendo archivos:`, error);
+      return { kind: "error", error };
     }
   }
 };
@@ -90058,6 +90173,56 @@ async function activate(context) {
   console.log("[UAV][extension] globalStorageUri:", context.globalStorageUri.fsPath);
   const dependenciesProvider = new DependenciesProvider(context);
   vscode15.window.registerTreeDataProvider("uav.dependenciesView", dependenciesProvider);
+  const dependencyStatusItem = vscode15.window.createStatusBarItem(
+    "uav.dependencyStatus",
+    vscode15.StatusBarAlignment.Left,
+    100
+  );
+  dependencyStatusItem.name = "Unified Apex Validator";
+  dependencyStatusItem.command = "uav.dependenciesView.focus";
+  context.subscriptions.push(dependencyStatusItem);
+  const updateDependencyStatus = async () => {
+    try {
+      const summary = await dependenciesProvider.getDependencySummary();
+      const issues = summary.records.filter((record) => record.status.state !== "ok");
+      if (summary.state === "ok") {
+        dependencyStatusItem.text = "UAV Ready $(pass)";
+        dependencyStatusItem.tooltip = new vscode15.MarkdownString(
+          "Todas las dependencias est\xE1n actualizadas.\n\nHaz clic para abrir el panel de dependencias."
+        );
+      } else {
+        const lines = issues.length ? issues.map((record) => {
+          const { dep, status } = record;
+          if (record.info?.type === "ia" && !record.info.ready && record.info.missing.length) {
+            return `- ${dep.label}: Configura ${record.info.missing.join(", ")}`;
+          }
+          const stateLabel = status.state === "missing" ? "No instalado" : "Desactualizado";
+          const versionInfo = [
+            status.detectedVersion ? `Detectado ${status.detectedVersion}` : null,
+            dep.minVersion ? `M\xEDnimo ${dep.minVersion}` : null
+          ].filter(Boolean).join(" | ");
+          return `- ${dep.label}: ${stateLabel}${versionInfo ? ` (${versionInfo})` : ""}`;
+        }) : ["- Sin detalles disponibles"];
+        const tooltip = new vscode15.MarkdownString(
+          ["Dependencias pendientes:", ...lines, "", "Haz clic para revisar el panel."].join("\n")
+        );
+        dependencyStatusItem.text = "UAV Ready $(warning)";
+        dependencyStatusItem.tooltip = tooltip;
+      }
+      dependencyStatusItem.show();
+    } catch (error) {
+      console.error("[UAV][extension] Error evaluando dependencias:", error);
+      dependencyStatusItem.text = "UAV Ready $(warning)";
+      dependencyStatusItem.tooltip = new vscode15.MarkdownString(
+        "No se pudo evaluar el estado de las dependencias.\n\nHaz clic para abrir el panel de dependencias."
+      );
+      dependencyStatusItem.show();
+    }
+  };
+  void updateDependencyStatus();
+  context.subscriptions.push(dependenciesProvider.onDidChangeTreeData(() => {
+    void updateDependencyStatus();
+  }));
   context.subscriptions.push(
     vscode15.commands.registerCommand("uav.dependenciesView.refresh", () => dependenciesProvider.refresh())
   );
@@ -90075,6 +90240,7 @@ async function activate(context) {
       if (event.affectsConfiguration("UnifiedApexValidator")) {
         syncIaContext();
         dependenciesProvider.refresh();
+        void updateDependencyStatus();
       }
     })
   );
@@ -90083,12 +90249,43 @@ async function activate(context) {
   await vscode15.workspace.fs.createDirectory(vscode15.Uri.file(outputDir));
   await vscode15.workspace.fs.createDirectory(vscode15.Uri.file(logDir));
   const reportsProvider = new FolderViewProvider(outputDir, "html|pdf", "Reportes");
-  vscode15.window.registerTreeDataProvider("uav.reportsView", reportsProvider);
+  const reportsView = vscode15.window.createTreeView("uav.reportsView", { treeDataProvider: reportsProvider });
+  context.subscriptions.push(reportsView);
   const logsProvider = new FolderViewProvider(logDir, "log", "Logs");
-  vscode15.window.registerTreeDataProvider("uav.logsView", logsProvider);
+  const logsView = vscode15.window.createTreeView("uav.logsView", { treeDataProvider: logsProvider });
+  context.subscriptions.push(logsView);
+  const updateFolderBadges = async () => {
+    try {
+      const [reportsCount, logsCount] = await Promise.all([
+        reportsProvider.getItemCount(),
+        logsProvider.getItemCount()
+      ]);
+      reportsView.badge = reportsCount > 0 ? {
+        value: reportsCount,
+        tooltip: `${reportsCount} reporte${reportsCount === 1 ? "" : "s"} disponibles`
+      } : void 0;
+      logsView.badge = logsCount > 0 ? {
+        value: logsCount,
+        tooltip: `${logsCount} log${logsCount === 1 ? "" : "s"} disponibles`
+      } : void 0;
+    } catch (error) {
+      console.error("[UAV][extension] Error actualizando badges de vistas:", error);
+    }
+  };
+  void updateFolderBadges();
+  context.subscriptions.push(
+    reportsProvider.onDidChangeTreeData(() => {
+      void updateFolderBadges();
+    }),
+    logsProvider.onDidChangeTreeData(() => {
+      void updateFolderBadges();
+    })
+  );
   context.subscriptions.push(
     vscode15.commands.registerCommand("uav.reportsView.refresh", () => reportsProvider.refresh()),
     vscode15.commands.registerCommand("uav.logsView.refresh", () => logsProvider.refresh()),
+    vscode15.commands.registerCommand("uav.reportsView.clearAll", () => reportsProvider.clearAll()),
+    vscode15.commands.registerCommand("uav.logsView.clearAll", () => logsProvider.clearAll()),
     vscode15.commands.registerCommand(
       "uav.reportsView.openFolder",
       () => vscode15.env.openExternal(vscode15.Uri.file(outputDir))

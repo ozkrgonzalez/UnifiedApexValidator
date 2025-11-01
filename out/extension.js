@@ -57,6 +57,50 @@ async function activate(context) {
     // 🧠 Dependencias
     const dependenciesProvider = new dependenciesProvider_1.DependenciesProvider(context);
     vscode.window.registerTreeDataProvider('uav.dependenciesView', dependenciesProvider);
+    const dependencyStatusItem = vscode.window.createStatusBarItem('uav.dependencyStatus', vscode.StatusBarAlignment.Left, 100);
+    dependencyStatusItem.name = 'Unified Apex Validator';
+    dependencyStatusItem.command = 'uav.dependenciesView.focus';
+    context.subscriptions.push(dependencyStatusItem);
+    const updateDependencyStatus = async () => {
+        try {
+            const summary = await dependenciesProvider.getDependencySummary();
+            const issues = summary.records.filter((record) => record.status.state !== 'ok');
+            if (summary.state === 'ok') {
+                dependencyStatusItem.text = 'UAV Ready $(pass)';
+                dependencyStatusItem.tooltip = new vscode.MarkdownString('Todas las dependencias están actualizadas.\n\nHaz clic para abrir el panel de dependencias.');
+            }
+            else {
+                const lines = issues.length
+                    ? issues.map((record) => {
+                        const { dep, status } = record;
+                        if (record.info?.type === 'ia' && !record.info.ready && record.info.missing.length) {
+                            return `- ${dep.label}: Configura ${record.info.missing.join(', ')}`;
+                        }
+                        const stateLabel = status.state === 'missing' ? 'No instalado' : 'Desactualizado';
+                        const versionInfo = [
+                            status.detectedVersion ? `Detectado ${status.detectedVersion}` : null,
+                            dep.minVersion ? `Mínimo ${dep.minVersion}` : null
+                        ]
+                            .filter(Boolean)
+                            .join(' | ');
+                        return `- ${dep.label}: ${stateLabel}${versionInfo ? ` (${versionInfo})` : ''}`;
+                    })
+                    : ['- Sin detalles disponibles'];
+                const tooltip = new vscode.MarkdownString(['Dependencias pendientes:', ...lines, '', 'Haz clic para revisar el panel.'].join('\n'));
+                dependencyStatusItem.text = 'UAV Ready $(warning)';
+                dependencyStatusItem.tooltip = tooltip;
+            }
+            dependencyStatusItem.show();
+        }
+        catch (error) {
+            console.error('[UAV][extension] Error evaluando dependencias:', error);
+            dependencyStatusItem.text = 'UAV Ready $(warning)';
+            dependencyStatusItem.tooltip = new vscode.MarkdownString('No se pudo evaluar el estado de las dependencias.\n\nHaz clic para abrir el panel de dependencias.');
+            dependencyStatusItem.show();
+        }
+    };
+    void updateDependencyStatus();
+    context.subscriptions.push(dependenciesProvider.onDidChangeTreeData(() => { void updateDependencyStatus(); }));
     context.subscriptions.push(vscode.commands.registerCommand('uav.dependenciesView.refresh', () => dependenciesProvider.refresh()));
     // ⚙️ Habilita el comando “Actualizar dependencia”
     (0, dependenciesProvider_1.registerDependencyUpdater)(context);
@@ -72,6 +116,7 @@ async function activate(context) {
         if (event.affectsConfiguration('UnifiedApexValidator')) {
             syncIaContext();
             dependenciesProvider.refresh();
+            void updateDependencyStatus();
         }
     }));
     // 📂 Rutas base
@@ -82,12 +127,41 @@ async function activate(context) {
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(logDir));
     // 📊 Reportes
     const reportsProvider = new uavController_1.FolderViewProvider(outputDir, 'html|pdf', 'Reportes');
-    vscode.window.registerTreeDataProvider('uav.reportsView', reportsProvider);
+    const reportsView = vscode.window.createTreeView('uav.reportsView', { treeDataProvider: reportsProvider });
+    context.subscriptions.push(reportsView);
     // 🪵 Logs
     const logsProvider = new uavController_1.FolderViewProvider(logDir, 'log', 'Logs');
-    vscode.window.registerTreeDataProvider('uav.logsView', logsProvider);
+    const logsView = vscode.window.createTreeView('uav.logsView', { treeDataProvider: logsProvider });
+    context.subscriptions.push(logsView);
+    const updateFolderBadges = async () => {
+        try {
+            const [reportsCount, logsCount] = await Promise.all([
+                reportsProvider.getItemCount(),
+                logsProvider.getItemCount()
+            ]);
+            reportsView.badge =
+                reportsCount > 0
+                    ? {
+                        value: reportsCount,
+                        tooltip: `${reportsCount} reporte${reportsCount === 1 ? '' : 's'} disponibles`
+                    }
+                    : undefined;
+            logsView.badge =
+                logsCount > 0
+                    ? {
+                        value: logsCount,
+                        tooltip: `${logsCount} log${logsCount === 1 ? '' : 's'} disponibles`
+                    }
+                    : undefined;
+        }
+        catch (error) {
+            console.error('[UAV][extension] Error actualizando badges de vistas:', error);
+        }
+    };
+    void updateFolderBadges();
+    context.subscriptions.push(reportsProvider.onDidChangeTreeData(() => { void updateFolderBadges(); }), logsProvider.onDidChangeTreeData(() => { void updateFolderBadges(); }));
     // 🔄 Comandos comunes
-    context.subscriptions.push(vscode.commands.registerCommand('uav.reportsView.refresh', () => reportsProvider.refresh()), vscode.commands.registerCommand('uav.logsView.refresh', () => logsProvider.refresh()), vscode.commands.registerCommand('uav.reportsView.openFolder', () => vscode.env.openExternal(vscode.Uri.file(outputDir))), vscode.commands.registerCommand('uav.logsView.openFolder', () => vscode.env.openExternal(vscode.Uri.file(logDir))), vscode.commands.registerCommand('uav.openFile', (uri) => vscode.env.openExternal(uri)));
+    context.subscriptions.push(vscode.commands.registerCommand('uav.reportsView.refresh', () => reportsProvider.refresh()), vscode.commands.registerCommand('uav.logsView.refresh', () => logsProvider.refresh()), vscode.commands.registerCommand('uav.reportsView.clearAll', () => reportsProvider.clearAll()), vscode.commands.registerCommand('uav.logsView.clearAll', () => logsProvider.clearAll()), vscode.commands.registerCommand('uav.reportsView.openFolder', () => vscode.env.openExternal(vscode.Uri.file(outputDir))), vscode.commands.registerCommand('uav.logsView.openFolder', () => vscode.env.openExternal(vscode.Uri.file(logDir))), vscode.commands.registerCommand('uav.openFile', (uri) => vscode.env.openExternal(uri)));
     (0, utils_1.setExtensionContext)(context);
     console.log('[UAV][extension] Contexto registrado.');
     try {
