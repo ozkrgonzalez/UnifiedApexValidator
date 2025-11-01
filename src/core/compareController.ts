@@ -4,6 +4,7 @@ import * as fs from 'fs-extra';
 import * as Diff from 'diff';
 import { execa } from 'execa';
 import { parseApexClassesFromPackage, getStorageRoot, Logger } from './utils';
+import { localize } from '../i18n';
 import { generateComparisonReport } from './reportGenerator';
 
 function normalizeForComparison(source: string): string
@@ -39,7 +40,7 @@ async function fallbackRetrieveApexClasses(
     .map(name => `'${name.replace(/'/g, "\\'")}'`)
     .join(', ');
     const query = `SELECT Name, Body FROM ApexClass WHERE Name IN (${inClause})`;
-    logger.info(`🪄 Consulta fallback (Tooling API): ${query}`);
+    logger.info(localize('log.compareController.fallbackQuery', '🪄 Fallback query (Tooling API): {0}', query)); // Localized string
 
     try
     {
@@ -51,7 +52,7 @@ async function fallbackRetrieveApexClasses(
 
       if (!Array.isArray(records) || records.length === 0)
       {
-        logger.warn('⚠️ Fallback sin resultados para este bloque de clases.');
+        logger.warn(localize('log.compareController.fallbackNoResults', '⚠️ Fallback returned no results for this batch of classes.')); // Localized string
         continue;
       }
 
@@ -61,27 +62,27 @@ async function fallbackRetrieveApexClasses(
         const body = record?.Body;
         if (typeof name !== 'string' || typeof body !== 'string')
         {
-          logger.warn('⚠️ Registro de ApexClass sin Name o Body válido, se omite.');
+          logger.warn(localize('log.compareController.invalidApexRecord', '⚠️ ApexClass record missing a valid Name or Body, skipping.')); // Localized string
           continue;
         }
 
         const targetPath = path.join(fallbackDir, `${name}.cls`);
         await fs.writeFile(targetPath, body, 'utf8');
         retrievedNames.add(name);
-        logger.info(`✅ Clase ${name} recuperada mediante fallback.`);
+        logger.info(localize('log.compareController.fallbackRetrievedClass', '✅ Class {0} retrieved via fallback.', name)); // Localized string
       }
     }
     catch (error: any)
     {
-      logger.error(`❌ Error ejecutando consulta fallback: ${error.message}`);
-      if (error.stdout) logger.error(`📄 STDOUT: ${error.stdout}`);
-      if (error.stderr) logger.error(`⚠️ STDERR: ${error.stderr}`);
+      logger.error(localize('log.compareController.fallbackError', '❌ Error executing fallback query: {0}', error.message)); // Localized string
+      if (error.stdout) logger.error(localize('log.compareController.fallbackStdout', '📄 STDOUT: {0}', error.stdout)); // Localized string
+      if (error.stderr) logger.error(localize('log.compareController.fallbackStderr', '⚠️ STDERR: {0}', error.stderr)); // Localized string
     }
   }
 
   if (!retrievedNames.size)
   {
-    logger.error('❌ Ninguna clase pudo recuperarse mediante fallback ApexClass.Body.');
+    logger.error(localize('log.compareController.fallbackNoClasses', '❌ No classes could be retrieved via fallback ApexClass.Body.')); // Localized string
   }
 
   return retrievedNames;
@@ -90,13 +91,13 @@ async function fallbackRetrieveApexClasses(
 export async function runCompareApexClasses(uri?: vscode.Uri)
 {
   const logger = new Logger('compareController', true);
-  logger.info('🚀 Iniciando Comparación de Clases...');
+  logger.info(localize('log.compareController.start', '🚀 Starting class comparison...')); // Localized string
 
   const workspace = vscode.workspace.workspaceFolders?.[0];
   if (!workspace)
   {
-    vscode.window.showErrorMessage('No hay un workspace abierto.');
-    logger.error('❌ No se detectó workspace activo.');
+    vscode.window.showErrorMessage(localize('error.compareController.noWorkspace', 'No workspace is open.')); // Localized string
+    logger.error(localize('log.compareController.noWorkspace', '❌ No active workspace detected.')); // Localized string
     return;
   }
 
@@ -105,41 +106,41 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
   const repoDir = settings.get<string>('sfRepositoryDir') || '';
   const outputDir = settings.get<string>('outputDir') || path.join(baseDir, 'output');
 
-  logger.info(`📁 Workspace: ${baseDir}`);
-  logger.info(`📦 Repositorio configurado: ${repoDir}`);
-  logger.info(`📂 Carpeta de salida: ${outputDir}`);
+  logger.info(localize('log.compareController.workspacePath', '📁 Workspace: {0}', baseDir)); // Localized string
+  logger.info(localize('log.compareController.repoPath', '📦 Configured repository: {0}', repoDir)); // Localized string
+  logger.info(localize('log.compareController.outputPath', '📂 Output folder: {0}', outputDir)); // Localized string
 
   // 🧩 Detectar archivo origen
   let classNames: string[] = [];
 
   if (uri && uri.fsPath.endsWith('.xml'))
   {
-    logger.info(`🧩 Analizando package.xml: ${uri.fsPath}`);
+    logger.info(localize('log.compareController.analyzingPackageXml', '🧩 Analyzing package.xml: {0}', uri.fsPath)); // Localized string
     const { testClasses, nonTestClasses } = await parseApexClassesFromPackage(uri.fsPath, repoDir);
     classNames = [...testClasses, ...nonTestClasses];
   }
   else if (uri && uri.fsPath.endsWith('.cls'))
   {
     const className = path.basename(uri.fsPath, '.cls');
-    logger.info(`📘 Comparando una sola clase: ${className}`);
+    logger.info(localize('log.compareController.singleClass', '📘 Comparing a single class: {0}', className)); // Localized string
     classNames = [className];
   }
   else
   {
-    vscode.window.showWarningMessage('Abre un package.xml o un archivo .cls para comparar.');
-    logger.warn('⚠️ Comando ejecutado sin archivo .xml ni .cls válido.');
+    vscode.window.showWarningMessage(localize('warning.compareController.selectSource', 'Open a package.xml or .cls file to compare.')); // Localized string
+    logger.warn(localize('log.compareController.invalidSelection', '⚠️ Command executed without a valid .xml or .cls file.')); // Localized string
     return;
   }
 
   if (classNames.length === 0)
   {
-    vscode.window.showWarningMessage('No se encontraron clases Apex en el archivo seleccionado.');
-    logger.warn('⚠️ No se encontraron clases Apex en el archivo.');
+    vscode.window.showWarningMessage(localize('warning.compareController.noClassesFound', 'No Apex classes were found in the selected file.')); // Localized string
+    logger.warn(localize('log.compareController.noClassesFound', '⚠️ No Apex classes were found in the selected file.')); // Localized string
     return;
   }
 
     // 🔍 Listar orgs conectadas
-    logger.info('🔍 Listando organizaciones conectadas con Salesforce CLI...');
+    logger.info(localize('log.compareController.listingOrgs', '🔍 Listing Salesforce CLI connected orgs...')); // Localized string
     const { stdout: orgListJson } = await execa('sf', ['org', 'list', '--json'], {
     env: { ...process.env, FORCE_COLOR: '0' }
     });
@@ -149,25 +150,25 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
 
   if (!orgList.length)
   {
-    vscode.window.showErrorMessage('No hay orgs conectadas.');
-    logger.error('❌ No se encontraron orgs conectadas.');
+    vscode.window.showErrorMessage(localize('error.compareController.noConnectedOrgs', 'No connected orgs found.')); // Localized string
+    logger.error(localize('log.compareController.noConnectedOrgs', '❌ No connected orgs were found.')); // Localized string
     return;
   }
 
   const orgAlias = await vscode.window.showQuickPick(orgList, {
-    placeHolder: 'Selecciona la organización contra la que comparar',
+    placeHolder: localize('prompt.compareController.selectOrg', 'Select the organization to compare against'), // Localized string
   });
 
   if (!orgAlias)
   {
-    logger.warn('⚠️ Comparación cancelada: no se seleccionó ninguna org.');
+    logger.warn(localize('log.compareController.orgSelectionCanceled', '⚠️ Comparison cancelled: no org was selected.')); // Localized string
     return;
   }
 
   // 📁 Carpeta temporal
   const tempDir = path.join(getStorageRoot(), 'temp', 'compare');
   await fs.ensureDir(tempDir);
-  logger.info(`📂 Carpeta temporal creada: ${tempDir}`);
+  logger.info(localize('log.compareController.tempDirCreated', '📂 Temporary folder created: {0}', tempDir)); // Localized string
 
   const fallbackDir = path.join(tempDir, 'fallback');
   let fallbackUsed = false;
@@ -176,7 +177,7 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
   let fallbackRetrievedNames: Set<string> = new Set();
 
     // 🧭 Retrieve desde la org seleccionada
-    logger.info(`⬇️ Recuperando ${classNames.length} clases desde org '${orgAlias}'...`);
+    logger.info(localize('log.compareController.retrievingClasses', '⬇️ Retrieving {0} classes from org "{1}"...', classNames.length, orgAlias)); // Localized string
 
     const retrieveCmd = [
     'project', 'retrieve', 'start',
@@ -190,18 +191,18 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
     retrieveCmd.push('--metadata', `ApexClass:${cls}`);
     }
 
-    logger.info(`🧩 Ejecutando comando: sf ${retrieveCmd.join(' ')}`);
+    logger.info(localize('log.compareController.executeRetrieve', '🧩 Running command: sf {0}', retrieveCmd.join(' '))); // Localized string
 
     try {
     const { stdout } = await execa('sf', retrieveCmd, {
         env: { ...process.env, FORCE_COLOR: '0' }
     });
     const result = JSON.parse(stdout);
-    logger.info(`✅ Retrieve completado (${result.result.files?.length || 0} archivos).`);
+    logger.info(localize('log.compareController.retrieveComplete', '✅ Retrieve completed ({0} files).', result.result.files?.length || 0)); // Localized string
     } catch (err: any) {
-    logger.error(`❌ Error en retrieve: ${err.message}`);
-    if (err.stdout) logger.error(`📄 STDOUT: ${err.stdout}`);
-    if (err.stderr) logger.error(`⚠️ STDERR: ${err.stderr}`);
+    logger.error(localize('log.compareController.retrieveError', '❌ Error during retrieve: {0}', err.message)); // Localized string
+    if (err.stdout) logger.error(localize('log.compareController.retrieveStdout', '📄 STDOUT: {0}', err.stdout)); // Localized string
+    if (err.stderr) logger.error(localize('log.compareController.retrieveStderr', '⚠️ STDERR: {0}', err.stderr)); // Localized string
 
     fallbackAttempted = true;
     fallbackRetrievedNames = await fallbackRetrieveApexClasses(classNames, orgAlias, fallbackDir, logger);
@@ -210,25 +211,34 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
     if (fallbackUsed)
     {
       fallbackWarned = true;
-      logger.warn('⚠️ Se usó fallback ApexClass.Body por error en retrieve.');
-      vscode.window.showWarningMessage('No se pudo recuperar metadata; se consultó ApexClass.Body como alternativa.');
+      logger.warn(localize('log.compareController.retrieveFallbackUsed', '⚠️ Fallback ApexClass.Body was used due to retrieve failure.')); // Localized string
+      vscode.window.showWarningMessage(localize('warning.compareController.retrieveFallbackUsed', 'Metadata could not be retrieved; ApexClass.Body was queried as an alternative.')); // Localized string
     }
     else
     {
-      vscode.window.showErrorMessage(`Error recuperando clases: ${err.message}`);
+      vscode.window.showErrorMessage(localize('error.compareController.retrieveFailed', 'Error retrieving classes: {0}', err.message)); // Localized string
       return;
     }
     }
 
   // 🔬 Comparar clases
-  logger.info(`🔬 Iniciando comparación de ${classNames.length} clases...`);
+  logger.info(localize('log.compareController.comparisonStart', '🔬 Starting comparison for {0} classes...', classNames.length)); // Localized string
   const results: {
     ClassName: string;
     Status: string;
+    StatusKey: 'match' | 'mismatch' | 'onlyOrg' | 'onlyLocal' | 'missingBoth';
     Differences?: string;
     LocalVersion?: string;
     SalesforceVersion?: string;
   }[] = [];
+
+  const statusLabels = {
+    match: localize('compare.status.match', 'Match'),
+    mismatch: localize('compare.status.mismatch', 'Mismatch'),
+    onlyOrg: localize('compare.status.onlyOrg', 'Only in Org'),
+    onlyLocal: localize('compare.status.onlyLocal', 'Only in Local'),
+    missingBoth: localize('compare.status.missingBoth', 'Missing in both')
+  };
 
     for (const className of classNames)
     {
@@ -242,7 +252,7 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
         {
             const altPath = path.join(tempDir, 'classes', `${className}.cls`);
             if (await fs.pathExists(altPath)) {
-                logger.warn(`📦 Archivo recuperado detectado en ruta alternativa: ${altPath}`);
+                logger.warn(localize('log.compareController.altPathDetected', '📦 Retrieved file detected in alternate path: {0}', altPath)); // Localized string
                 retrievedPath = altPath;
             }
         }
@@ -260,8 +270,8 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
                 if (fallbackUsed && !fallbackWarned)
                 {
                     fallbackWarned = true;
-                    logger.warn('⚠️ Se usó fallback ApexClass.Body para completar clases faltantes.');
-                    vscode.window.showWarningMessage('Algunas clases se consultaron usando ApexClass.Body porque no estaban disponibles vía retrieve.');
+                    logger.warn(localize('log.compareController.fallbackUsedForMissing', '⚠️ Fallback ApexClass.Body was used to complete missing classes.')); // Localized string
+                    vscode.window.showWarningMessage(localize('warning.compareController.fallbackUsedForMissing', 'Some classes were queried using ApexClass.Body because they were not available via retrieve.')); // Localized string
                 }
             }
 
@@ -274,25 +284,27 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
 
         const existsLocal = await fs.pathExists(localPath);
 
-        logger.info(`🧩 Procesando clase: ${className}`);
-        logger.info(`🔹 Local: ${existsLocal ? '✅' : '❌'} ${localPath}`);
-        logger.info(`🔹 Remote: ${existsRemote ? '✅' : '❌'} ${retrievedPath}`);
+        logger.info(localize('log.compareController.processingClass', '🧩 Processing class: {0}', className)); // Localized string
+        const localIndicator = existsLocal ? '✅' : '❌';
+        const remoteIndicator = existsRemote ? '✅' : '❌';
+        logger.info(localize('log.compareController.localPathStatus', '🔹 Local: {0} {1}', localIndicator, localPath)); // Localized string
+        logger.info(localize('log.compareController.remotePathStatus', '🔹 Remote: {0} {1}', remoteIndicator, retrievedPath)); // Localized string
 
         if (!existsLocal && !existsRemote) {
-            logger.warn(`⚠️ ${className} no existe ni en local ni en org.`);
-            results.push({ ClassName: className, Status: 'No existe en ninguno' });
+            logger.warn(localize('log.compareController.missingEverywhere', '⚠️ {0} does not exist locally or in the org.', className)); // Localized string
+            results.push({ ClassName: className, Status: statusLabels.missingBoth, StatusKey: 'missingBoth' });
             continue;
         }
 
         if (!existsLocal) {
-            logger.warn(`⚠️ ${className} existe solo en la org.`);
-            results.push({ ClassName: className, Status: 'Solo en Org' });
+            logger.warn(localize('log.compareController.onlyInOrg', '⚠️ {0} exists only in the org.', className)); // Localized string
+            results.push({ ClassName: className, Status: statusLabels.onlyOrg, StatusKey: 'onlyOrg' });
             continue;
         }
 
         if (!existsRemote) {
-            logger.warn(`⚠️ ${className} existe solo en local.`);
-            results.push({ ClassName: className, Status: 'Solo en Local' });
+            logger.warn(localize('log.compareController.onlyLocal', '⚠️ {0} exists only locally.', className)); // Localized string
+            results.push({ ClassName: className, Status: statusLabels.onlyLocal, StatusKey: 'onlyLocal' });
             continue;
         }
 
@@ -302,10 +314,10 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
         const remoteBody = normalizeForComparison(remoteBodyRaw);
 
         if (localBody === remoteBody) {
-            logger.info(`✅ ${className}: Match`);
-            results.push({ ClassName: className, Status: 'Match' });
+            logger.info(localize('log.compareController.match', '✅ {0}: Match', className)); // Localized string
+            results.push({ ClassName: className, Status: statusLabels.match, StatusKey: 'match' });
         } else {
-            logger.info(`⚡ ${className}: Diferencias detectadas`);
+            logger.info(localize('log.compareController.differencesFound', '⚡ {0}: Differences detected', className)); // Localized string
             const diff = Diff.diffLines(localBodyRaw, remoteBodyRaw)
             .map(part => {
                 const sign = part.added ? '+' : part.removed ? '-' : ' ';
@@ -318,7 +330,8 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
 
             results.push({
             ClassName: className,
-            Status: 'Mismatch',
+            Status: statusLabels.mismatch,
+            StatusKey: 'mismatch',
             Differences: diff,
             LocalVersion: localBodyRaw,
             SalesforceVersion: remoteBodyRaw
@@ -327,16 +340,17 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
     }
 
     // 🧾 Generar reporte HTML
-    logger.info('📊 Generando reporte HTML de comparación...');
+    logger.info(localize('log.compareController.generatingHtmlReport', '📊 Generating comparison HTML report...')); // Localized string
     const htmlReport = await generateComparisonReport(outputDir, orgAlias, results);
 
     // 🔹 Leer contenido del HTML generado
     const htmlContent = await fs.readFile(htmlReport, 'utf8');
 
     // 🧭 Crear un Webview dentro de VS Code
+    const panelTitle = localize('ui.compareController.webviewTitle', 'Comparison - {0}', orgAlias); // Localized string
     const panel = vscode.window.createWebviewPanel(
     'uavComparisonReport',                       // ID interno
-    `Comparación - ${orgAlias}`,                 // título visible
+    panelTitle,                                  // título visible
     vscode.ViewColumn.One,                       // dónde se abre
     { enableScripts: true }                      // permitir JS (para el Monaco, etc.)
     );
@@ -345,6 +359,9 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
     panel.webview.html = htmlContent;
 
     // 🔹 Notificar en la barra de estado, no como popup
-    vscode.window.setStatusBarMessage(`✅ Reporte cargado en VS Code: ${path.basename(htmlReport)}`, 5000);
-    logger.info(`✅ Reporte abierto dentro de VS Code.`);
+    vscode.window.setStatusBarMessage(
+        localize('status.compareController.reportLoaded', '✅ Report loaded in VS Code: {0}', path.basename(htmlReport)),
+        5000
+    ); // Localized string
+    logger.info(localize('log.compareController.reportOpened', '✅ Report opened inside VS Code.')); // Localized string
 }

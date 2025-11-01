@@ -47,13 +47,14 @@ const generateApexDocChunked_1 = require("./core/generateApexDocChunked");
 const IAAnalisis_1 = require("./core/IAAnalisis");
 const apexAllmanFormatter_1 = require("./core/apexAllmanFormatter");
 const whereUsedPanel_1 = require("./core/whereUsedPanel");
+const i18n_1 = require("./i18n");
 /**
  * Punto de entrada de la extensión Unified Apex Validator.
  * Se ejecuta al activar la extensión por comando.
  */
 async function activate(context) {
-    console.log('[UAV][extension] Unified Apex Validator activado.');
-    console.log('[UAV][extension] globalStorageUri:', context.globalStorageUri.fsPath);
+    console.log((0, i18n_1.localize)('log.extension.activated', '[UAV][extension] Unified Apex Validator activated.')); // Localized string
+    console.log((0, i18n_1.localize)('log.extension.storagePath', '[UAV][extension] globalStorageUri: {0}', context.globalStorageUri.fsPath)); // Localized string
     // 🧠 Dependencias
     const dependenciesProvider = new dependenciesProvider_1.DependenciesProvider(context);
     vscode.window.registerTreeDataProvider('uav.dependenciesView', dependenciesProvider);
@@ -108,7 +109,7 @@ async function activate(context) {
         const iaStatus = (0, IAAnalisis_1.evaluateIaConfig)();
         void vscode.commands.executeCommand('setContext', 'uav.iaReady', iaStatus.ready);
         if (!iaStatus.ready) {
-            console.warn(`[UAV][extension] IA deshabilitada. Faltan parametros: ${iaStatus.missing.join(', ')}`);
+            console.warn((0, i18n_1.localize)('log.extension.aiDisabled', '[UAV][extension] AI disabled. Missing parameters: {0}', iaStatus.missing.join(', '))); // Localized string
         }
     };
     syncIaContext();
@@ -163,38 +164,38 @@ async function activate(context) {
     // 🔄 Comandos comunes
     context.subscriptions.push(vscode.commands.registerCommand('uav.reportsView.refresh', () => reportsProvider.refresh()), vscode.commands.registerCommand('uav.logsView.refresh', () => logsProvider.refresh()), vscode.commands.registerCommand('uav.reportsView.clearAll', () => reportsProvider.clearAll()), vscode.commands.registerCommand('uav.logsView.clearAll', () => logsProvider.clearAll()), vscode.commands.registerCommand('uav.reportsView.openFolder', () => vscode.env.openExternal(vscode.Uri.file(outputDir))), vscode.commands.registerCommand('uav.logsView.openFolder', () => vscode.env.openExternal(vscode.Uri.file(logDir))), vscode.commands.registerCommand('uav.openFile', (uri) => vscode.env.openExternal(uri)));
     (0, utils_1.setExtensionContext)(context);
-    console.log('[UAV][extension] Contexto registrado.');
+    console.log((0, i18n_1.localize)('log.extension.contextRegistered', '[UAV][extension] Context registered.')); // Localized string
     try {
         await vscode.workspace.fs.createDirectory(context.globalStorageUri);
-        console.log('[UAV][extension] Carpeta global creada o existente.');
+        console.log((0, i18n_1.localize)('log.extension.globalFolderReady', '[UAV][extension] Global storage folder ready.')); // Localized string
     }
     catch (err) {
-        console.error('[UAV][extension] Error creando carpeta global:', err);
+        console.error((0, i18n_1.localize)('log.extension.globalFolderError', '[UAV][extension] Error creating global folder.'), err); // Localized string
     }
     // 🧪 Validación Apex
     const validateApexCmd = vscode.commands.registerCommand('UnifiedApexValidator.validateApex', async (uri) => {
         try {
-            console.log('[UAV][extension] Ejecutando runUAV()...');
+            console.log((0, i18n_1.localize)('log.extension.runUav.start', '[UAV][extension] Running runUAV()...')); // Localized string
             await (0, uavController_1.runUAV)(uri);
         }
         catch (error) {
-            console.error('[UAV][extension] Error ejecutando UAV:', error);
-            vscode.window.showErrorMessage(`Error ejecutando UAV: ${error.message}`);
+            console.error((0, i18n_1.localize)('log.extension.runUav.error', '[UAV][extension] Error running UAV:'), error); // Localized string
+            vscode.window.showErrorMessage((0, i18n_1.localize)('command.validate.error', 'Error running UAV: {0}', error.message)); // Localized string
         }
     });
     // 🧭 Nueva funcionalidad: comparar clases Apex contra una org
     const compareApexClassesCmd = vscode.commands.registerCommand('UnifiedApexValidator.compareApexClasses', async (uri) => {
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: 'Comparando clases Apex contra la organización seleccionada...',
+            title: (0, i18n_1.localize)('progress.compareApex.title', 'Comparing Apex classes against the selected org...'), // Localized string
             cancellable: false,
         }, async () => {
             try {
                 await (0, compareController_1.runCompareApexClasses)(uri);
             }
             catch (err) {
-                console.error('[UAV][extension] Error en comparación:', err);
-                vscode.window.showErrorMessage(`❌ Error al comparar clases: ${err.message}`);
+                console.error((0, i18n_1.localize)('log.compare.error', '[UAV][extension] Error during comparison:'), err); // Localized string
+                vscode.window.showErrorMessage((0, i18n_1.localize)('command.compare.error', '❌ Error comparing classes: {0}', err.message)); // Localized string
             }
         });
     });
@@ -204,14 +205,14 @@ async function activate(context) {
             await (0, generateApexDocChunked_1.generateApexDocChunked)();
         }
         catch (error) {
-            console.error('[UAV][extension] Error en generación de ApexDoc:', error);
-            vscode.window.showErrorMessage(`❌ Error generando ApexDoc: ${error.message}`);
+            console.error((0, i18n_1.localize)('log.apexdoc.error', '[UAV][extension] Error generating ApexDoc:'), error); // Localized string
+            vscode.window.showErrorMessage((0, i18n_1.localize)('command.apexdoc.error', '❌ Error generating ApexDoc: {0}', error.message)); // Localized string
         }
     });
     const formatApexAllmanCmd = vscode.commands.registerCommand('UnifiedApexValidator.formatApexAllman', async (uri, uris) => {
         const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
         if (!(config.get('enableAllmanFormatter') ?? true)) {
-            void vscode.window.showInformationMessage('El formateador Allman está deshabilitado en la configuración.');
+            void vscode.window.showInformationMessage((0, i18n_1.localize)('info.allman.disabled', 'The Allman formatter is disabled in the settings.')); // Localized string
             return;
         }
         await (0, apexAllmanFormatter_1.formatApexAllman)(uri, uris);
@@ -220,17 +221,17 @@ async function activate(context) {
         const logger = new utils_1.Logger('WhereIsUsed');
         const selectedUris = collectClsUris(uri, uris);
         if (!selectedUris.length) {
-            vscode.window.showWarningMessage('Selecciona al menos una clase Apex (.cls) para analizar su uso.');
+            vscode.window.showWarningMessage((0, i18n_1.localize)('warning.whereUsed.selectClass', 'Select at least one Apex (.cls) file to analyze its usage.')); // Localized string
             return;
         }
         let success = false;
         try {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: 'Scanning project for class usage...',
+                title: (0, i18n_1.localize)('progress.whereUsed.title', 'Scanning project for class usage...'), // Localized string
                 cancellable: false
             }, async (progress) => {
-                progress.report({ message: 'Analizando referencias en Apex, Flows y LWC...' });
+                progress.report({ message: (0, i18n_1.localize)('progress.whereUsed.analyzing', 'Analyzing references across Apex, Flows, and LWC...') }); // Localized string
                 const repoDir = await resolveWhereUsedRepoDir(logger);
                 const workerPath = resolveWhereUsedWorkerPath(context);
                 const targetPaths = selectedUris.map((item) => item.fsPath);
@@ -238,18 +239,18 @@ async function activate(context) {
                     repoDir,
                     classIdentifiers: targetPaths
                 }, logger);
-                progress.report({ message: 'Generando reporte visual...' });
+                progress.report({ message: (0, i18n_1.localize)('progress.whereUsed.rendering', 'Rendering visual report...') }); // Localized string
                 await (0, whereUsedPanel_1.showWhereUsedPanel)(results);
                 success = true;
             });
         }
         catch (err) {
             const reason = err?.message || String(err);
-            logger.error(`Error generando Where is Used: ${reason}`);
-            vscode.window.showErrorMessage(`Error generando Where is Used: ${reason}`);
+            logger.error((0, i18n_1.localize)('log.whereUsed.error', 'Error generating Where is Used report: {0}', reason)); // Localized string
+            vscode.window.showErrorMessage((0, i18n_1.localize)('error.whereUsed.failed', 'Error generating Where is Used: {0}', reason)); // Localized string
         }
         if (success) {
-            vscode.window.showInformationMessage('Where is Used report generated.');
+            vscode.window.showInformationMessage((0, i18n_1.localize)('info.whereUsed.generated', 'Where is Used report generated.')); // Localized string
         }
     });
     context.subscriptions.push(validateApexCmd, compareApexClassesCmd, generateApexDocChunkedCmd, formatApexAllmanCmd, whereIsUsedCmd);
@@ -282,17 +283,17 @@ function collectClsUris(primary, multiSelect) {
 async function resolveWhereUsedRepoDir(logger) {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
-        throw new Error('No se detect� un workspace abierto.');
+        throw new Error((0, i18n_1.localize)('error.whereUsed.noWorkspace', 'No workspace folder detected.')); // Localized string
     }
     const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
     let repoDir = config.get('sfRepositoryDir')?.trim() || '';
     if (!repoDir) {
         repoDir = workspaceFolder.uri.fsPath;
-        logger.warn('sfRepositoryDir no configurado. Se usara la raiz del workspace.');
+        logger.warn((0, i18n_1.localize)('log.whereUsed.repoDirDefault', 'sfRepositoryDir not configured. Using workspace root.')); // Localized string
     }
     repoDir = path.resolve(repoDir);
     if (!fs.existsSync(repoDir)) {
-        throw new Error('La ruta configurada no existe: ' + repoDir);
+        throw new Error((0, i18n_1.localize)('error.whereUsed.repoMissing', 'Configured repository path does not exist: {0}', repoDir)); // Localized string
     }
     return repoDir;
 }
@@ -307,7 +308,7 @@ function resolveWhereUsedWorkerPath(context) {
             return candidate;
         }
     }
-    throw new Error('No se encontro el componente whereUsedWorkerProcess.js.');
+    throw new Error((0, i18n_1.localize)('error.whereUsed.workerMissing', 'Could not find whereUsedWorkerProcess.js component.')); // Localized string
 }
 function runWhereIsUsedWorker(workerPath, payload, logger) {
     return new Promise((resolve, reject) => {
@@ -315,13 +316,16 @@ function runWhereIsUsedWorker(workerPath, payload, logger) {
         const child = (0, child_process_1.fork)(workerPath, [], {
             stdio: ['ignore', 'pipe', 'pipe', 'ipc']
         });
+        // 💡 Fuerza UTF-8 para stdout/stderr del worker
+        child.stdout?.setEncoding('utf8');
+        child.stderr?.setEncoding('utf8');
         const timeoutMs = 1000 * 60 * 10;
         const timer = setTimeout(() => {
             if (settled)
                 return;
             settled = true;
             child.kill();
-            reject(new Error('Where is Used worker timeout tras 10 minutos.'));
+            reject(new Error((0, i18n_1.localize)('error.whereUsed.timeout', 'Where is Used worker timed out after 10 minutes.'))); // Localized string
         }, timeoutMs);
         const clearAll = () => {
             clearTimeout(timer);
@@ -330,15 +334,23 @@ function runWhereIsUsedWorker(workerPath, payload, logger) {
             child.stderr?.removeAllListeners();
         };
         child.stdout?.on('data', (data) => {
-            const text = data.toString().trim();
-            if (text) {
-                logger.info(`[WhereIsUsedWorker] ${text}`);
+            const lines = data.toString().split(/\r?\n/);
+            for (const raw of lines) {
+                const text = raw.trim();
+                if (!text)
+                    continue;
+                const message = text.startsWith('[WhereIsUsedWorker]') ? text : `[WhereIsUsedWorker] ${text}`;
+                logger.info(message);
             }
         });
         child.stderr?.on('data', (data) => {
-            const text = data.toString().trim();
-            if (text) {
-                logger.warn(`[WhereIsUsedWorker] ${text}`);
+            const lines = data.toString().split(/\r?\n/);
+            for (const raw of lines) {
+                const text = raw.trim();
+                if (!text)
+                    continue;
+                const message = text.startsWith('[WhereIsUsedWorker]') ? text : `[WhereIsUsedWorker] ${text}`;
+                logger.warn(message);
             }
         });
         child.on('message', (message) => {
@@ -352,7 +364,8 @@ function runWhereIsUsedWorker(workerPath, payload, logger) {
             else {
                 settled = true;
                 clearAll();
-                reject(new Error(message.message || 'Where is Used worker reporto un error.'));
+                const fallbackMessage = (0, i18n_1.localize)('error.whereUsed.workerGeneric', 'Where is Used worker reported an error.'); // Localized string
+                reject(new Error(message.message || fallbackMessage));
             }
         });
         child.on('error', (err) => {
@@ -371,7 +384,8 @@ function runWhereIsUsedWorker(workerPath, payload, logger) {
                 resolve([]);
             }
             else {
-                reject(new Error(`Where is Used worker finalizo con codigo ${code ?? 'desconocido'}.`));
+                const exitCode = code ?? (0, i18n_1.localize)('common.unknown', 'unknown'); // Localized string
+                reject(new Error((0, i18n_1.localize)('error.whereUsed.workerExit', 'Where is Used worker exited with code {0}.', exitCode))); // Localized string
             }
         });
         child.send(payload);
@@ -381,5 +395,5 @@ function runWhereIsUsedWorker(workerPath, payload, logger) {
  * Opción de limpieza al desactivar la extensión.
  */
 function deactivate() {
-    vscode.window.showInformationMessage('Unified Apex Validator desactivado.');
+    vscode.window.showInformationMessage((0, i18n_1.localize)('info.extension.deactivated', 'Unified Apex Validator deactivated.')); // Localized string
 }
