@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ---
 
-## [Unreleased]
+## [1.9.6] - 2025-11-01
 
 ### Added
 - Internationalization groundwork for reports, including shared translation tables rendered through `reportGenerator`.
