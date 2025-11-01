@@ -4,6 +4,25 @@ import * as path from 'path';
 import { execa } from 'execa';
 import { evaluateIaConfig } from '../core/IAAnalisis';
 
+export type DependencyState = 'ok' | 'outdated' | 'missing';
+
+export interface DependencyStatus
+{
+    state: DependencyState;
+    detectedVersion?: string;
+}
+
+export interface DependencyRecord
+{
+    dep: DepCheck;
+    status: DependencyStatus;
+    info?: {
+        type: 'ia';
+        ready: boolean;
+        missing: string[];
+    };
+}
+
 export class DependenciesProvider implements vscode.TreeDataProvider<UavDependencyItem>
 {
     private _onDidChangeTreeData: vscode.EventEmitter<UavDependencyItem | undefined | void> =
@@ -25,6 +44,84 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
     async getChildren(): Promise<UavDependencyItem[]>
     {
         const dependencies: UavDependencyItem[] = [];
+        const records = await this.collectDependencies();
+
+        for (const { dep, status, info } of records)
+        {
+            const item = new UavDependencyItem(dep, status);
+
+            const iconMap = {
+                ok: new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed')),
+                outdated: new vscode.ThemeIcon('triangle-right', new vscode.ThemeColor('editorWarning.foreground')),
+                missing: new vscode.ThemeIcon('close', new vscode.ThemeColor('errorForeground'))
+            };
+            item.iconPath = iconMap[status.state];
+
+            if (status.state !== 'ok' && dep.installCmd)
+            {
+                item.command = {
+                    title: 'Actualizar dependencia',
+                    command: 'uav.updateDependency',
+                    arguments: [dep]
+                };
+                item.tooltip = item.tooltip ? `${item.tooltip} | Actualizar ${dep.label}` : `Actualizar ${dep.label}`;
+            }
+
+            if (info?.type === 'ia')
+            {
+                if (info.ready)
+                {
+                    item.description = 'Actualizado';
+                    item.tooltip = 'Credenciales IA configuradas.';
+                }
+                else
+                {
+                    const missingList = info.missing.join(', ');
+                    item.description = `Faltan: ${missingList}`;
+                    item.tooltip = `Configura los siguientes campos: ${missingList}`;
+                }
+            }
+
+            dependencies.push(item);
+        }
+
+        return dependencies;
+    }
+
+    async getDependencySummary(): Promise<{
+        state: DependencyState;
+        records: DependencyRecord[];
+    }>
+    {
+        const records = await this.collectDependencies();
+        const worstState = records.reduce<DependencyState>(
+            (current, record) =>
+                this.getSeverityRank(record.status.state) > this.getSeverityRank(current)
+                    ? record.status.state
+                    : current,
+            'ok'
+        );
+
+        return { state: worstState, records };
+    }
+
+    private getSeverityRank(state: DependencyState): number
+    {
+        switch (state)
+        {
+            case 'missing':
+                return 3;
+            case 'outdated':
+                return 2;
+            case 'ok':
+            default:
+                return 1;
+        }
+    }
+
+    private async collectDependencies(): Promise<DependencyRecord[]>
+    {
+        const records: DependencyRecord[] = [];
 
         const checks: DepCheck[] = [
             { label: 'Node.js', cmd: 'node --version', minVersion: '18.0.0', installCmd: 'npm install -g node' },
@@ -42,51 +139,28 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
 
         for (const dep of checks)
         {
-            const state = await this.checkCommand(dep);
-            const item = new UavDependencyItem(dep.label, state);
-
-            const iconMap = {
-                ok: new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed')),
-                outdated: new vscode.ThemeIcon('triangle-right', new vscode.ThemeColor('editorWarning.foreground')),
-                missing: new vscode.ThemeIcon('close', new vscode.ThemeColor('errorForeground'))
-            };
-            item.iconPath = iconMap[state];
-
-            if (state !== 'ok' && dep.installCmd)
-            {
-                item.command = {
-                    title: 'Actualizar dependencia',
-                    command: 'uav.updateDependency',
-                    arguments: [dep]
-                };
-                item.tooltip = `Actualizar ${dep.label}`;
-            }
-
-            dependencies.push(item);
+            const status = await this.checkCommand(dep);
+            records.push({ dep, status });
         }
 
         const iaStatus = evaluateIaConfig();
-        const iaItem = new UavDependencyItem('IA Configuracion', iaStatus.ready ? 'ok' : 'missing');
-        iaItem.iconPath = iaStatus.ready
-            ? new vscode.ThemeIcon('check', new vscode.ThemeColor('testing.iconPassed'))
-            : new vscode.ThemeIcon('close', new vscode.ThemeColor('errorForeground'));
-        if (iaStatus.ready)
-        {
-            iaItem.description = 'Actualizado';
-            iaItem.tooltip = 'Credenciales IA configuradas.';
-        }
-        else
-        {
-            const missingList = iaStatus.missing.join(', ');
-            iaItem.description = `Faltan: ${missingList}`;
-            iaItem.tooltip = `Configura los siguientes campos: ${missingList}`;
-        }
-        dependencies.push(iaItem);
+        const iaDep: DepCheck = { label: 'IA Configuracion' };
+        const iaItemStatus: DependencyStatus = { state: iaStatus.ready ? 'ok' : 'missing' };
 
-        return dependencies;
+        records.push({
+            dep: iaDep,
+            status: iaItemStatus,
+            info: {
+                type: 'ia',
+                ready: iaStatus.ready,
+                missing: iaStatus.missing
+            }
+        });
+
+        return records;
     }
 
-    private async checkCommand(dep: DepCheck): Promise<'ok' | 'outdated' | 'missing'>
+    private async checkCommand(dep: DepCheck): Promise<DependencyStatus>
     {
         if (dep.customCheck)
         {
@@ -97,7 +171,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
             catch (error)
             {
                 console.error('[UAV][dependencies] Error revisando dependencia personalizada:', error);
-                return 'missing';
+                return { state: 'missing' };
             }
         }
 
@@ -105,20 +179,22 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         {
             if (!dep.cmd)
             {
-                return 'missing';
+                return { state: 'missing' };
             }
             const { stdout, stderr } = await execa(dep.cmd, { shell: true });
             const output = stdout || stderr || '';
             const match = output.match(/\d+(\.\d+)+/);
+            const detectedVersion = match ? match[0] : undefined;
             if (match && dep.minVersion)
             {
-                return this.compareVersions(match[0], dep.minVersion) >= 0 ? 'ok' : 'outdated';
+                const state = this.compareVersions(match[0], dep.minVersion) >= 0 ? 'ok' : 'outdated';
+                return { state, detectedVersion };
             }
-            return 'ok';
+            return { state: 'ok', detectedVersion };
         }
         catch
         {
-            return 'missing';
+            return { state: 'missing' };
         }
     }
 
@@ -159,7 +235,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         }
     }
 
-    private async checkPrettierPlugin(minVersion?: string): Promise<'ok' | 'outdated' | 'missing'>
+    private async checkPrettierPlugin(minVersion?: string): Promise<DependencyStatus>
     {
         try
         {
@@ -176,7 +252,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
 
             if (!entryPath)
             {
-                return 'missing';
+                return { state: 'missing' };
             }
 
             let pkgPath = entryPath.replace(/dist[\\/].*$/, 'package.json');
@@ -188,27 +264,28 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
             if (!fs.existsSync(pkgPath))
             {
                 console.warn('[UAV][dependencies] package.json no encontrado para prettier-plugin-apex:', pkgPath);
-                return 'missing';
+                return { state: 'missing' };
             }
 
             const packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
             const version = packageJson.version as string | undefined;
             if (!version)
             {
-                return 'missing';
+                return { state: 'missing' };
             }
 
             if (minVersion)
             {
-                return this.compareVersions(version, minVersion) >= 0 ? 'ok' : 'outdated';
+                const state = this.compareVersions(version, minVersion) >= 0 ? 'ok' : 'outdated';
+                return { state, detectedVersion: version };
             }
 
-            return 'ok';
+            return { state: 'ok', detectedVersion: version };
         }
         catch (error)
         {
             console.warn('[UAV][dependencies] No se pudo resolver prettier-plugin-apex:', error);
-            return 'missing';
+            return { state: 'missing' };
         }
     }
 }
@@ -219,15 +296,16 @@ interface DepCheck
     cmd?: string;
     minVersion?: string;
     installCmd?: string;
-    customCheck?: (minVersion?: string) => Promise<'ok' | 'outdated' | 'missing'>;
+    customCheck?: (minVersion?: string) => Promise<DependencyStatus>;
 }
 
 export class UavDependencyItem extends vscode.TreeItem
 {
-    constructor(public readonly label: string, public readonly state: 'ok' | 'outdated' | 'missing')
+    constructor(public readonly dep: DepCheck, private readonly status: DependencyStatus)
     {
-        super(label, vscode.TreeItemCollapsibleState.None);
-        this.description = this.getDescription(state);
+        super(dep.label, vscode.TreeItemCollapsibleState.None);
+        this.description = this.getDescription(status.state);
+        this.tooltip = this.buildTooltip(dep, status);
     }
 
     private getDescription(state: 'ok' | 'outdated' | 'missing'): string
@@ -241,6 +319,36 @@ export class UavDependencyItem extends vscode.TreeItem
             case 'missing':
                 return 'No instalado';
         }
+    }
+
+    private buildTooltip(dep: DepCheck, status: DependencyStatus): string
+    {
+        const parts: string[] = [dep.label];
+
+        if (status.detectedVersion)
+        {
+            parts.push(`Detectado ${status.detectedVersion}`);
+        }
+
+        if (dep.minVersion)
+        {
+            parts.push(`Minimo ${dep.minVersion}`);
+        }
+
+        switch (status.state)
+        {
+            case 'ok':
+                parts.push('Actualizado');
+                break;
+            case 'outdated':
+                parts.push('Desactualizado');
+                break;
+            case 'missing':
+                parts.push('No instalado');
+                break;
+        }
+
+        return parts.join(' | ');
     }
 }
 

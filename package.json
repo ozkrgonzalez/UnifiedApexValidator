@@ -3,7 +3,7 @@
   "displayName": "Unified Apex Validator",
   "description": "Salesforce Apex validation and reporting suite built natively in TypeScript for VS Code.",
   "publisher": "ozkrgonzalez",
-  "version": "1.9.3",
+  "version": "1.9.7",
   "icon": "media/icon.png",
   "license": "GPL-3.0-only",
   "repository": "https://github.com/ozkrgonzalez/UnifiedApexValidator.git",
@@ -80,6 +80,11 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "uav.reportsView.clearAll",
+        "title": "Delete All Reports",
+        "icon": "$(trash)"
+      },
+      {
         "command": "uav.reportsView.openFolder",
         "title": "Open Reports Folder",
         "icon": "$(folder-opened)"
@@ -88,6 +93,11 @@
         "command": "uav.logsView.refresh",
         "title": "Refresh Logs",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "uav.logsView.clearAll",
+        "title": "Delete All Logs",
+        "icon": "$(trash)"
       },
       {
         "command": "uav.logsView.openFolder",
@@ -120,6 +130,11 @@
           "group": "navigation"
         },
         {
+          "command": "uav.reportsView.clearAll",
+          "when": "view == uav.reportsView",
+          "group": "navigation@2"
+        },
+        {
           "command": "uav.reportsView.openFolder",
           "when": "view == uav.reportsView",
           "group": "navigation"
@@ -128,6 +143,11 @@
           "command": "uav.logsView.refresh",
           "when": "view == uav.logsView",
           "group": "navigation"
+        },
+        {
+          "command": "uav.logsView.clearAll",
+          "when": "view == uav.logsView",
+          "group": "navigation@2"
         },
         {
           "command": "uav.logsView.openFolder",
