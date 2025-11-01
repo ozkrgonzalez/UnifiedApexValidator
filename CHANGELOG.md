@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. The format 
 
 ---
 
+## [Unreleased]
+
+### Added
+- Internationalization groundwork for reports, including shared translation tables rendered through `reportGenerator`.
+- New `UnifiedApexValidator.reportLanguage` setting that lets teams lock HTML/PDF output to Spanish, English, or follow the VS Code locale.
+
+### Changed
+- HTML and PDF report templates now auto-localize titles, badges, and table headers based on the selected report language (with optional overrides per run).
+- “Where is Used” and validation reports expose language selectors that persist user preference while respecting enforced settings from the workspace.
+
+---
+
 ## [1.9.2] – 2025-10-20
 
 ### Added

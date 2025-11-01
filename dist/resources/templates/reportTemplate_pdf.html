@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ reportLanguage }}">
 <head>
     <meta charset="UTF-8">
-    <title>Reporte de Validaciones Salesforce Apex</title>
+    <title>{{ reportLabels['pdf-title'] }}</title>
     <style>
         body {
             font-family: "Segoe UI", Arial, sans-serif;
@@ -176,53 +176,53 @@
     </style>
 </head>
 <body>
-    <h1>Reporte de Validaciones Salesforce Apex</h1>
+    <h1>{{ reportLabels['pdf-header-title'] }}</h1>
 
     <div class="summary-grid">
         <div class="summary-card">
             <div class="summary-header">
                 <span class="summary-icon alert">!</span>
-                <span>Problemas</span>
+                <span>{{ reportLabels['card-issues-title'] }}</span>
             </div>
             <strong>{{ apex_results | length }}</strong>
-            <span>Reglas que requieren atención</span>
+            <span>{{ reportLabels['card-issues-subtitle'] }}</span>
         </div>
         <div class="summary-card">
             <div class="summary-header">
                 <span class="summary-icon tests">&#x2697;</span>
-                <span>Pruebas ejecutadas</span>
+                <span>{{ reportLabels['card-tests-title'] }}</span>
             </div>
             <strong>{{ test_results | length }}</strong>
-            <span>Resultados de clases de prueba</span>
+            <span>{{ reportLabels['card-tests-subtitle'] }}</span>
         </div>
         <div class="summary-card">
             <div class="summary-header">
                 <span class="summary-icon coverage">&#x25BC;</span>
-                <span>Cobertura &lt; 75%</span>
+                <span>{{ reportLabels['card-coverage-title'] }}</span>
             </div>
             <strong>{{ low_coverage_count }}</strong>
-            <span>Clases por debajo del umbral</span>
+            <span>{{ reportLabels['card-coverage-subtitle'] }}</span>
         </div>
         <div class="summary-card">
             <div class="summary-header">
                 <span class="summary-icon duplicates">&#x2263;</span>
-                <span>Código duplicado</span>
+                <span>{{ reportLabels['card-dup-title'] }}</span>
             </div>
             <strong>{{ duplicate_class_count }}</strong>
-            <span>Clases con coincidencias detectadas</span>
+            <span>{{ reportLabels['card-dup-subtitle'] }}</span>
         </div>
     </div>
 
-    <h2>Problemas Detectados</h2>
+    <h2>{{ reportLabels['heading-issues'] }}</h2>
     {% if apex_results %}
     <table>
         <tr>
-            <th>Clase</th>
-            <th>Línea</th>
-            <th>Regla</th>
-            <th>Severidad</th>
-            <th>Descripción</th>
-            <th>Referencia</th>
+            <th>{{ reportLabels['column-class'] }}</th>
+            <th>{{ reportLabels['column-line'] }}</th>
+            <th>{{ reportLabels['column-rule'] }}</th>
+            <th>{{ reportLabels['column-severity'] }}</th>
+            <th>{{ reportLabels['column-description'] }}</th>
+            <th>{{ reportLabels['column-reference'] }}</th>
         </tr>
         {% for issue in apex_results %}
         <tr>
@@ -236,17 +236,17 @@
         {% endfor %}
     </table>
     {% else %}
-    <div class="empty-state success">No se encontraron problemas.</div>
+    <div class="empty-state success">{{ reportLabels['empty-no-issues'] }}</div>
     {% endif %}
 
-    <h2>Cobertura de Código</h2>
+    <h2>{{ reportLabels['heading-coverage'] }}</h2>
     {% if test_coverage %}
     <table>
         <tr>
-            <th>Clase</th>
-            <th>Líneas Totales</th>
-            <th>Cubiertas</th>
-            <th>Cobertura %</th>
+            <th>{{ reportLabels['column-class'] }}</th>
+            <th>{{ reportLabels['column-total-lines'] }}</th>
+            <th>{{ reportLabels['column-covered'] }}</th>
+            <th>{{ reportLabels['column-coverage-percent'] }}</th>
         </tr>
         {% for c in test_coverage %}
         <tr{% if c.isLowCoverage %} style="color: #c77a1e;"{% endif %}>
@@ -258,17 +258,17 @@
         {% endfor %}
     </table>
     {% else %}
-    <div class="empty-state info">No hay datos de cobertura.</div>
+    <div class="empty-state info">{{ reportLabels['empty-no-coverage'] }}</div>
     {% endif %}
 
-    <h2>Resultados de Pruebas</h2>
+    <h2>{{ reportLabels['heading-tests'] }}</h2>
     {% if test_results %}
     <table>
         <tr>
-            <th>Clase</th>
-            <th>Método</th>
-            <th>Resultado</th>
-            <th>Mensaje</th>
+            <th>{{ reportLabels['column-class'] }}</th>
+            <th>{{ reportLabels['column-method'] }}</th>
+            <th>{{ reportLabels['column-result'] }}</th>
+            <th>{{ reportLabels['column-message'] }}</th>
         </tr>
         {% for t in test_results %}
         <tr>
@@ -280,16 +280,16 @@
         {% endfor %}
     </table>
     {% else %}
-    <div class="empty-state warning">No se ejecutaron pruebas.</div>
+    <div class="empty-state warning">{{ reportLabels['empty-no-tests'] }}</div>
     {% endif %}
 
-    <h2>Código duplicado</h2>
+    <h2>{{ reportLabels['heading-dup'] }}</h2>
     {% if pmd_results %}
     <table>
         <tr>
-            <th>Clase</th>
-            <th>Líneas duplicadas</th>
-            <th>Fragmento</th>
+            <th>{{ reportLabels['column-class'] }}</th>
+            <th>{{ reportLabels['column-duplicate-lines'] }}</th>
+            <th>{{ reportLabels['column-snippet'] }}</th>
         </tr>
         {% for dup in pmd_results %}
         <tr>
@@ -300,10 +300,10 @@
         {% endfor %}
     </table>
     {% else %}
-    <div class="empty-state success">No se encontraron duplicados.</div>
+    <div class="empty-state success">{{ reportLabels['empty-no-duplicates'] }}</div>
     {% endif %}
 
-    <h2>Análisis IA</h2>
+    <h2>{{ reportLabels['heading-ai'] }}</h2>
     {% if einsteinAnalysis %}
     {% for cls, analysis in einsteinAnalysis %}
     <section class="analysis-block">
@@ -312,7 +312,7 @@
     </section>
     {% endfor %}
     {% else %}
-    <div class="empty-state info">El análisis IA fue omitido o no se encontraron resultados.</div>
+    <div class="empty-state info">{{ reportLabels['empty-no-ai'] }}</div>
     {% endif %}
 </body>
 </html>

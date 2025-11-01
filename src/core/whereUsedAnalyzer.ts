@@ -1,7 +1,8 @@
-import * as path from 'path';
+﻿import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as vscode from 'vscode';
 import { Logger } from './utils';
+import { localize } from '../i18n';
 import {
     analyzeWhereUsedCore,
     collectClassNames,
@@ -19,7 +20,7 @@ export async function analyzeWhereUsed(targets: string[]): Promise<WhereUsedEntr
     const classNames = collectClassNames(targets);
     if (!classNames.size)
     {
-        throw new Error('No fue posible determinar los nombres de clase Apex a partir de la selección.');
+        throw new Error(localize('error.whereUsedAnalyzer.noClassNames', 'Unable to derive Apex class names from the selection.'));
     }
 
     logger.info(`Clases objetivo: ${Array.from(classNames).join(', ')}`);
@@ -53,7 +54,7 @@ function resolveWorkspaceFolder(targets: string[]): vscode.WorkspaceFolder
     const fallback = vscode.workspace.workspaceFolders?.[0];
     if (!fallback)
     {
-        throw new Error('No se detectó un workspace abierto.');
+        throw new Error('No workspace folder detected.');
     }
     return fallback;
 }
@@ -66,14 +67,14 @@ async function resolveRepositoryDir(workspaceFolder: vscode.WorkspaceFolder, log
     if (!repoDir)
     {
         repoDir = workspaceFolder.uri.fsPath;
-        logger.warn('sfRepositoryDir no configurado. Se usará la raíz del workspace.');
+        logger.warn(localize('log.whereUsedAnalyzer.repoDefault', 'sfRepositoryDir not configured. Using workspace root.'));
     }
 
     repoDir = path.resolve(repoDir);
 
     if (!(await fs.pathExists(repoDir)))
     {
-        throw new Error(`La ruta configurada no existe: ${repoDir}`);
+        throw new Error(localize('error.whereUsedAnalyzer.repoMissing', 'Configured repository path does not exist: {0}', repoDir));
     }
 
     return repoDir;
@@ -86,4 +87,7 @@ function wrapLogger(logger: Logger): TraceLogger
         warn: (message: string) => logger.warn(message)
     };
 }
+
+
+
 

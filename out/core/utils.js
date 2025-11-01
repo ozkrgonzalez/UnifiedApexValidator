@@ -50,17 +50,14 @@ const fast_xml_parser_1 = require("fast-xml-parser");
 const vscode = __importStar(require("vscode"));
 const glob = __importStar(require("glob"));
 const execa_1 = require("execa");
+const i18n_1 = require("../i18n");
 let _ctx;
 function setExtensionContext(ctx) {
-    console.log('[UAV][setExtensionContext] ExtensionContext recibido:', !!ctx);
-    console.log('[UAV][setExtensionContext] globalStorageUri:', ctx?.globalStorageUri?.fsPath);
     _ctx = ctx;
 }
 let globalChannel = null;
 let processHandlersRegistered = false;
-const ignoredUnhandledPatterns = [
-    /CreateEmbeddingSupplier/i
-];
+const ignoredUnhandledPatterns = [/CreateEmbeddingSupplier/i];
 const ANSI_ESCAPE_REGEX = /\x1B\[[0-?]*[ -/]*[@-~]/g;
 function parseSfJson(output) {
     const text = (output || '').trim();
@@ -93,7 +90,8 @@ function shouldIgnoreUnhandled(reason) {
 }
 function getGlobalChannel() {
     if (!globalChannel) {
-        globalChannel = vscode.window.createOutputChannel('Unified Apex Validator');
+        const channelName = (0, i18n_1.localize)('channel.uav', 'Unified Apex Validator'); // Localized string
+        globalChannel = vscode.window.createOutputChannel(channelName);
         globalChannel.show(true);
     }
     return globalChannel;
@@ -105,7 +103,7 @@ function getStorageRoot() {
         fs.ensureDirSync(dir);
     }
     catch (err) {
-        console.error('[UAV][getStorageRoot] \u274C Error creando directorio', err);
+        console.error((0, i18n_1.localize)('log.utils.storageRootError', '[UAV][getStorageRoot] Error creating directory'), err); // Localized string
     }
     return dir;
 }
@@ -113,16 +111,16 @@ class Logger {
     logPath;
     outputChannel;
     prefix;
-    constructor(prefix, autoShow = false, channelName = 'Unified Apex Validator') {
+    constructor(prefix, autoShow = false, channelName = (0, i18n_1.localize)('channel.uav', 'Unified Apex Validator')) {
         this.prefix = prefix;
         const storageRoot = getStorageRoot();
-        console.log(`[UAV][Logger] Creando logger para ${prefix} en ${storageRoot}`);
+        console.log((0, i18n_1.localize)('log.utils.loggerCreating', '[UAV][Logger] Creating logger for {0} at {1}', prefix, storageRoot)); // Localized string
         const logDir = path.join(storageRoot, 'logs');
         try {
             fs.ensureDirSync(logDir);
         }
         catch (err) {
-            console.error('[UAV][Logger] \u274C Error creando carpeta de logs:', err);
+            console.error((0, i18n_1.localize)('log.utils.loggerLogDirError', '[UAV][Logger] Error creating log directory:'), err); // Localized string
         }
         this.logPath = path.join(logDir, `${prefix}.log`);
         this.outputChannel = getGlobalChannel();
@@ -131,10 +129,10 @@ class Logger {
         }
         if (autoShow) {
             this.outputChannel.show(true);
-            console.log(`[UAV][Logger] Mostrando canal: ${channelName}`);
+            console.log((0, i18n_1.localize)('log.utils.loggerShowingChannel', '[UAV][Logger] Showing channel: {0}', channelName)); // Localized string
         }
         // Confirmar rutas
-        console.log(`[UAV][Logger] logPath=${this.logPath}`);
+        console.log((0, i18n_1.localize)('log.utils.loggerPath', '[UAV][Logger] logPath={0}', this.logPath)); // Localized string
         if (!processHandlersRegistered) {
             process.on('uncaughtException', (err) => this.error(`Uncaught Exception: ${err.message}`));
             process.on('unhandledRejection', (reason) => {
@@ -146,7 +144,7 @@ class Logger {
         }
     }
     clear() {
-        console.log(`[UAV][Logger] Limpiando log: ${this.logPath}`);
+        console.log((0, i18n_1.localize)('log.utils.loggerClearing', '[UAV][Logger] Clearing log: {0}', this.logPath)); // Localized string
         fs.writeFileSync(this.logPath, '\uFEFF', { encoding: 'utf8' });
     }
     write(level, msg) {
@@ -155,7 +153,7 @@ class Logger {
             fs.appendFileSync(this.logPath, line + '\n', { encoding: 'utf8' });
         }
         catch (err) {
-            console.error(`[UAV][Logger] \u274C Error escribiendo log ${this.logPath}:`, err);
+            console.error((0, i18n_1.localize)('log.utils.loggerWriteError', '[UAV][Logger] Error writing log {0}:', this.logPath), err); // Localized string
         }
         this.outputChannel.appendLine(line);
     }
@@ -200,12 +198,15 @@ async function parseApexClassesFromPackage(pkgPath, repoDir) {
                 nonTestClasses.push(cls);
             }
         }
-        logger.info(`🧪 Clases de prueba detectadas (${testClasses.length}): ${testClasses.join(', ') || 'Ninguna'}`);
-        logger.info(`📖 Clases normales detectadas (${nonTestClasses.length}): ${nonTestClasses.join(', ') || 'Ninguna'}`);
+        const noneLabel = (0, i18n_1.localize)('log.utils.none', 'None');
+        const testList = testClasses.length ? testClasses.join(', ') : noneLabel;
+        const nonTestList = nonTestClasses.length ? nonTestClasses.join(', ') : noneLabel;
+        logger.info((0, i18n_1.localize)('log.utils.testClassesDetected', 'Test classes detected ({0}): {1}', testClasses.length, testList)); // Localized string
+        logger.info((0, i18n_1.localize)('log.utils.nonTestClassesDetected', 'Non-test classes detected ({0}): {1}', nonTestClasses.length, nonTestList)); // Localized string
         return { testClasses, nonTestClasses };
     }
     catch (err) {
-        console.error('[UAV][PackageParser] ❌ Error parseando package.xml:', err);
+        console.error((0, i18n_1.localize)('log.utils.packageParseError', '[UAV][PackageParser] Error parsing package.xml:'), err);
         throw err;
     }
 }
@@ -219,14 +220,14 @@ async function cleanUpFiles(paths, logger) {
         try {
             if (await fs.pathExists(dir)) {
                 await fs.emptyDir(dir);
-                logger?.info(`🧹 Carpeta limpiada: ${dir}`);
+                logger?.info((0, i18n_1.localize)('log.utils.folderCleaned', 'Folder cleaned: {0}', dir)); // Localized string
             }
             else {
-                logger?.warn(`⚠️ Carpeta no encontrada: ${dir}`);
+                logger?.warn((0, i18n_1.localize)('log.utils.folderMissing', 'Folder not found: {0}', dir)); // Localized string
             }
         }
         catch (err) {
-            logger?.warn(`❌ No se pudo limpiar ${dir}: ${err.message}`);
+            logger?.warn((0, i18n_1.localize)('log.utils.folderCleanupFailed', 'Unable to clean {0}: {1}', dir, err.message)); // Localized string
         }
     }
 }
@@ -239,7 +240,7 @@ async function getDefaultConnectedOrg(logger) {
         const payload = parseSfJson(stdout) ?? parseSfJson(stderr);
         const result = payload?.result ?? payload;
         if (!result) {
-            logger?.warn('No se pudo interpretar la salida de "sf org list --json".');
+            logger?.warn((0, i18n_1.localize)('log.utils.listOrgsParseFailed', 'Could not parse the output of "sf org list --json".')); // Localized string
             return null;
         }
         const candidates = [];
@@ -264,11 +265,11 @@ async function getDefaultConnectedOrg(logger) {
                 ? defaultUsername.trim()
                 : '';
         if (!username) {
-            logger?.warn('No se detectó una org con isDefaultUsername en Salesforce CLI.');
+            logger?.warn((0, i18n_1.localize)('log.utils.noDefaultOrgFlag', 'No org with isDefaultUsername was detected in Salesforce CLI.')); // Localized string
             return null;
         }
         const alias = typeof selected?.alias === 'string' ? selected.alias.trim() : undefined;
-        logger?.info(`Se utilizará la org por defecto de Salesforce CLI: ${alias || username}.`);
+        logger?.info((0, i18n_1.localize)('log.utils.usingDefaultOrg', 'Using Salesforce CLI default org: {0}.', alias || username)); // Localized string
         return {
             alias: alias || undefined,
             username,
@@ -278,7 +279,7 @@ async function getDefaultConnectedOrg(logger) {
     }
     catch (err) {
         const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
-        logger?.warn(`No se pudo obtener la org por defecto desde Salesforce CLI: ${reason}`);
+        logger?.warn((0, i18n_1.localize)('log.utils.defaultOrgLookupFailed', 'Could not obtain the default org from Salesforce CLI: {0}', reason)); // Localized string
         return null;
     }
 }
@@ -307,12 +308,12 @@ function resolveSfCliPath() {
             attempts.push(`${cmd}: ${reason}`);
         }
     }
-    throw new Error(`No se pudo localizar Salesforce CLI. Revisa UnifiedApexValidator.sfCliPath. Intentos: ${attempts.join('; ')}`);
+    throw new Error((0, i18n_1.localize)('error.utils.sfCliNotFound', 'Unable to locate Salesforce CLI. Check UnifiedApexValidator.sfCliPath. Attempts: {0}', attempts.join('; ')));
 }
 async function ensureOrgAliasConnected(alias, logger) {
     const trimmed = (alias || '').trim();
     if (!trimmed) {
-        vscode.window.showErrorMessage('No se detectó ninguna org conectada por defecto. Ejecuta "sf org login web" y vuelve a intentarlo.');
+        vscode.window.showErrorMessage((0, i18n_1.localize)('error.utils.noDefaultOrgConnected', 'No default org is connected. Run "sf org login web" and try again.')); // Localized string
         return false;
     }
     const sfPath = resolveSfCliPath();
@@ -323,7 +324,7 @@ async function ensureOrgAliasConnected(alias, logger) {
             });
             const info = parseSfJson(stdout) ?? parseSfJson(stderr);
             if (!info) {
-                logger.warn(`No se pudo interpretar la respuesta de Salesforce CLI para la org "${trimmed}".`);
+                logger.warn((0, i18n_1.localize)('log.utils.orgDisplayParseFailed', 'Could not parse Salesforce CLI response for org "{0}".', trimmed)); // Localized string
                 return false;
             }
             const status = info?.result?.connectedStatus ??
@@ -339,9 +340,9 @@ async function ensureOrgAliasConnected(alias, logger) {
             const statusLabel = typeof status === 'string'
                 ? status
                 : typeof status === 'boolean'
-                    ? status ? 'connected' : 'disconnected'
-                    : 'desconocido';
-            logger.warn(`Estado de la org "${trimmed}": ${statusLabel}.`);
+                    ? (status ? (0, i18n_1.localize)('label.utils.connected', 'connected') : (0, i18n_1.localize)('label.utils.disconnected', 'disconnected'))
+                    : (0, i18n_1.localize)('label.utils.unknown', 'unknown');
+            logger.warn((0, i18n_1.localize)('log.utils.orgStatus', 'Org "{0}" status: {1}.', trimmed, statusLabel)); // Localized string
             return false;
         }
         catch (err) {
@@ -350,29 +351,32 @@ async function ensureOrgAliasConnected(alias, logger) {
                 const status = parsed.result.connectedStatus ??
                     parsed.result.connected;
                 if ((typeof status === 'string' && status.toLowerCase() === 'connected') || status === true) {
-                    logger.info(`Org "${trimmed}" reportada como conectada.`);
+                    logger.info((0, i18n_1.localize)('log.utils.orgReportedConnected', 'Org "{0}" reported as connected.', trimmed)); // Localized string
                     return true;
                 }
             }
             const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
-            logger.warn(`No se pudo verificar la org "${trimmed}": ${reason}`);
+            logger.warn((0, i18n_1.localize)('log.utils.orgVerificationFailed', 'Could not verify org "{0}": {1}', trimmed, reason)); // Localized string
             return false;
         }
     };
     if (await checkAlias())
         return true;
-    const answer = await vscode.window.showWarningMessage(`La org con alias "${trimmed}" no aparece conectada en Salesforce CLI. \u00BFQuieres iniciar sesion ahora?`, 'Conectar ahora', 'Cancelar');
-    if (answer !== 'Conectar ahora') {
-        logger.warn(`Se cancela la validacion porque la org "${trimmed}" no esta conectada.`);
+    const connectNowOption = (0, i18n_1.localize)('prompt.utils.connectNow', 'Connect now');
+    const cancelOption = (0, i18n_1.localize)('prompt.utils.cancel', 'Cancel');
+    const warningMessage = (0, i18n_1.localize)('warning.utils.orgAliasNotConnected', 'The org alias "{0}" is not connected in Salesforce CLI. Do you want to connect now?', trimmed);
+    const answer = await vscode.window.showWarningMessage(warningMessage, connectNowOption, cancelOption);
+    if (answer !== connectNowOption) {
+        logger.warn((0, i18n_1.localize)('log.utils.connectionCancelled', 'Validation cancelled because org "{0}" is not connected.', trimmed)); // Localized string
         return false;
     }
     try {
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: `Conectando org "${trimmed}"...`,
+            title: (0, i18n_1.localize)('progress.utils.connectingOrg', 'Connecting org "{0}"...', trimmed), // Localized string
             cancellable: false
         }, async () => {
-            logger.info(`Ejecutando "sf org login web --alias ${trimmed}". Completa el inicio de sesion en el navegador.`);
+            logger.info((0, i18n_1.localize)('log.utils.executingOrgLogin', 'Running "sf org login web --alias {0}". Complete the sign-in process in your browser.', trimmed)); // Localized string
             const child = (0, execa_1.execa)(sfPath, ['org', 'login', 'web', '--alias', trimmed], {
                 stdout: 'pipe',
                 stderr: 'pipe',
@@ -393,15 +397,15 @@ async function ensureOrgAliasConnected(alias, logger) {
     }
     catch (err) {
         const reason = err?.shortMessage || err?.message || String(err);
-        logger.error(`No se pudo completar el login de la org "${trimmed}": ${reason}`);
-        vscode.window.showErrorMessage(`No se pudo conectar la org "${trimmed}". Revisa el Output de UAV para mas detalles.`);
+        logger.error((0, i18n_1.localize)('log.utils.orgLoginFailed', 'Could not complete login for org "{0}": {1}', trimmed, reason)); // Localized string
+        vscode.window.showErrorMessage((0, i18n_1.localize)('error.utils.orgConnectionFailed', 'Failed to connect org "{0}". Check the UAV Output for details.', trimmed)); // Localized string
         return false;
     }
     if (await checkAlias()) {
-        vscode.window.showInformationMessage(`Org "${trimmed}" conectada correctamente.`);
+        vscode.window.showInformationMessage((0, i18n_1.localize)('info.utils.orgConnected', 'Org "{0}" connected successfully.', trimmed)); // Localized string
         return true;
     }
-    vscode.window.showErrorMessage(`El alias "${trimmed}" sigue sin conexion tras el intento de login. Verifica tus permisos y repite el proceso.`);
+    vscode.window.showErrorMessage((0, i18n_1.localize)('error.utils.orgStillDisconnected', 'Alias "{0}" remains disconnected after the login attempt. Verify your permissions and try again.', trimmed));
     return false;
 }
 function formatGeneratedAt(date) {

@@ -40,15 +40,16 @@ const aiDocChunkRunner_1 = require("../core/aiDocChunkRunner");
 const patchApplier_1 = require("../core/patchApplier");
 const utils_1 = require("../core/utils");
 const IAAnalisis_1 = require("./IAAnalisis");
+const i18n_1 = require("../i18n");
 async function generateApexDocChunked() {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
-        vscode.window.showErrorMessage('No hay ningun archivo abierto.');
+        vscode.window.showErrorMessage((0, i18n_1.localize)('error.generateApexDoc.noEditor', '❌ No hay ningún archivo abierto.'));
         return;
     }
     const iaStatus = (0, IAAnalisis_1.evaluateIaConfig)();
     if (!iaStatus.ready) {
-        vscode.window.showWarningMessage(`Generacion de ApexDoc deshabilitada. Faltan parametros IA: ${iaStatus.missing.join(', ')}`);
+        vscode.window.showWarningMessage((0, i18n_1.localize)('warn.generateApexDoc.iaDisabled', '⚠️ Generación de ApexDoc deshabilitada. Faltan parámetros IA: {0}', iaStatus.missing.join(', ')));
         return;
     }
     const logger = new utils_1.Logger('GenerateApexDoc', true);
@@ -57,22 +58,24 @@ async function generateApexDocChunked() {
     let working = original;
     const chunks = apexAstParser_1.ApexAstParser.parseDocument(doc);
     const traceAst = vscode.workspace.getConfiguration('UnifiedApexValidator').get('traceAst') ?? false;
-    logger.info(`[GenerateApexDoc] Chunks detectados: ${chunks.length}`);
+    logger.info((0, i18n_1.localize)('log.generateApexDoc.chunksDetected', '🧩 Chunks detectados: {0}', chunks.length));
     if (traceAst) {
+        const statusPending = (0, i18n_1.localize)('log.generateApexDoc.docPending', 'pendiente');
+        const statusOk = (0, i18n_1.localize)('log.generateApexDoc.docOk', 'ok');
         for (const ch of chunks) {
-            logger.info(`  • ${ch.kind.padEnd(12)} ${ch.name.padEnd(60)} ` +
-                `(${ch.start}-${ch.end})  doc=${ch.needsDoc ? 'pendiente' : 'ok'}`);
+            const status = ch.needsDoc ? statusPending : statusOk;
+            logger.info((0, i18n_1.localize)('log.generateApexDoc.chunkDetail', '  • {0} {1} ({2}-{3}) doc={4}', ch.kind.padEnd(12), ch.name.padEnd(60), ch.start, ch.end, status));
         }
     }
     const missing = chunks.filter((c) => c.needsDoc);
     let fatalError;
     if (!missing.length) {
-        vscode.window.showInformationMessage('Todos los elementos ya tienen ApexDoc.');
+        vscode.window.showInformationMessage((0, i18n_1.localize)('info.generateApexDoc.allDocumented', '✅ Todos los elementos ya tienen ApexDoc.'));
         return;
     }
     const progressOptions = {
         location: vscode.ProgressLocation.Notification,
-        title: 'Revisión de ApexDoc generados',
+        title: (0, i18n_1.localize)('progress.generateApexDoc.title', 'Revisión de ApexDoc generados'),
         cancellable: true
     };
     await vscode.window.withProgress(progressOptions, async (progress, token) => {
@@ -97,15 +100,18 @@ async function generateApexDocChunked() {
             if (token.isCancellationRequested) {
                 break;
             }
-            progress.report({ message: `Procesando ${chunk.kind} "${chunk.name}" (${++done}/${total})` });
-            logger.info(`Generando doc para: ${chunk.kind} "${chunk.name}"`);
+            done += 1;
+            progress.report({
+                message: (0, i18n_1.localize)('progress.generateApexDoc.processing', 'Procesando {0} "{1}" ({2}/{3})', chunk.kind, chunk.name, done, total)
+            });
+            logger.info((0, i18n_1.localize)('log.generateApexDoc.generating', '✏️ Generando doc para: {0} "{1}"', chunk.kind, chunk.name));
             const snippet = chunk.text;
             let realStart = locateChunk(working, snippet, searchCursor);
             if (realStart === -1) {
                 realStart = locateChunk(working, snippet, 0);
             }
             if (realStart === -1) {
-                logger.warn(`No se encontro el fragmento actualizado para ${chunk.name}; se omite.`);
+                logger.warn((0, i18n_1.localize)('warn.generateApexDoc.chunkMissing', '❗ No se encontró el fragmento actualizado para {0}; se omite.', chunk.name));
                 continue;
             }
             const realEnd = realStart + snippet.length;
@@ -121,7 +127,7 @@ async function generateApexDocChunked() {
                     const safeName = `${chunk.kind}_${chunk.name.replace(/[^a-zA-Z0-9_]/g, '_')}.txt`;
                     const rawPath = vscode.Uri.file(`${outputDir}/ApexDoc_Debug_${safeName}`);
                     await vscode.workspace.fs.writeFile(rawPath, Buffer.from(result.patchedText, 'utf8'));
-                    logger.info(`Guardado bloque IA crudo para ${chunk.name} en ${rawPath.fsPath}`);
+                    logger.info((0, i18n_1.localize)('log.generateApexDoc.rawSaved', '💾 Guardado bloque IA crudo para {0} en {1}', chunk.name, rawPath.fsPath));
                     const matches = [...result.patchedText.matchAll(/\/\*\*[\s\S]*?\*\//g)];
                     if (matches.length > 0) {
                         for (let i = 0; i < matches.length; i++) {
@@ -141,23 +147,25 @@ async function generateApexDocChunked() {
                         }
                         working = patchApplier_1.PatchApplier.applyInMemory(working, localChunk, docBlock);
                         searchCursor = realStart + docBlock.length + snippet.length;
-                        logger.info(`Documentacion insertada para ${chunk.name} (${matches.length} bloque(s) detectados)`);
+                        logger.info((0, i18n_1.localize)('log.generateApexDoc.docInserted', '📝 Documentación insertada para {0} ({1} bloque(s) detectados)', chunk.name, matches.length));
                     }
                     else {
-                        logger.warn(`No se detectaron bloques ApexDoc en la respuesta para ${chunk.name}`);
+                        logger.warn((0, i18n_1.localize)('warn.generateApexDoc.noBlocks', '⚠️ No se detectaron bloques ApexDoc en la respuesta para {0}', chunk.name));
                     }
                 }
                 catch (err) {
-                    logger.warn(`Error guardando/insertando doc para ${chunk.name}: ${err.message}`);
+                    logger.warn((0, i18n_1.localize)('warn.generateApexDoc.saveError', '⚠️ Error guardando/insertando doc para {0}: {1}', chunk.name, err.message));
                 }
             }
             else if (result.fatal) {
-                fatalError = result.error || 'Error fatal al invocar el servicio de IA.';
-                logger.error(`Proceso detenido para ${chunk.name}: ${fatalError}`);
+                fatalError =
+                    result.error ||
+                        (0, i18n_1.localize)('error.generateApexDoc.fatal', '❌ Error fatal al invocar el servicio de IA.');
+                logger.error((0, i18n_1.localize)('error.generateApexDoc.processStopped', '🚫 Proceso detenido para {0}: {1}', chunk.name, fatalError));
                 break;
             }
             else {
-                logger.warn(`Fallo ${chunk.name}: ${result.error}`);
+                logger.warn((0, i18n_1.localize)('warn.generateApexDoc.failure', '⚠️ Fallo {0}: {1}', chunk.name, result.error));
             }
             if (searchCursor < realStart + snippet.length) {
                 searchCursor = realStart + snippet.length;
@@ -168,15 +176,19 @@ async function generateApexDocChunked() {
         }
     });
     if (fatalError) {
-        vscode.window.showErrorMessage(`No se pudo generar ApexDoc: ${fatalError}`);
+        vscode.window.showErrorMessage((0, i18n_1.localize)('error.generateApexDoc.final', '❌ No se pudo generar ApexDoc: {0}', fatalError));
         return;
     }
-    await patchApplier_1.PatchApplier.openFinalDiff(original, working, doc.uri, 'Comparar documentacion generada (chunked)');
+    const diffTitle = (0, i18n_1.localize)('ui.generateApexDoc.diffTitle', 'Comparar documentación generada (chunked)');
+    await patchApplier_1.PatchApplier.openFinalDiff(original, working, doc.uri, diffTitle);
+    const applyQuestion = (0, i18n_1.localize)('prompt.generateApexDoc.applyQuestion', 'Revisa el diff abierto. ¿Quieres aplicar la documentación generada al archivo?');
+    const applyOption = (0, i18n_1.localize)('prompt.generateApexDoc.apply', 'Aplicar');
+    const skipOption = (0, i18n_1.localize)('prompt.generateApexDoc.skip', 'Omitir');
     let applyAnswer;
     while (!applyAnswer) {
-        applyAnswer = await vscode.window.showInformationMessage('Revisa el diff abierto. ¿Quieres aplicar la documentacion generada al archivo?', 'Aplicar', 'Omitir');
+        applyAnswer = await vscode.window.showInformationMessage(applyQuestion, applyOption, skipOption);
     }
-    if (applyAnswer === 'Aplicar') {
+    if (applyAnswer === applyOption) {
         const targetEditor = await vscode.window.showTextDocument(doc, { preview: false });
         const applied = await targetEditor.edit((editBuilder) => {
             const start = new vscode.Position(0, 0);
@@ -185,14 +197,15 @@ async function generateApexDocChunked() {
             editBuilder.replace(new vscode.Range(start, end), working);
         });
         if (applied) {
-            logger.info('Documentacion aplicada al archivo.');
+            logger.info((0, i18n_1.localize)('log.generateApexDoc.docsApplied', '✅ Documentación aplicada al archivo.'));
+            await doc.save();
         }
         else {
-            logger.warn('No fue posible aplicar la documentacion al archivo.');
+            logger.warn((0, i18n_1.localize)('warn.generateApexDoc.applyFailed', '⚠️ No fue posible aplicar la documentación al archivo.'));
         }
     }
     else {
-        logger.info('Documentacion generada omitida por el usuario.');
+        logger.info((0, i18n_1.localize)('log.generateApexDoc.userSkipped', 'ℹ️ Documentación generada omitida por el usuario.'));
     }
 }
 function analyzeDocBlock(docBlock) {

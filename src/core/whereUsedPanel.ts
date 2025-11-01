@@ -3,6 +3,7 @@ import * as path from 'path';
 import { Logger } from './utils';
 import { WhereUsedEntry } from './whereUsedCore';
 import { generateWhereUsedReport } from './whereUsedReport';
+import { localize } from '../i18n';
 
 const logger = new Logger('WhereUsedPanel');
 
@@ -44,7 +45,7 @@ export async function showWhereUsedPanel(results: WhereUsedEntry[]): Promise<voi
 
     if (savedPath)
     {
-        logger.info(`Reporte guardado en ${savedPath}`);
+        logger.info(localize('info.whereUsedPanel.savedAt', 'Report Saved at: {0}',savedPath));
     }
 }
 

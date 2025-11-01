@@ -291,6 +291,21 @@
           "default": "sf",
           "description": "Salesforce Cli Path if not defined in Path System Variable."
         },
+        "UnifiedApexValidator.reportLanguage": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "es",
+            "en"
+          ],
+          "enumDescriptions": [
+            "Adapta el idioma del reporte según el idioma de VS Code (ES cuando corresponda).",
+            "Genera el reporte exclusivamente en español.",
+            "Genera el reporte exclusivamente en inglés."
+          ],
+          "default": "auto",
+          "description": "Idioma predeterminado para los reportes HTML y PDF generados por Unified Apex Validator."
+        },
         "UnifiedApexValidator.outputDir": {
           "type": "string",
           "default": "",
@@ -327,7 +342,8 @@
     "node_modules/axios",
     "node_modules/fast-xml-parser",
     "node_modules/winston",
-    "node_modules/dotenv"
+    "node_modules/dotenv",
+    "node_modules/vscode-nls"
   ],
   "vsce": {
     "dependencies": true
@@ -345,7 +361,8 @@
     "markdown-it": "^14.1.0",
     "marked": "^12.0.2",
     "nunjucks": "^3.2.4",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vscode-nls": "^5.2.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
