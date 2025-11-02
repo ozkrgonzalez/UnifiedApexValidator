@@ -57,22 +57,112 @@
       "uav": [
         {
           "id": "uav.dependenciesView",
-          "name": "🔧 Dependencies"
+          "name": "%view.dependencies%"
         },
         {
           "id": "uav.reportsView",
-          "name": "📊 Reports"
+          "name": "%view.reports%"
         },
         {
           "id": "uav.logsView",
-          "name": "📜 Logs"
+          "name": "%view.logs%"
         }
       ]
     },
+    "walkthroughs": [
+      {
+        "id": "uav.gettingStarted",
+        "title": "Unified Apex Validator - Getting Started",
+        "description": "Configure the prerequisites and learn how to run your first validation.",
+        "steps": [
+          {
+            "id": "uav.walkthrough.dependencies",
+            "title": "1. Check Dependencies",
+            "description": "Open the Dependencies view and ensure every item shows as up to date.",
+            "media": {
+              "markdown": "docs/walkthrough/dependencies.md"
+            },
+            "completionEvents": [
+              "onCommand:uav.dependenciesView.focus"
+            ]
+          },
+          {
+            "id": "uav.walkthrough.configureWorkspace",
+            "title": "2. Point to your project folders",
+            "description": "Set sfRepositoryDir and outputDir in Settings so UAV knows where your metadata lives and where to drop reports. Adjust sfCliPath only if the Salesforce CLI is not in PATH.",
+            "media": {
+              "markdown": "docs/walkthrough/workspace.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.openSettings"
+            ]
+          },
+          {
+            "id": "uav.walkthrough.connectOrg",
+            "title": "3. Connect your default org",
+            "description": "Make sure the Salesforce CLI has a default org: run sf org login web --alias myOrg (or use your preferred auth flow) and verify it appears in sf org list. UAV will use the org marked as default when validating.",
+            "media": {
+              "markdown": "docs/walkthrough/connect-org.md"
+            }
+          },
+          {
+            "id": "uav.walkthrough.configureEinstein",
+            "title": "4. Configure Einstein GPT access",
+            "description": "Open Settings > Unified Apex Validator and fill sfClientId, sfClientSecret, sfGptEndpoint, and sfGptModel. The Dependencies view will show AI as ready once all fields are set.",
+            "media": {
+              "markdown": "docs/walkthrough/einstein.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.openSettings"
+            ]
+          },
+          {
+            "id": "uav.walkthrough.validateApex",
+            "title": "5. Run Your First Validation",
+            "description": "Select a package.xml or Apex class and execute the \"UAV: Validate Apex Code\" command.",
+            "media": {
+              "markdown": "docs/walkthrough/validate.md"
+            },
+            "completionEvents": [
+              "onCommand:UnifiedApexValidator.validateApex"
+            ]
+          },
+          {
+            "id": "uav.walkthrough.reportsLogs",
+            "title": "6. Review Reports and Logs",
+            "description": "Open the Reports and Logs views to inspect the generated files after a run.",
+            "media": {
+              "markdown": "docs/walkthrough/reports-logs.md"
+            },
+            "completionEvents": [
+              "onView:uav.reportsView",
+              "onView:uav.logsView"
+            ]
+          },
+          {
+            "id": "uav.walkthrough.stayUpdated",
+            "title": "%walkthrough.step.stayUpdated.title%",
+            "description": "Review the extension settings for additional features and keep an eye on the changelog for new updates.",
+            "media": {
+              "markdown": "docs/walkthrough/stay-updated.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.openSettings",
+              "onLink:https://github.com/ozkrgonzalez/UnifiedApexValidator"
+            ]
+          }
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "UnifiedApexValidator.validateApex",
         "title": "UAV: Validate Apex Code"
+      },
+      {
+        "command": "uav.showGettingStarted",
+        "title": "UAV: Getting Started",
+        "icon": "$(rocket)"
       },
       {
         "command": "uav.reportsView.refresh",
@@ -260,7 +350,7 @@
         },
         "UnifiedApexValidator.iaPromptTemplate": {
           "type": "string",
-          "default": "Analiza la clase Apex llamada '{class_name}'.\n\nCódigo (parcial si fue truncado):\n{truncated_body}\n\nResponde en formato MARKDOWN con:\n## 📘 Descripción de la clase\nExplica brevemente su propósito.\n\n## ✅ Cumplimiento de buenas prácticas\nLista con viñetas usando ✅ o ⚠️ según corresponda.\n\n## 🛠️ Recomendaciones de mejora\nCada ítem debe comenzar con un emoji relacionado (⚡, ♻️, 🔒, 📨, etc.).\nSi corresponde, incluye ejemplos de código en bloques ```apex.",
+          "default": "Analiza la clase Apex llamada '{class_name}'.\n\nCÃƒÂ³digo (parcial si fue truncado):\n{truncated_body}\n\nResponde en formato MARKDOWN con:\n## Ã°Å¸â€œËœ DescripciÃƒÂ³n de la clase\nExplica brevemente su propÃƒÂ³sito.\n\n## Ã¢Å“â€¦ Cumplimiento de buenas prÃƒÂ¡cticas\nLista con viÃƒÂ±etas usando Ã¢Å“â€¦ o Ã¢Å¡Â Ã¯Â¸Â segÃƒÂºn corresponda.\n\n## Ã°Å¸â€ºÂ Ã¯Â¸Â Recomendaciones de mejora\nCada ÃƒÂ­tem debe comenzar con un emoji relacionado (Ã¢Å¡Â¡, Ã¢â„¢Â»Ã¯Â¸Â, Ã°Å¸â€â€™, Ã°Å¸â€œÂ¨, etc.).\nSi corresponde, incluye ejemplos de cÃƒÂ³digo en bloques ```apex.",
           "description": "Einstein Base Prompt"
         },
         "UnifiedApexValidator.maxIAClassChars": {
@@ -279,7 +369,7 @@
             "@author",
             "@testClass"
           ],
-          "markdownDescription": "Lista de etiquetas para la cabecera ApexDoc de las clases. Se insertan vacías cuando faltan en la respuesta del modelo."
+          "markdownDescription": "Lista de etiquetas para la cabecera ApexDoc de las clases. Se insertan vacÃƒÂ­as cuando faltan en la respuesta del modelo."
         },
         "UnifiedApexValidator.methodDocTags": {
           "type": "array",
@@ -291,7 +381,7 @@
             "@param",
             "@return"
           ],
-          "markdownDescription": "Lista de etiquetas para la documentación ApexDoc de métodos y constructores. Las etiquetas faltantes se insertan vacías cuando no aparecen en la respuesta del modelo."
+          "markdownDescription": "Lista de etiquetas para la documentaciÃƒÂ³n ApexDoc de mÃƒÂ©todos y constructores. Las etiquetas faltantes se insertan vacÃƒÂ­as cuando no aparecen en la respuesta del modelo."
         },
         "UnifiedApexValidator.apexDocLanguage": {
           "type": "string",
@@ -300,8 +390,8 @@
             "english"
           ],
           "enumDescriptions": [
-            "Genera las descripciones de ApexDoc en español (etiquetas en inglés).",
-            "Genera las descripciones de ApexDoc completamente en inglés."
+            "Genera las descripciones de ApexDoc en espaÃƒÂ±ol (etiquetas en inglÃƒÂ©s).",
+            "Genera las descripciones de ApexDoc completamente en inglÃƒÂ©s."
           ],
           "default": "spanish",
           "description": "Idioma usado por el generador de ApexDoc asistido por IA."
@@ -319,9 +409,9 @@
             "en"
           ],
           "enumDescriptions": [
-            "Adapta el idioma del reporte según el idioma de VS Code (ES cuando corresponda).",
-            "Genera el reporte exclusivamente en español.",
-            "Genera el reporte exclusivamente en inglés."
+            "Adapta el idioma del reporte segÃƒÂºn el idioma de VS Code (ES cuando corresponda).",
+            "Genera el reporte exclusivamente en espaÃƒÂ±ol.",
+            "Genera el reporte exclusivamente en inglÃƒÂ©s."
           ],
           "default": "auto",
           "description": "Idioma predeterminado para los reportes HTML y PDF generados por Unified Apex Validator."
@@ -353,6 +443,7 @@
     "dist",
     "media",
     "resources/templates",
+    "docs/walkthrough",
     "node_modules/fs-extra",
     "node_modules/universalify",
     "node_modules/graceful-fs",

@@ -4,3 +4,5 @@ node_modules
 *.cls
 *.txt
 src/core/generateApexDocChunked.ts.tmp
+dist/
+out/
