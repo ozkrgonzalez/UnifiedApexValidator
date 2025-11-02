@@ -3,7 +3,7 @@
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
   "publisher": "ozkrgonzalez",
-  "version": "1.9.7",
+  "version": "1.9.8",
   "icon": "media/icon.png",
   "license": "GPL-3.0-only",
   "repository": "https://github.com/ozkrgonzalez/UnifiedApexValidator.git",
