@@ -404,40 +404,36 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
 
     async getChildren(): Promise<FileItem[]>
     {
-        try {
-            if (!this.folderPath || !(await fs.pathExists(this.folderPath))) {
-                return [new FileItem(localize('ui.folderView.notFound', 'Folder not found: {0}', this.folderPath), '', false)]; // Localized string
-            }
+        const result = await this.collectFiles();
 
-            const files = await fs.readdir(this.folderPath, { withFileTypes: true });
-
-            const filtered = files
-                .filter(f =>
-                {
-                    if (!f.isFile()) return false;
-                    const ext = path.extname(f.name).toLowerCase();
-                    return this.fileExtension.split('|').some(e => ext === `.${e.trim()}`);
-                })
-                .map(f => new FileItem(f.name, path.join(this.folderPath, f.name), true));
-
-            if (!filtered.length) {
-                return [new FileItem(localize('ui.folderView.empty', 'No files available'), '', false)]; // Localized string
-            }
-
-            return filtered;
-        }
-        catch (err)
+        if (result.kind === 'missing')
         {
-            console.error(localize('log.folderView.readError', '[UAV][{0}] Error reading files:', this.label), err); // Localized string
-            return [new FileItem(localize('ui.folderView.error', 'Error reading folder'), '', false)]; // Localized string
+            return [
+                new FileItem(
+                    localize('ui.folderView.notFound', 'Folder not found: {0}', this.folderPath),
+                    '',
+                    false
+                )
+            ];
+        }
+
+        if (result.kind === 'error')
+        {
+            console.error(
+                localize('log.folderView.readError', '[UAV][{0}] Error reading files:', this.label),
+                result.error
+            );
+            return [new FileItem(localize('ui.folderView.error', 'Error reading folder'), '', false)];
         }
 
         if (!result.files.length)
         {
-            return [new FileItem('Sin archivos disponibles', '', false)];
+            return [new FileItem(localize('ui.folderView.empty', 'No files available'), '', false)];
         }
 
-        return result.files.map((name) => new FileItem(name, path.join(this.folderPath, name), true));
+        return result.files.map(
+            (name) => new FileItem(name, path.join(this.folderPath, name), true)
+        );
     }
 
     private async collectFiles(): Promise<

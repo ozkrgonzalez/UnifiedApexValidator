@@ -1,11 +1,13 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
 const projectRoot = path.resolve(__dirname, '..');
 const distDir = path.join(projectRoot, 'dist');
 const distResourcesDir = path.join(distDir, 'resources');
 const distCoreDir = path.join(distDir, 'core');
+const distDocsDir = path.join(distDir, 'docs');
 const srcResourcesDir = path.join(projectRoot, 'src', 'resources');
+const docsDir = path.join(projectRoot, 'docs');
 const outCoreDir = path.join(projectRoot, 'out', 'core');
 const i18nDir = path.join(projectRoot, 'i18n');
 const distI18nDir = path.join(distDir, 'i18n');
@@ -58,9 +60,11 @@ function copyWhereUsedCoreFiles() {
 ensureDir(distDir);
 ensureDir(distResourcesDir);
 ensureDir(distCoreDir);
+ensureDir(distDocsDir);
 ensureDir(distI18nDir);
 
 copyRecursive(srcResourcesDir, distResourcesDir);
+copyRecursive(docsDir, distDocsDir);
 copyRecursive(i18nDir, distI18nDir);
 copyWhereUsedCoreFiles();
 
@@ -69,3 +73,4 @@ if (fs.existsSync(outI18nModule)) {
 } else {
     console.warn('[copyResources] out/i18n.js not found; skipping copy.');
 }
+
