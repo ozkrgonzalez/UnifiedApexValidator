@@ -1,7 +1,7 @@
 {
   "name": "unifiedapexvalidator",
-  "displayName": "Unified Apex Validator",
-  "description": "Salesforce Apex validation and reporting suite built natively in TypeScript for VS Code.",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
   "publisher": "ozkrgonzalez",
   "version": "1.9.7",
   "icon": "media/icon.png",
@@ -48,7 +48,7 @@
       "activitybar": [
         {
           "id": "uav",
-          "title": "Unified Apex Validator",
+          "title": "%extension.displayName%",
           "icon": "media/apex-icon.svg"
         }
       ]
@@ -72,13 +72,13 @@
     "walkthroughs": [
       {
         "id": "uav.gettingStarted",
-        "title": "Unified Apex Validator - Getting Started",
-        "description": "Configure the prerequisites and learn how to run your first validation.",
+        "title": "%walkthrough.title%",
+        "description": "%walkthrough.description%",
         "steps": [
           {
             "id": "uav.walkthrough.dependencies",
-            "title": "1. Check Dependencies",
-            "description": "Open the Dependencies view and ensure every item shows as up to date.",
+            "title": "%walkthrough.step.dependencies.title%",
+            "description": "%walkthrough.step.dependencies.description%",
             "media": {
               "markdown": "docs/walkthrough/dependencies.md"
             },
@@ -88,8 +88,8 @@
           },
           {
             "id": "uav.walkthrough.configureWorkspace",
-            "title": "2. Point to your project folders",
-            "description": "Set sfRepositoryDir and outputDir in Settings so UAV knows where your metadata lives and where to drop reports. Adjust sfCliPath only if the Salesforce CLI is not in PATH.",
+            "title": "%walkthrough.step.configureWorkspace.title%",
+            "description": "%walkthrough.step.configureWorkspace.description%",
             "media": {
               "markdown": "docs/walkthrough/workspace.md"
             },
@@ -99,16 +99,16 @@
           },
           {
             "id": "uav.walkthrough.connectOrg",
-            "title": "3. Connect your default org",
-            "description": "Make sure the Salesforce CLI has a default org: run sf org login web --alias myOrg (or use your preferred auth flow) and verify it appears in sf org list. UAV will use the org marked as default when validating.",
+            "title": "%walkthrough.step.connectOrg.title%",
+            "description": "%walkthrough.step.connectOrg.description%",
             "media": {
               "markdown": "docs/walkthrough/connect-org.md"
             }
           },
           {
             "id": "uav.walkthrough.configureEinstein",
-            "title": "4. Configure Einstein GPT access",
-            "description": "Open Settings > Unified Apex Validator and fill sfClientId, sfClientSecret, sfGptEndpoint, and sfGptModel. The Dependencies view will show AI as ready once all fields are set.",
+            "title": "%walkthrough.step.configureEinstein.title%",
+            "description": "%walkthrough.step.configureEinstein.description%",
             "media": {
               "markdown": "docs/walkthrough/einstein.md"
             },
@@ -117,9 +117,9 @@
             ]
           },
           {
-            "id": "uav.walkthrough.validateApex",
-            "title": "5. Run Your First Validation",
-            "description": "Select a package.xml or Apex class and execute the \"UAV: Validate Apex Code\" command.",
+            "id": "uav.walkthrough.validate",
+            "title": "%walkthrough.step.validate.title%",
+            "description": "%walkthrough.step.validate.description%",
             "media": {
               "markdown": "docs/walkthrough/validate.md"
             },
@@ -128,9 +128,9 @@
             ]
           },
           {
-            "id": "uav.walkthrough.reportsLogs",
-            "title": "6. Review Reports and Logs",
-            "description": "Open the Reports and Logs views to inspect the generated files after a run.",
+            "id": "uav.walkthrough.reports",
+            "title": "%walkthrough.step.reports.title%",
+            "description": "%walkthrough.step.reports.description%",
             "media": {
               "markdown": "docs/walkthrough/reports-logs.md"
             },
@@ -142,7 +142,7 @@
           {
             "id": "uav.walkthrough.stayUpdated",
             "title": "%walkthrough.step.stayUpdated.title%",
-            "description": "Review the extension settings for additional features and keep an eye on the changelog for new updates.",
+            "description": "%walkthrough.step.stayUpdated.description%",
             "media": {
               "markdown": "docs/walkthrough/stay-updated.md"
             },
@@ -161,7 +161,7 @@
       },
       {
         "command": "uav.showGettingStarted",
-        "title": "UAV: Getting Started",
+        "title": "%command.gettingStarted.title%",
         "icon": "$(rocket)"
       },
       {
@@ -191,7 +191,7 @@
       },
       {
         "command": "uav.logsView.openFolder",
-        "title": "Open logs folder",
+        "title": "Open Logs Folder",
         "icon": "$(folder-opened)"
       },
       {
@@ -204,11 +204,11 @@
       },
       {
         "command": "UnifiedApexValidator.whereIsUsed",
-        "title": "UAV: Where is Used?"
+        "title": "UAV: Where Is Used?"
       },
       {
         "command": "UnifiedApexValidator.formatApexAllman",
-        "title": "UAV: Formatear Apex (Allman)",
+        "title": "UAV: Format Apex (Allman)",
         "enablement": "config.UnifiedApexValidator.enableAllmanFormatter"
       }
     ],
@@ -311,52 +311,52 @@
       ]
     },
     "configuration": {
-      "title": "Unified Apex Validator Settings",
+      "title": "%config.title%",
       "properties": {
         "UnifiedApexValidator.sfClientId": {
           "type": "string",
           "default": "",
-          "description": "Connected App Client Id."
+          "description": "%config.sfClientId.description%"
         },
         "UnifiedApexValidator.sfClientSecret": {
           "type": "string",
           "default": "",
-          "description": "Connected App Client Secret."
+          "description": "%config.sfClientSecret.description%"
         },
         "UnifiedApexValidator.sfDomain": {
           "type": "string",
-          "default": "MyDomain.sanboxname.sandbox.lightning.force.com",
-          "description": "Salesforce Org Domain."
+          "default": "MyDomain.sandboxname.sandbox.lightning.force.com",
+          "description": "%config.sfDomain.description%"
         },
         "UnifiedApexValidator.sfRepositoryDir": {
           "type": "string",
           "default": "",
-          "description": "Apex Class Local Git Repository."
+          "description": "%config.sfRepositoryDir.description%"
         },
         "UnifiedApexValidator.skipIAAnalysis": {
           "type": "boolean",
           "default": false,
-          "description": "Skyp IA Analysis."
+          "description": "%config.skipIAAnalysis.description%"
         },
         "UnifiedApexValidator.sfGptEndpoint": {
           "type": "string",
           "default": "https://api.salesforce.com/einstein/platform",
-          "description": "Einstein GPT Endpoint."
+          "description": "%config.sfGptEndpoint.description%"
         },
         "UnifiedApexValidator.sfGptModel": {
           "type": "string",
           "default": "sfdc_ai__DefaultOpenAIGPT4OmniMini",
-          "description": "Einstein IA Model"
+          "description": "%config.sfGptModel.description%"
         },
         "UnifiedApexValidator.iaPromptTemplate": {
           "type": "string",
-          "default": "Analiza la clase Apex llamada '{class_name}'.\n\nCÃƒÂ³digo (parcial si fue truncado):\n{truncated_body}\n\nResponde en formato MARKDOWN con:\n## Ã°Å¸â€œËœ DescripciÃƒÂ³n de la clase\nExplica brevemente su propÃƒÂ³sito.\n\n## Ã¢Å“â€¦ Cumplimiento de buenas prÃƒÂ¡cticas\nLista con viÃƒÂ±etas usando Ã¢Å“â€¦ o Ã¢Å¡Â Ã¯Â¸Â segÃƒÂºn corresponda.\n\n## Ã°Å¸â€ºÂ Ã¯Â¸Â Recomendaciones de mejora\nCada ÃƒÂ­tem debe comenzar con un emoji relacionado (Ã¢Å¡Â¡, Ã¢â„¢Â»Ã¯Â¸Â, Ã°Å¸â€â€™, Ã°Å¸â€œÂ¨, etc.).\nSi corresponde, incluye ejemplos de cÃƒÂ³digo en bloques ```apex.",
-          "description": "Einstein Base Prompt"
+          "default": "Analiza la clase Apex llamada '{class_name}'.\\n\\nCódigo (parcial si fue truncado):\\n{truncated_body}\\n\\nResponde en formato MARKDOWN con:\\n## 📘 Descripción de la clase\\nExplica brevemente su propósito.\\n\\n## ✅ Cumplimiento de buenas prácticas\\nLista con viñetas usando ✅ o ⚠️ según corresponda.\\n\\n## 🛠️ Recomendaciones de mejora\\nCada ítem debe comenzar con un emoji relacionado (⚡, ♻️, 🔒, 📬, etc.).\\nSi corresponde, incluye ejemplos de código en bloques ```apex.",
+          "description": "%config.iaPromptTemplate.description%"
         },
         "UnifiedApexValidator.maxIAClassChars": {
           "type": "integer",
           "default": 25000,
-          "description": "Class body MAX chars to pass Einstein GPT."
+          "description": "%config.maxIAClassChars.description%"
         },
         "UnifiedApexValidator.classDocTags": {
           "type": "array",
@@ -369,7 +369,8 @@
             "@author",
             "@testClass"
           ],
-          "markdownDescription": "Lista de etiquetas para la cabecera ApexDoc de las clases. Se insertan vacÃƒÂ­as cuando faltan en la respuesta del modelo."
+          "description": "%config.classDocTags.description%",
+          "markdownDescription": "%config.classDocTags.markdownDescription%"
         },
         "UnifiedApexValidator.methodDocTags": {
           "type": "array",
@@ -381,7 +382,8 @@
             "@param",
             "@return"
           ],
-          "markdownDescription": "Lista de etiquetas para la documentaciÃƒÂ³n ApexDoc de mÃƒÂ©todos y constructores. Las etiquetas faltantes se insertan vacÃƒÂ­as cuando no aparecen en la respuesta del modelo."
+          "description": "%config.methodDocTags.description%",
+          "markdownDescription": "%config.methodDocTags.markdownDescription%"
         },
         "UnifiedApexValidator.apexDocLanguage": {
           "type": "string",
@@ -390,16 +392,16 @@
             "english"
           ],
           "enumDescriptions": [
-            "Genera las descripciones de ApexDoc en espaÃƒÂ±ol (etiquetas en inglÃƒÂ©s).",
-            "Genera las descripciones de ApexDoc completamente en inglÃƒÂ©s."
+            "Generates ApexDoc descriptions in Spanish (tags remain in English).",
+            "Generates ApexDoc descriptions fully in English."
           ],
           "default": "spanish",
-          "description": "Idioma usado por el generador de ApexDoc asistido por IA."
+          "description": "%config.apexDocLanguage.description%"
         },
         "UnifiedApexValidator.sfCliPath": {
           "type": "string",
           "default": "sf",
-          "description": "Salesforce Cli Path if not defined in Path System Variable."
+          "description": "%config.sfCliPath.description%"
         },
         "UnifiedApexValidator.reportLanguage": {
           "type": "string",
@@ -409,32 +411,32 @@
             "en"
           ],
           "enumDescriptions": [
-            "Adapta el idioma del reporte segÃƒÂºn el idioma de VS Code (ES cuando corresponda).",
-            "Genera el reporte exclusivamente en espaÃƒÂ±ol.",
-            "Genera el reporte exclusivamente en inglÃƒÂ©s."
+            "Adapts the report language based on VS Code locale (ES when applicable).",
+            "Generates reports exclusively in Spanish.",
+            "Generates reports exclusively in English."
           ],
           "default": "auto",
-          "description": "Idioma predeterminado para los reportes HTML y PDF generados por Unified Apex Validator."
+          "description": "%config.reportLanguage.description%"
         },
         "UnifiedApexValidator.outputDir": {
           "type": "string",
           "default": "",
-          "description": "Report output folder path"
+          "description": "%config.outputDir.description%"
         },
         "UnifiedApexValidator.keepLogFiles": {
           "type": "boolean",
           "default": true,
-          "description": "Keep Logs and Temp files after a success run."
+          "description": "%config.keepLogFiles.description%"
         },
         "UnifiedApexValidator.enableAllmanFormatter": {
           "type": "boolean",
           "default": true,
-          "description": "Enable the Allman Apex formatter command and context menus."
+          "description": "%config.enableAllmanFormatter.description%"
         },
         "UnifiedApexValidator.traceAst": {
           "type": "boolean",
           "default": true,
-          "description": "Activate AST Trace."
+          "description": "%config.traceAst.description%"
         }
       }
     }
