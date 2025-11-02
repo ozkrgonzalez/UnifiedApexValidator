@@ -321,15 +321,80 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
     private _onDidChangeTreeData = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
+    private readonly normalizedExtensions: string[];
+
     constructor(
         private folderPath: string,
         private fileExtension: string,
         private label: string
-    ) {}
+    )
+    {
+        this.normalizedExtensions = fileExtension
+            .split('|')
+            .map((ext) => ext.trim().toLowerCase())
+            .filter(Boolean);
+    }
 
     refresh(): void
     {
         this._onDidChangeTreeData.fire();
+    }
+
+    async getItemCount(): Promise<number>
+    {
+        const result = await this.collectFiles();
+        return result.kind === 'files' ? result.files.length : 0;
+    }
+
+    async clearAll(): Promise<void>
+    {
+        const action = await vscode.window.showWarningMessage(
+            `Eliminar todos los ${this.label.toLowerCase()}?`,
+            'Eliminar',
+            'Cancelar'
+        );
+        if (action !== 'Eliminar')
+        {
+            return;
+        }
+
+        try
+        {
+            const result = await this.collectFiles();
+
+            if (result.kind === 'missing')
+            {
+                vscode.window.showInformationMessage(`Carpeta de ${this.label.toLowerCase()} no encontrada.`);
+                this.refresh();
+                return;
+            }
+
+            if (result.kind === 'error')
+            {
+                vscode.window.showErrorMessage(`No se pudieron eliminar los ${this.label.toLowerCase()}.`);
+                this.refresh();
+                return;
+            }
+
+            if (!result.files.length)
+            {
+                vscode.window.showInformationMessage(`${this.label}: sin archivos para eliminar.`);
+                this.refresh();
+                return;
+            }
+
+            await Promise.all(
+                result.files.map((fileName) => fs.remove(path.join(this.folderPath, fileName)))
+            );
+
+            this.refresh();
+            vscode.window.showInformationMessage(`${this.label}: archivos eliminados.`);
+        }
+        catch (error)
+        {
+            console.error(`[UAV][${this.label}] Error eliminando archivos:`, error);
+            vscode.window.showErrorMessage(`No se pudieron eliminar los ${this.label.toLowerCase()}.`);
+        }
     }
 
     getTreeItem(element: FileItem): vscode.TreeItem
@@ -339,32 +404,69 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
 
     async getChildren(): Promise<FileItem[]>
     {
-        try {
-            if (!this.folderPath || !(await fs.pathExists(this.folderPath))) {
-                return [new FileItem(localize('ui.folderView.notFound', 'Folder not found: {0}', this.folderPath), '', false)]; // Localized string
-            }
+        const result = await this.collectFiles();
 
-            const files = await fs.readdir(this.folderPath, { withFileTypes: true });
-
-            const filtered = files
-                .filter(f =>
-                {
-                    if (!f.isFile()) return false;
-                    const ext = path.extname(f.name).toLowerCase();
-                    return this.fileExtension.split('|').some(e => ext === `.${e.trim()}`);
-                })
-                .map(f => new FileItem(f.name, path.join(this.folderPath, f.name), true));
-
-            if (!filtered.length) {
-                return [new FileItem(localize('ui.folderView.empty', 'No files available'), '', false)]; // Localized string
-            }
-
-            return filtered;
-        }
-        catch (err)
+        if (result.kind === 'missing')
         {
-            console.error(localize('log.folderView.readError', '[UAV][{0}] Error reading files:', this.label), err); // Localized string
-            return [new FileItem(localize('ui.folderView.error', 'Error reading folder'), '', false)]; // Localized string
+            return [
+                new FileItem(
+                    localize('ui.folderView.notFound', 'Folder not found: {0}', this.folderPath),
+                    '',
+                    false
+                )
+            ];
+        }
+
+        if (result.kind === 'error')
+        {
+            console.error(
+                localize('log.folderView.readError', '[UAV][{0}] Error reading files:', this.label),
+                result.error
+            );
+            return [new FileItem(localize('ui.folderView.error', 'Error reading folder'), '', false)];
+        }
+
+        if (!result.files.length)
+        {
+            return [new FileItem(localize('ui.folderView.empty', 'No files available'), '', false)];
+        }
+
+        return result.files.map(
+            (name) => new FileItem(name, path.join(this.folderPath, name), true)
+        );
+    }
+
+    private async collectFiles(): Promise<
+        | { kind: 'missing' }
+        | { kind: 'files'; files: string[] }
+        | { kind: 'error'; error: unknown }
+    >
+    {
+        if (!this.folderPath || !(await fs.pathExists(this.folderPath)))
+        {
+            return { kind: 'missing' };
+        }
+
+        try
+        {
+            const entries = await fs.readdir(this.folderPath, { withFileTypes: true });
+            const files = entries
+                .filter((entry) =>
+                {
+                    if (!entry.isFile()) return false;
+                    if (!this.normalizedExtensions.length) return true;
+                    const ext = path.extname(entry.name).toLowerCase();
+                    return this.normalizedExtensions.some((value) => `.${value}` === ext);
+                })
+                .map((entry) => entry.name)
+                .sort((a, b) => a.localeCompare(b));
+
+            return { kind: 'files', files };
+        }
+        catch (error)
+        {
+            console.error(`[UAV][${this.label}] Error leyendo archivos:`, error);
+            return { kind: 'error', error };
         }
     }
 }
