@@ -55,7 +55,10 @@ export async function activate(context: vscode.ExtensionContext) {
             {
                 dependencyStatusItem.text = 'UAV Ready $(pass)';
                 dependencyStatusItem.tooltip = new vscode.MarkdownString(
-                    'Todas las dependencias estÃ¡n actualizadas.\n\nHaz clic para abrir el panel de dependencias.'
+                    localize(
+                        'status.dependencies.tooltipReady',
+                        'All dependencies are up to date.\n\nClick to open the dependencies panel.'
+                    )
                 );
             }
             else
@@ -67,23 +70,61 @@ export async function activate(context: vscode.ExtensionContext) {
 
                         if (record.info?.type === 'ia' && !record.info.ready && record.info.missing.length)
                         {
-                            return `- ${dep.label}: Configura ${record.info.missing.join(', ')}`;
+                            return localize(
+                                'status.dependencies.configureMissing',
+                                '- {0}: Configure {1}',
+                                dep.label,
+                                record.info.missing.join(', ')
+                            );
                         }
 
-                        const stateLabel = status.state === 'missing' ? 'No instalado' : 'Desactualizado';
-                        const versionInfo = [
-                            status.detectedVersion ? `Detectado ${status.detectedVersion}` : null,
-                            dep.minVersion ? `MÃ­nimo ${dep.minVersion}` : null
-                        ]
-                            .filter(Boolean)
-                            .join(' | ');
+                        const stateLabel =
+                            status.state === 'missing'
+                                ? localize('status.dependencies.state.missing', 'Not installed')
+                                : localize('status.dependencies.state.outdated', 'Out of date');
 
-                        return `- ${dep.label}: ${stateLabel}${versionInfo ? ` (${versionInfo})` : ''}`;
+                        const versionInfoParts: string[] = [];
+                        if (status.detectedVersion)
+                        {
+                            versionInfoParts.push(
+                                localize(
+                                    'status.dependencies.detectedVersion',
+                                    'Detected {0}',
+                                    status.detectedVersion
+                                )
+                            );
+                        }
+                        if (dep.minVersion)
+                        {
+                            versionInfoParts.push(
+                                localize('status.dependencies.requiredVersion', 'Min: {0}', dep.minVersion)
+                            );
+                        }
+
+                        return versionInfoParts.length
+                            ? localize(
+                                  'status.dependencies.stateWithVersion',
+                                  '- {0}: {1} ({2})',
+                                  dep.label,
+                                  stateLabel,
+                                  versionInfoParts.join(' | ')
+                              )
+                            : localize(
+                                  'status.dependencies.stateWithoutVersion',
+                                  '- {0}: {1}',
+                                  dep.label,
+                                  stateLabel
+                              );
                     })
-                    : ['- Sin detalles disponibles'];
+                    : [localize('status.dependencies.noDetails', '- No details available')];
 
                 const tooltip = new vscode.MarkdownString(
-                    ['Dependencias pendientes:', ...lines, '', 'Haz clic para revisar el panel.'].join('\n')
+                    [
+                        localize('status.dependencies.pendingHeader', 'Pending dependencies:'),
+                        ...lines,
+                        '',
+                        localize('status.dependencies.openPanel', 'Click to review the panel.')
+                    ].join('\n')
                 );
                 dependencyStatusItem.text = 'UAV Ready $(warning)';
                 dependencyStatusItem.tooltip = tooltip;
@@ -93,10 +134,13 @@ export async function activate(context: vscode.ExtensionContext) {
         }
         catch (error)
         {
-            console.error('[UAV][extension] Error evaluando dependencias:', error);
+            console.error(localize('log.extension.dependenciesError', '[UAV][extension] Error evaluating dependencies:'), error);
             dependencyStatusItem.text = 'UAV Ready $(warning)';
             dependencyStatusItem.tooltip = new vscode.MarkdownString(
-                'No se pudo evaluar el estado de las dependencias.\n\nHaz clic para abrir el panel de dependencias.'
+                localize(
+                    'status.dependencies.errorTooltip',
+                    'Could not evaluate the dependency status.\n\nClick to open the dependencies panel.'
+                )
             );
             dependencyStatusItem.show();
         }
@@ -163,43 +207,53 @@ export async function activate(context: vscode.ExtensionContext) {
                 logsProvider.getItemCount()
             ]);
 
-            reportsView.badge =
-                reportsCount > 0
-                    ? {
-                          value: reportsCount,
-                          tooltip: `${reportsCount} reporte${reportsCount === 1 ? '' : 's'} disponibles`
-                      }
-                    : undefined;
-            reportsView.description = reportsCount > 0 ? `${reportsCount}` : undefined;
-            reportsView.message =
-                reportsCount > 0
-                    ? localize(
-                          'ui.reportsView.message',
-                          '{0} available',
-                          `${reportsCount} reporte${reportsCount === 1 ? '' : 's'}`
-                      )
-                    : undefined;
+            if (reportsCount > 0)
+            {
+                const reportsItemsLabel = localize(
+                    'ui.reportsView.itemsLabel',
+                    '{0} report{1}',
+                    reportsCount,
+                    reportsCount === 1 ? '' : 's'
+                );
+                reportsView.badge = {
+                    value: reportsCount,
+                    tooltip: localize('ui.reportsView.badgeTooltip', '{0} available', reportsItemsLabel)
+                };
+                reportsView.description = `${reportsCount}`;
+                reportsView.message = localize('ui.reportsView.message', '{0} available', reportsItemsLabel);
+            }
+            else
+            {
+                reportsView.badge = undefined;
+                reportsView.description = undefined;
+                reportsView.message = undefined;
+            }
 
-            logsView.badge =
-                logsCount > 0
-                    ? {
-                          value: logsCount,
-                          tooltip: `${logsCount} log${logsCount === 1 ? '' : 's'} disponibles`
-                      }
-                    : undefined;
-            logsView.description = logsCount > 0 ? `${logsCount}` : undefined;
-            logsView.message =
-                logsCount > 0
-                    ? localize(
-                          'ui.logsView.message',
-                          '{0} available',
-                          `${logsCount} log${logsCount === 1 ? '' : 's'}`
-                      )
-                    : undefined;
+            if (logsCount > 0)
+            {
+                const logsItemsLabel = localize(
+                    'ui.logsView.itemsLabel',
+                    '{0} log{1}',
+                    logsCount,
+                    logsCount === 1 ? '' : 's'
+                );
+                logsView.badge = {
+                    value: logsCount,
+                    tooltip: localize('ui.logsView.badgeTooltip', '{0} available', logsItemsLabel)
+                };
+                logsView.description = `${logsCount}`;
+                logsView.message = localize('ui.logsView.message', '{0} available', logsItemsLabel);
+            }
+            else
+            {
+                logsView.badge = undefined;
+                logsView.description = undefined;
+                logsView.message = undefined;
+            }
         }
         catch (error)
         {
-            console.error('[UAV][extension] Error actualizando badges de vistas:', error);
+            console.error(localize('log.extension.badgesError', '[UAV][extension] Error updating view badges:'), error);
         }
     };
 
