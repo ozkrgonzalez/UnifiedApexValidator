@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execa } from 'execa';
 import { evaluateIaConfig } from '../core/IAAnalisis';
+import { localize } from '../i18n';
 
 export type DependencyState = 'ok' | 'outdated' | 'missing';
 
@@ -59,26 +60,28 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
 
             if (status.state !== 'ok' && dep.installCmd)
             {
+                const commandTitle = localize('dependencies.updateCommand.title', 'Update dependency');
+                const updateLabel = localize('dependencies.updateCommand.tooltip', 'Update {0}', dep.label);
                 item.command = {
-                    title: 'Actualizar dependencia',
+                    title: commandTitle,
                     command: 'uav.updateDependency',
                     arguments: [dep]
                 };
-                item.tooltip = item.tooltip ? `${item.tooltip} | Actualizar ${dep.label}` : `Actualizar ${dep.label}`;
+                item.tooltip = item.tooltip ? `${item.tooltip} | ${updateLabel}` : updateLabel;
             }
 
             if (info?.type === 'ia')
             {
                 if (info.ready)
                 {
-                    item.description = 'Actualizado';
-                    item.tooltip = 'Credenciales IA configuradas.';
+                    item.description = localize('status.dependencies.state.ok', 'Up to date');
+                    item.tooltip = localize('dependencies.ia.tooltip.ready', 'AI credentials configured.');
                 }
                 else
                 {
                     const missingList = info.missing.join(', ');
-                    item.description = `Faltan: ${missingList}`;
-                    item.tooltip = `Configura los siguientes campos: ${missingList}`;
+                    item.description = localize('dependencies.ia.description.missing', 'Missing: {0}', missingList);
+                    item.tooltip = localize('dependencies.ia.tooltip.missing', 'Configure the following fields: {0}', missingList);
                 }
             }
 
@@ -144,7 +147,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         }
 
         const iaStatus = evaluateIaConfig();
-        const iaDep: DepCheck = { label: 'IA Configuracion' };
+        const iaDep: DepCheck = { label: localize('dependencies.ia.label', 'AI Configuration') };
         const iaItemStatus: DependencyStatus = { state: iaStatus.ready ? 'ok' : 'missing' };
 
         records.push({
@@ -170,7 +173,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
             }
             catch (error)
             {
-                console.error('[UAV][dependencies] Error revisando dependencia personalizada:', error);
+                console.error(localize('log.dependencies.customCheckError', '[UAV][dependencies] Error checking custom dependency:'), error);
                 return { state: 'missing' };
             }
         }
@@ -230,7 +233,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         }
         catch (error)
         {
-            console.warn(`[UAV][dependencies] No se pudo resolver ${moduleName} con rutas personalizadas.`, error);
+            console.warn(localize('log.dependencies.resolveModuleWarning', '[UAV][dependencies] Could not resolve {0} using custom paths.', moduleName), error);
             return null;
         }
     }
@@ -263,7 +266,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
 
             if (!fs.existsSync(pkgPath))
             {
-                console.warn('[UAV][dependencies] package.json no encontrado para prettier-plugin-apex:', pkgPath);
+                console.warn(localize('log.dependencies.packageJsonMissing', '[UAV][dependencies] package.json not found for prettier-plugin-apex: {0}', pkgPath));
                 return { state: 'missing' };
             }
 
@@ -284,7 +287,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         }
         catch (error)
         {
-            console.warn('[UAV][dependencies] No se pudo resolver prettier-plugin-apex:', error);
+            console.warn(localize('log.dependencies.prettierResolveError', '[UAV][dependencies] Could not resolve prettier-plugin-apex.'), error);
             return { state: 'missing' };
         }
     }
@@ -313,11 +316,11 @@ export class UavDependencyItem extends vscode.TreeItem
         switch (state)
         {
             case 'ok':
-                return 'Actualizado';
+                return localize('status.dependencies.state.ok', 'Up to date');
             case 'outdated':
-                return 'Desactualizado';
+                return localize('status.dependencies.state.outdated', 'Out of date');
             case 'missing':
-                return 'No instalado';
+                return localize('status.dependencies.state.missing', 'Not installed');
         }
     }
 
@@ -327,26 +330,28 @@ export class UavDependencyItem extends vscode.TreeItem
 
         if (status.detectedVersion)
         {
-            parts.push(`Detectado ${status.detectedVersion}`);
+            parts.push(localize('status.dependencies.detectedVersion', 'Detected {0}', status.detectedVersion));
         }
 
         if (dep.minVersion)
         {
-            parts.push(`Minimo ${dep.minVersion}`);
+            parts.push(localize('status.dependencies.requiredVersion', 'Min: {0}', dep.minVersion));
         }
 
-        switch (status.state)
+        const stateLabel = (() =>
         {
-            case 'ok':
-                parts.push('Actualizado');
-                break;
-            case 'outdated':
-                parts.push('Desactualizado');
-                break;
-            case 'missing':
-                parts.push('No instalado');
-                break;
-        }
+            switch (status.state)
+            {
+                case 'ok':
+                    return localize('status.dependencies.state.ok', 'Up to date');
+                case 'outdated':
+                    return localize('status.dependencies.state.outdated', 'Out of date');
+                case 'missing':
+                default:
+                    return localize('status.dependencies.state.missing', 'Not installed');
+            }
+        })();
+        parts.push(stateLabel);
 
         return parts.join(' | ');
     }
@@ -358,17 +363,24 @@ export function registerDependencyUpdater(context: vscode.ExtensionContext)
         vscode.commands.registerCommand('uav.updateDependency', async (dep: DepCheck) =>
         {
             vscode.window.withProgress(
-                { location: vscode.ProgressLocation.Notification, title: `Actualizando ${dep.label}...` },
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: localize('progress.dependencies.updating', 'Updating {0}...', dep.label)
+                },
                 async () =>
                 {
                     try
                     {
                         await execa(dep.installCmd!, { shell: true });
-                        vscode.window.showInformationMessage(`${dep.label} actualizado correctamente.`);
+                        vscode.window.showInformationMessage(
+                            localize('info.dependencies.updated', '{0} updated successfully.', dep.label)
+                        );
                     }
                     catch (err: any)
                     {
-                        vscode.window.showErrorMessage(`Error actualizando ${dep.label}: ${err.message}`);
+                        vscode.window.showErrorMessage(
+                            localize('error.dependencies.updateFailed', 'Error updating {0}: {1}', dep.label, err.message)
+                        );
                     }
                 }
             );
