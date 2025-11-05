@@ -40,6 +40,7 @@
     "onCommand:UnifiedApexValidator.compareApexClasses",
     "onCommand:UnifiedApexValidator.whereIsUsed",
     "onCommand:UnifiedApexValidator.formatApexAllman",
+    "onCommand:UnifiedApexValidator.removeSystemDebugs",
     "workspaceContains:**/*.xml",
     "onLanguage:apex"
   ],
@@ -210,6 +211,10 @@
         "command": "UnifiedApexValidator.formatApexAllman",
         "title": "UAV: Format Apex (Allman)",
         "enablement": "config.UnifiedApexValidator.enableAllmanFormatter"
+      },
+      {
+        "command": "UnifiedApexValidator.removeSystemDebugs",
+        "title": "%command.removeDebug.title%"
       }
     ],
     "menus": {

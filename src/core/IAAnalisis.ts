@@ -1,5 +1,6 @@
 import axios from 'axios';
 import * as vscode from 'vscode';
+import { localize } from '../i18n';
 import { Logger } from './utils';
 
 interface IAResponse
@@ -60,26 +61,42 @@ export class IAAnalisis
 
             if (!token)
             {
-                throw new Error('Token vacio en la respuesta del servidor IA.');
+                throw new Error(
+                    localize('error.ia.tokenEmpty', 'Empty token in the AI server response.')
+                );
             }
 
             return token;
         }
         catch (error: any)
         {
-            this.logger.error(`[IA] Error obteniendo token IA: ${error.message}`);
+            this.logger.error(
+                localize('log.ia.tokenFetchFailed', '[IA] Error obtaining AI token: {0}', error.message)
+            );
             if (error.response)
             {
-                this.logger.error(`[IA] Respuesta del servidor IA: ${JSON.stringify(error.response.data)}`);
+                this.logger.error(
+                    localize(
+                        'log.ia.tokenServerResponse',
+                        '[IA] AI server response: {0}',
+                        JSON.stringify(error.response.data)
+                    )
+                );
             }
 
-            throw new IAConnectionError(`Error autenticando con el servidor de IA: ${error.message}`);
+            throw new IAConnectionError(
+                localize(
+                    'error.ia.authentication',
+                    'Error authenticating with the AI server: {0}',
+                    error.message
+                )
+            );
         }
     }
 
     public async generate(prompt: string): Promise<IAResponse>
     {
-        this.logger.info('[IA] Iniciando analisis IA...');
+        this.logger.info(localize('log.ia.analysisStart', '[IA] Starting AI analysis...'));
 
         const token = await this.getAccessToken();
         const finalPrompt = `${this.basePrompt}\n\n${prompt}`;
@@ -87,7 +104,9 @@ export class IAAnalisis
         try
         {
             const apiEndpoint = `${this.endpoint}/v1/models/${this.model}/generations`;
-            this.logger.info(`[IA] Enviando solicitud a Einstein GPT: ${apiEndpoint}`);
+            this.logger.info(
+                localize('log.ia.request', '[IA] Sending request to Einstein GPT: {0}', apiEndpoint)
+            );
 
             const response = await axios.post(
                 apiEndpoint,
@@ -103,7 +122,7 @@ export class IAAnalisis
                     timeout: 120000
                 }
             );
-            this.logger.info('[IA] Analisis IA completado correctamente.');
+            this.logger.info(localize('log.ia.analysisComplete', '[IA] AI analysis completed successfully.'));
 
             let generatedText = '';
             const data = response.data || {};
@@ -127,23 +146,40 @@ export class IAAnalisis
 
             if (!generatedText)
             {
-                this.logger.warn('[IA] No se detecto texto generado en la respuesta de IA.');
+                this.logger.warn(
+                    localize(
+                        'warn.ia.noText',
+                        '[IA] No generated text detected in the AI response.'
+                    )
+                );
             }
 
             return {
-                resumen: generatedText || 'Sin resumen disponible'
+                resumen:
+                    generatedText ||
+                    localize('info.ia.noSummary', 'No summary available')
             };
         }
         catch (error: any)
         {
-            this.logger.error(`[IA] Error durante el analisis IA: ${error.message}`);
+            this.logger.error(
+                localize('log.ia.analysisError', '[IA] Error during AI analysis: {0}', error.message)
+            );
             if (error.response)
             {
                 const payload = JSON.stringify(error.response.data);
-                this.logger.error(`[IA] Respuesta del servidor: ${payload.slice(0, 300)}...`);
+                this.logger.error(
+                    localize(
+                        'log.ia.errorResponse',
+                        '[IA] Server response: {0}...',
+                        payload.slice(0, 300)
+                    )
+                );
             }
 
-            throw new Error('No se pudo ejecutar el analisis IA.');
+            throw new Error(
+                localize('error.ia.analysisFailed', 'Could not execute the AI analysis.')
+            );
         }
     }
 }

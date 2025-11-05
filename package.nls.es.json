@@ -21,6 +21,7 @@
   "walkthrough.step.connectOrg.description": "Asegúrate de que Salesforce CLI tenga una organización por defecto: ejecuta `sf org login web --alias miOrg` (o usa tu flujo de autenticación preferido) y verifica que aparezca en `sf org list`. UAV usará la organización marcada como predeterminada para validar.",
   "walkthrough.step.stayUpdated.description": "Revisa las configuraciones de la extensión y sigue el registro de cambios en GitHub para conocer nuevas funciones, correcciones y mejoras.",
   "command.gettingStarted.title": "UAV: Primeros Pasos",
+  "command.removeDebug.title": "UAV: Eliminar System.debug",
   "config.title": "Configuraciones de Unified Apex Validator",
   "config.sfClientId.description": "ID de Cliente de la Aplicación Conectada.",
   "config.sfClientSecret.description": "Secreto de Cliente de la Aplicación Conectada.",
