@@ -15,6 +15,7 @@ A VS Code extension written in TypeScript that helps you **validate, test, and d
 - ⚡ Quick commands: Validate Apex, Refresh views, Open output folders.
 - 🤖 AI-powered ApexDoc generation (beta) with tag enforcement.
 - 🧱 Allman-style Apex formatter for .cls/.trigger files (leverages workspace prettier + prettier-plugin-apex).
+- 🧹 Command palette action to strip System.debug(...) statements across the active selection or file.
 - 🔄 Compare local Apex classes vs. your org (Monaco diff view).
 - 🕸️ “Where is Used” report — scans dependencies across Apex Classes, Flows, and LWC, rendered in a clean interactive tree view.
 - 🎨 Unified dark-themed report design — for a consistent visual experience, and interactive search across all HTML reports.
@@ -76,6 +77,7 @@ UAV usa automáticamente la org marcada como `isDefaultUsername` en `sf org list
 5. (Optional) Run **UAV: Compare Apex Classes against Org** to diff your local vs. org versions.
 6. (Optional) Use **UAV: Formatear Apex (Allman)** from the explorer/editor context menu to apply Allman braces to selected `.cls`/`.trigger` files (requires `prettier` + `prettier-plugin-apex` in your workspace).
 7. (Optional) Use **UAV: Where is Used** from the editor context menu to run a report that scans dependencies across Apex Classes, Flows, and LWC, showing where each element is referenced.
+8. (Optional) Use **UAV: Remove System.debug Statements** from the command palette to clean debug output in the active editor or current selections.
 
 📝 HTML/PDF reports render in the language defined by `UnifiedApexValidator.reportLanguage` (default `auto`). The HTML viewer also exposes a globe selector so teammates can switch between Español and English on demand.
 

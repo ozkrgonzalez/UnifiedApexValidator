@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. The format 
 
 ---
 
+## [2.0.0] - 2025-11-01
+
+### Added
+- Command palette action **UAV: Remove System.debug Statements** to strip `System.debug(...)` calls from the active editor or current selections.
+
+### Changed
+- Einstein GPT analysis logs and error messages now use the localization bundle, ensuring consistent language output across the extension.
+
+---
+
 ## [1.9.6] - 2025-11-01
 
 ### Added
