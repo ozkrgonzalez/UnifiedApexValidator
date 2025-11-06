@@ -112,7 +112,6 @@ const REPORT_TRANSLATIONS: Record<ReportLanguage, Record<string, string>> = {
 export async function generateReport(outputDir: string, data: any) {
   try {
     const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
     const outputSetting = config.get<string>('outputDir')?.trim();
 
     if (!outputSetting) {
@@ -317,20 +316,25 @@ function resolveReportLanguage(preference: string): ReportLanguage {
   return editorLanguage.startsWith('es') ? 'es' : 'en';
 }
 
+export interface ComparisonReportEntry {
+  metadataType: string;
+  itemName: string;
+  relativePath: string;
+  status: string;
+  statusKey?: 'match' | 'mismatch' | 'onlyLocal' | 'onlyOrg' | 'missingBoth';
+  differences?: string;
+  localVersion?: string;
+  salesforceVersion?: string;
+  isBinary?: boolean;
+}
+
 /**
- * Generates the Apex class comparison report (local vs org) using the class_comparison_report template.
+ * Generates the metadata comparison report (local vs org) using the class_comparison_report template.
  */
 export async function generateComparisonReport(
   outputDir: string,
   orgAlias: string,
-  comparisonResults: {
-    ClassName: string;
-    Status: string;
-    StatusKey?: 'match' | 'mismatch' | 'onlyLocal' | 'onlyOrg' | 'missingBoth';
-    Differences?: string;
-    LocalVersion?: string;
-    SalesforceVersion?: string;
-  }[]
+  comparisonResults: ComparisonReportEntry[]
 ) {
   try {
     const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
@@ -391,10 +395,10 @@ export async function generateComparisonReport(
       }
     };
 
-    const matchCount = comparisonResults.filter((r) => resolveStatusKey(r.Status, r.StatusKey) === 'match').length;
-    const mismatchCount = comparisonResults.filter((r) => resolveStatusKey(r.Status, r.StatusKey) === 'mismatch').length;
-    const notInLocalCount = comparisonResults.filter((r) => resolveStatusKey(r.Status, r.StatusKey) === 'onlyLocal').length;
-    const notInSalesforceCount = comparisonResults.filter((r) => resolveStatusKey(r.Status, r.StatusKey) === 'onlyOrg').length;
+    const matchCount = comparisonResults.filter((r) => resolveStatusKey(r.status, r.statusKey) === 'match').length;
+    const mismatchCount = comparisonResults.filter((r) => resolveStatusKey(r.status, r.statusKey) === 'mismatch').length;
+    const notInLocalCount = comparisonResults.filter((r) => resolveStatusKey(r.status, r.statusKey) === 'onlyLocal').length;
+    const notInSalesforceCount = comparisonResults.filter((r) => resolveStatusKey(r.status, r.statusKey) === 'onlyOrg').length;
 
     const html = env.render(path.basename(templatePath), {
       results: comparisonResults,

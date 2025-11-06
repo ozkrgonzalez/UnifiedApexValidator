@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file. The format 
 
 ---
 
+## [2.0.1] - 2025-11-06
+
+### Added
+- Metadata comparison now supports any metadata type declared in a `package.xml`, rendering Monaco diffs for text assets and surfacing binary size differences.
+- Explorer/editor context menu entry for **UAV: Compare Metadata against Org** on manifests and supported metadata files.
+
+### Changed
+- Ad-hoc comparisons launched from an individual metadata file infer the metadata type automatically (e.g., `.cls`, `.trigger`, `.flow`), preventing `Unknown` retrieve errors.
+- The comparison HTML report shows metadata type, member name, and relative path, with updated language strings to match the broader scope.
+
+---
+
+## [2.0.0] - 2025-11-01
+
+### Added
+- Command palette action **UAV: Remove System.debug Statements** to strip `System.debug(...)` calls from the active editor or current selections.
+
+### Changed
+- Einstein GPT analysis logs and error messages now use the localization bundle, ensuring consistent language output across the extension.
+
+---
+
 ## [1.9.6] - 2025-11-01
 
 ### Added

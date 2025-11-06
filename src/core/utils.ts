@@ -234,6 +234,64 @@ export async function parseApexClassesFromPackage(pkgPath: string, repoDir: stri
 
 /**
  * Elimina de forma segura los archivos y carpetas indicadas
+ */
+export interface PackageTypeMembers
+{
+  type: string;
+  members: string[];
+}
+
+/**
+ * Lee un package.xml y devuelve los metadatos declarados por tipo.
+ */
+export async function parseMetadataTypesFromPackage(pkgPath: string): Promise<PackageTypeMembers[]>
+{
+  const logger = new Logger('PackageMetadataParser');
+  try
+  {
+    const xml = await fs.readFile(pkgPath, 'utf8');
+    const parser = new XMLParser({ ignoreAttributes: false });
+    const json = parser.parse(xml);
+
+    const rawTypes = json?.Package?.types;
+    if (!rawTypes)
+    {
+      logger.warn(localize('log.utils.packageParseNoTypes', 'No metadata types found in manifest {0}.', pkgPath)); // Localized string
+      return [];
+    }
+
+    const entries = Array.isArray(rawTypes) ? rawTypes : [rawTypes];
+    const results: PackageTypeMembers[] = [];
+
+    for (const entry of entries)
+    {
+      const typeName = typeof entry?.name === 'string' ? entry.name.trim() : '';
+      if (!typeName)
+      {
+        continue;
+      }
+
+      const rawMembers = entry?.members;
+      const membersArray = Array.isArray(rawMembers) ? rawMembers : [rawMembers];
+      const members = membersArray
+      .map((value: any) => (typeof value === 'string' ? value.trim() : ''))
+      .filter((value: string) => value.length > 0);
+
+      results.push({ type: typeName, members });
+    }
+
+    logger.info(localize('log.utils.packageTypesDetected', 'Detected {0} metadata types in manifest.', results.length)); // Localized string
+    return results;
+  }
+  catch (err: any)
+  {
+    logger.error(localize('log.utils.packageMetadataParseError', 'Error parsing manifest {0}: {1}', pkgPath, err.message)); // Localized string
+    throw err;
+  }
+}
+
+/**
+ * Elimina de forma segura los archivos y carpetas indicadas
  * @param paths Lista de rutas a limpiar
  * @param logger Logger opcional para registrar la limpieza
  */

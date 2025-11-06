@@ -21,6 +21,8 @@
     "walkthrough.step.connectOrg.description":  "Make sure the Salesforce CLI has a default org: run `sf org login web --alias myOrg` (or use your preferred auth flow) and verify it appears in `sf org list`. UAV will use the org marked as default when validating.",
     "walkthrough.step.stayUpdated.description":  "Review the extension settings and follow the GitHub changelog for new features, fixes, and improvements.",
     "command.gettingStarted.title":  "UAV: Getting Started",
+  "command.removeDebug.title": "UAV: Remove System.debug Statements",
+  "command.compareMetadata.title": "UAV: Compare Metadata against Org",
     "config.title":  "Unified Apex Validator Settings",
     "config.sfClientId.description":  "Connected App Client Id.",
     "config.sfClientSecret.description":  "Connected App Client Secret.",
@@ -41,5 +43,11 @@
     "config.outputDir.description":  "Output folder where generated reports are stored.",
     "config.keepLogFiles.description":  "Keep logs and temporary files after a successful run.",
     "config.enableAllmanFormatter.description":  "Enable the Allman Apex formatter commands and context menus.",
-    "config.traceAst.description":  "Enable AST trace logging."
+    "config.traceAst.description":  "Enable AST trace logging.",
+    "info.folderView.folderMissing": "Folder for {0} not found.",
+    "error.folderView.deleteFailed": "Could not delete {0}.",
+    "info.folderView.noFilesToDelete": "{0}: no files to delete.",
+    "info.folderView.filesDeleted": "{0}: files deleted.",
+    "log.folderView.errorDeleting": "[UAV][{0}] Error deleting files:",
+    "log.folderView.errorReading": "[UAV][{0}] Error reading files:"
 }

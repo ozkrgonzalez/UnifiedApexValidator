@@ -414,10 +414,10 @@
             const legendColor = getChartLegendColor();
             const dictionary = (typeof translations !== 'undefined' && translations[language]) ? translations[language] : null;
             const labels = [
-                dictionary?.identicalClasses || 'Clases Idénticas',
-                dictionary?.differentClasses || 'Clases con Diferencias',
-                dictionary?.onlyLocal || 'Clases Solo en Local',
-                dictionary?.onlySalesforce || 'Clases Solo en Salesforce'
+                dictionary?.identicalItems || 'Elementos identicos',
+                dictionary?.differentItems || 'Elementos con diferencias',
+                dictionary?.onlyLocalItems || 'Elementos solo en local',
+                dictionary?.onlySalesforceItems || 'Elementos solo en Salesforce'
             ];
 
             if (statusChartInstance && updateOnly) {
@@ -560,19 +560,19 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><i class="fa fa-check-circle" style="color: #2dd19d;"></i> <span data-translate="identicalClasses">Clases id&eacute;nticas</span></td>
+                        <td><i class="fa fa-check-circle" style="color: #2dd19d;"></i> <span data-translate="identicalItems">Elementos id&eacute;nticos</span></td>
                         <td class="match">{{ match_count }}</td>
                     </tr>
                     <tr>
-                        <td><i class="fa fa-exclamation-triangle" style="color: #ff7f73;"></i> <span data-translate="differentClasses">Clases con diferencias</span></td>
+                        <td><i class="fa fa-exclamation-triangle" style="color: #ff7f73;"></i> <span data-translate="differentItems">Elementos con diferencias</span></td>
                         <td class="mismatch">{{ mismatch_count }}</td>
                     </tr>
                     <tr>
-                        <td><i class="fa fa-folder-minus" style="color: #ffc061;"></i> <span data-translate="onlyLocal">Clases solo en local</span></td>
+                        <td><i class="fa fa-folder-minus" style="color: #ffc061;"></i> <span data-translate="onlyLocalItems">Elementos solo en local</span></td>
                         <td class="not-in-local">{{ not_in_local_count }}</td>
                     </tr>
                     <tr>
-                        <td><i class="fa fa-cloud-download-alt" style="color: #6f85ff;"></i> <span data-translate="onlySalesforce">Clases solo en Salesforce</span></td>
+                        <td><i class="fa fa-cloud-download-alt" style="color: #6f85ff;"></i> <span data-translate="onlySalesforceItems">Elementos solo en Salesforce</span></td>
                         <td class="not-in-salesforce">{{ not_in_salesforce_count }}</td>
                     </tr>
                 </tbody>
@@ -581,12 +581,14 @@
     </section-->
 
     <section class="section-card">
-        <h2 id="details"><i class="fa fa-list"></i> Detalles</h2>
+        <h2 id="details"><i class="fa fa-list"></i> <span data-translate="detailsTitle">Detalles</span></h2>
         <div class="table-scroll">
             <table>
                 <thead>
                     <tr>
-                        <th data-translate="class">Clase</th>
+                        <th data-translate="columnMetadataType">Tipo</th>
+                        <th data-translate="columnMetadataName">Nombre</th>
+                        <th data-translate="columnRelativePath">Ruta relativa</th>
                         <th data-translate="status">Estado</th>
                         <th data-translate="action">Acci&oacute;n</th>
                     </tr>
@@ -594,13 +596,15 @@
                 <tbody>
                     {% for result in results %}
                     <tr>
-                        <td>{{ result.ClassName }}</td>
-                        <td class="{{ result.Status|lower }}" data-status="{{ result.Status|lower }}" data-translate-status>
-                            {{ result.Status }}
+                        <td>{{ result.metadataType }}</td>
+                        <td>{{ result.itemName or '&mdash;' }}</td>
+                        <td class="path-cell">{{ result.relativePath or '&mdash;' }}</td>
+                        <td class="{{ result.statusKey }}" data-status="{{ result.statusKey }}" data-translate-status>
+                            {{ result.status }}
                         </td>
                         <td>
                             <div class="action-buttons">
-                                {% if result.Status == "Mismatch" %}
+                                {% if result.statusKey == "mismatch" and not result.isBinary and result.localVersion and result.salesforceVersion %}
                                 <button data-translate="showDifferences"
                                         onclick="toggleDiff('diff{{ loop.index }}')"
                                         id="toggle-btn-{{ loop.index }}">
@@ -618,16 +622,22 @@
                                         style="display: none;">
                                     <i class="fa fa-times"></i> Cerrar
                                 </button>
+                                {% elif result.statusKey == "mismatch" and result.isBinary %}
+                                <span style="opacity: 0.8;" data-translate="binaryDiffNotSupported">Archivo binario - comparaci&oacute;n no disponible</span>
                                 {% else %}
                                 <span style="opacity: 0.6;" data-translate="noDifferences">Sin diferencias</span>
                                 {% endif %}
                             </div>
                         </td>
                     </tr>
-                    {% if result.Status == "Mismatch" %}
+                    {% if result.statusKey == "mismatch" and not result.isBinary and result.localVersion and result.salesforceVersion %}
                     <tr id="diff{{ loop.index }}" class="diff-container" style="display: none;">
-                        <td colspan="3">
-                            <h3 class="diff-title"><span data-translate="differenceIn">Diferencias en</span> <span class="diff-class">{{ result.ClassName }}</span></h3>
+                        <td colspan="5">
+                            <h3 class="diff-title">
+                                <span data-translate="differenceIn">Diferencias en</span>
+                                <span class="diff-class">{{ result.metadataType }} / {{ result.itemName }}</span>
+                                <span class="diff-path">{{ result.relativePath }}</span>
+                            </h3>
                             <div class="editor-container" id="monaco-diff-editor-{{ loop.index }}"></div>
 
                             <div style="display: flex; gap: 10px; margin-top: 12px;">
@@ -644,10 +654,10 @@
                             </div>
 
                             <script type="application/json" id="data-original-{{ loop.index }}">
-                                {{ result.LocalVersion | tojson }}
+                                {{ result.localVersion | tojson }}
                             </script>
                             <script type="application/json" id="data-modified-{{ loop.index }}">
-                                {{ result.SalesforceVersion | tojson }}
+                                {{ result.salesforceVersion | tojson }}
                             </script>
                         </td>
                     </tr>
@@ -695,8 +705,8 @@
                         automaticLayout: true
                     });
 
-                    const originalModel = monaco.editor.createModel(originalContent, "apex");
-                    const modifiedModel = monaco.editor.createModel(modifiedContent, "apex");
+                    const originalModel = monaco.editor.createModel(originalContent, "text");
+                    const modifiedModel = monaco.editor.createModel(modifiedContent, "text");
 
                     diffEditor.setModel({
                         original: originalModel,
@@ -770,25 +780,28 @@
     // Definir traducciones
     const translations = {
         en: {
-            title: "Apex Class Comparison Report",
-            summaryChart: "Graphical Summary",
+            title: "Metadata Comparison Report",
+            summaryChart: "Summary Chart",
             summary: "Summary",
             category: "Category",
             quantity: "Quantity",
-            identicalClasses: "Identical Classes",
-            differentClasses: "Classes with Differences",
-            onlyLocal: "Classes Only in Local",
-            onlySalesforce: "Classes Only in Salesforce",
-            details: "Details",
-            class: "Class",
+            identicalItems: "Identical items",
+            differentItems: "Items with differences",
+            onlyLocalItems: "Items only in Local",
+            onlySalesforceItems: "Items only in Salesforce",
+            detailsTitle: "Details",
+            columnMetadataType: "Type",
+            columnMetadataName: "Name",
+            columnRelativePath: "Relative path",
             status: "Status",
             action: "Action",
-            showDifferences: "Show Differences",
-            nextDifference: "Next Difference",
+            showDifferences: "Show differences",
+            nextDifference: "Next difference",
             close: "Close",
             differenceIn: "Differences in",
-            themeToggleDark: "Dark Mode",
-            themeToggleLight: "Light Mode",
+            binaryDiffNotSupported: "Binary file - comparison not available",
+            themeToggleDark: "Dark mode",
+            themeToggleLight: "Light mode",
             language: "Language:",
             match: "Match",
             mismatch: "Mismatch",
@@ -796,32 +809,35 @@
             cardMismatches: "Differences",
             cardLocal: "Only Local",
             cardSalesforce: "Only Salesforce",
-            cardMatchesHint: "Classes identical in both environments",
-            cardMismatchesHint: "Classes with detected differences",
-            cardLocalHint: "Classes missing in Salesforce",
-            cardSalesforceHint: "Classes exclusive to Salesforce",
+            cardMatchesHint: "Items identical in both environments",
+            cardMismatchesHint: "Items with detected differences",
+            cardLocalHint: "Items missing in Salesforce",
+            cardSalesforceHint: "Items exclusive to Salesforce",
             noDifferences: "No differences"
         },
         es: {
-            title: "Reporte de Comparación de Clases Apex",
-            summaryChart: "Resumen Gráfico",
+            title: "Reporte de Comparacion de Metadatos",
+            summaryChart: "Resumen Grafico",
             summary: "Resumen",
-            category: "Categoría",
+            category: "Categoria",
             quantity: "Cantidad",
-            identicalClasses: "Clases Idénticas",
-            differentClasses: "Clases con Diferencias",
-            onlyLocal: "Clases Solo en Local",
-            onlySalesforce: "Clases Solo en Salesforce",
-            details: "Detalles",
-            class: "Clase",
+            identicalItems: "Elementos identicos",
+            differentItems: "Elementos con diferencias",
+            onlyLocalItems: "Elementos solo en local",
+            onlySalesforceItems: "Elementos solo en Salesforce",
+            detailsTitle: "Detalles",
+            columnMetadataType: "Tipo",
+            columnMetadataName: "Nombre",
+            columnRelativePath: "Ruta relativa",
             status: "Estado",
-            action: "Acción",
-            showDifferences: "Mostrar Diferencias",
-            nextDifference: "Siguiente Diferencia",
+            action: "Accion",
+            showDifferences: "Mostrar diferencias",
+            nextDifference: "Siguiente diferencia",
             close: "Cerrar",
             differenceIn: "Diferencias en",
-            themeToggleDark: "Modo Oscuro",
-            themeToggleLight: "Modo Claro",
+            binaryDiffNotSupported: "Archivo binario - comparacion no disponible",
+            themeToggleDark: "Modo oscuro",
+            themeToggleLight: "Modo claro",
             language: "Idioma:",
             match: "Coincide",
             mismatch: "Diferente",
@@ -829,10 +845,10 @@
             cardMismatches: "Diferencias",
             cardLocal: "Solo local",
             cardSalesforce: "Solo Salesforce",
-            cardMatchesHint: "Clases idénticas en ambos entornos",
-            cardMismatchesHint: "Clases con divergencias detectadas",
-            cardLocalHint: "Clases ausentes en Salesforce",
-            cardSalesforceHint: "Clases exclusivas en la organización",
+            cardMatchesHint: "Elementos identicos en ambos entornos",
+            cardMismatchesHint: "Elementos con diferencias detectadas",
+            cardLocalHint: "Elementos ausentes en Salesforce",
+            cardSalesforceHint: "Elementos exclusivos en la organizacion",
             noDifferences: "Sin diferencias"
         }
     };
@@ -863,7 +879,6 @@
             "summary": "summary",
             "category": "category",
             "quantity": "quantity",
-            "details": "details",
             "language-label": "language"
         };
 

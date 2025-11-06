@@ -15,7 +15,8 @@ A VS Code extension written in TypeScript that helps you **validate, test, and d
 - ⚡ Quick commands: Validate Apex, Refresh views, Open output folders.
 - 🤖 AI-powered ApexDoc generation (beta) with tag enforcement.
 - 🧱 Allman-style Apex formatter for .cls/.trigger files (leverages workspace prettier + prettier-plugin-apex).
-- 🔄 Compare local Apex classes vs. your org (Monaco diff view).
+- 🧹 Command palette action to strip System.debug(...) statements across the active selection or file.
+- 🔄 Compare local metadata vs. your org (Monaco diff view for text assets, size checks for binaries).
 - 🕸️ “Where is Used” report — scans dependencies across Apex Classes, Flows, and LWC, rendered in a clean interactive tree view.
 - 🎨 Unified dark-themed report design — for a consistent visual experience, and interactive search across all HTML reports.
 - 🌐 Multilingual reports — HTML/PDF templates honor your VS Code locale or a workspace override (Spanish/English) with per-report language switching.
@@ -73,9 +74,16 @@ UAV usa automáticamente la org marcada como `isDefaultUsername` en `sf org list
 2. Select **UAV: Validate Apex Code**.
 3. Track progress in the **Unified Apex Validator** output channel.
 4. Review reports or logs in the sidebar.
-5. (Optional) Run **UAV: Compare Apex Classes against Org** to diff your local vs. org versions.
+5. (Optional) Run **UAV: Compare Metadata against Org** to diff your local vs. org versions.
 6. (Optional) Use **UAV: Formatear Apex (Allman)** from the explorer/editor context menu to apply Allman braces to selected `.cls`/`.trigger` files (requires `prettier` + `prettier-plugin-apex` in your workspace).
 7. (Optional) Use **UAV: Where is Used** from the editor context menu to run a report that scans dependencies across Apex Classes, Flows, and LWC, showing where each element is referenced.
+8. (Optional) Use **UAV: Remove System.debug Statements** from the command palette to clean debug output in the active editor or current selections.
+
+### 🔄 Metadata Comparison
+
+- Available from the explorer and editor context menus for package.xml manifests and supported metadata files (classes, triggers, flows, Lightning bundles, etc.).
+- From a manifest, UAV retrieves every type/member declared under <types>; from a single file it infers the metadata type automatically before running the retrieve.
+- Text assets render in the Monaco diff view with syntax highlighting, while binaries surface size differences so you can decide whether to download them.
 
 📝 HTML/PDF reports render in the language defined by `UnifiedApexValidator.reportLanguage` (default `auto`). The HTML viewer also exposes a globe selector so teammates can switch between Español and English on demand.
 

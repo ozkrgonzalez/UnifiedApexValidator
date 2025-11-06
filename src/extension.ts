@@ -9,6 +9,7 @@ import { Logger, setExtensionContext } from './core/utils';
 import { generateApexDocChunked } from './core/generateApexDocChunked';
 import { evaluateIaConfig } from './core/IAAnalisis';
 import { formatApexAllman } from './core/apexAllmanFormatter';
+import { removeSystemDebugs } from './core/removeSystemDebugs';
 import { showWhereUsedPanel } from './core/whereUsedPanel';
 import { WhereUsedEntry } from './core/whereUsedCore';
 import { localize } from './i18n';
@@ -357,6 +358,14 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    const removeSystemDebugsCmd = vscode.commands.registerCommand(
+        'UnifiedApexValidator.removeSystemDebugs',
+        async () =>
+        {
+            await removeSystemDebugs();
+        }
+    );
+
     const whereIsUsedCmd = vscode.commands.registerCommand(
         'UnifiedApexValidator.whereIsUsed',
         async (uri?: vscode.Uri, uris?: vscode.Uri[]) =>
@@ -415,6 +424,7 @@ export async function activate(context: vscode.ExtensionContext) {
         compareApexClassesCmd,
         generateApexDocChunkedCmd,
         formatApexAllmanCmd,
+        removeSystemDebugsCmd,
         whereIsUsedCmd
     );
     //vscode.window.showInformationMessage('Unified Apex Validator activado.');

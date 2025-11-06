@@ -21,6 +21,8 @@
   "walkthrough.step.connectOrg.description": "Asegúrate de que Salesforce CLI tenga una organización por defecto: ejecuta `sf org login web --alias miOrg` (o usa tu flujo de autenticación preferido) y verifica que aparezca en `sf org list`. UAV usará la organización marcada como predeterminada para validar.",
   "walkthrough.step.stayUpdated.description": "Revisa las configuraciones de la extensión y sigue el registro de cambios en GitHub para conocer nuevas funciones, correcciones y mejoras.",
   "command.gettingStarted.title": "UAV: Primeros Pasos",
+  "command.removeDebug.title": "UAV: Eliminar System.debug",
+  "command.compareMetadata.title": "UAV: Comparar metadata contra la Org",
   "config.title": "Configuraciones de Unified Apex Validator",
   "config.sfClientId.description": "ID de Cliente de la Aplicación Conectada.",
   "config.sfClientSecret.description": "Secreto de Cliente de la Aplicación Conectada.",
@@ -41,5 +43,11 @@
   "config.outputDir.description": "Carpeta de salida donde se almacenan los reportes generados.",
   "config.keepLogFiles.description": "Mantener registros y archivos temporales después de una ejecución exitosa.",
   "config.enableAllmanFormatter.description": "Habilitar los comandos y menús del formateador Apex estilo Allman.",
-  "config.traceAst.description": "Habilitar el registro de trazas AST."
+  "config.traceAst.description": "Habilitar el registro de trazas AST.",
+  "info.folderView.folderMissing": "Carpeta de {0} no encontrada.",
+  "error.folderView.deleteFailed": "No se pudieron eliminar los {0}.",
+  "info.folderView.noFilesToDelete": "{0}: sin archivos para eliminar.",
+  "info.folderView.filesDeleted": "{0}: archivos eliminados.",
+  "log.folderView.errorDeleting": "[UAV][{0}] Error eliminando archivos:",
+  "log.folderView.errorReading": "[UAV][{0}] Error leyendo archivos:"
 }
