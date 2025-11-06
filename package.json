@@ -197,7 +197,7 @@
       },
       {
         "command": "UnifiedApexValidator.compareApexClasses",
-        "title": "UAV: Compare Apex Classes against Org"
+        "title": "%command.compareMetadata.title%"
       },
       {
         "command": "UnifiedApexValidator.generateApexDocChunked",
@@ -295,23 +295,28 @@
         },
         {
           "command": "UnifiedApexValidator.compareApexClasses",
-          "when": "resourceExtname =~ /\\.?cls/i",
+          "when": "resourceExtname =~ /\\.?xml/i",
           "group": "z_unifiedApex@12"
         },
         {
-          "command": "UnifiedApexValidator.whereIsUsed",
+          "command": "UnifiedApexValidator.compareApexClasses",
           "when": "resourceExtname =~ /\\.?cls/i",
           "group": "z_unifiedApex@13"
         },
         {
-          "command": "UnifiedApexValidator.generateApexDocChunked",
+          "command": "UnifiedApexValidator.whereIsUsed",
           "when": "resourceExtname =~ /\\.?cls/i",
           "group": "z_unifiedApex@14"
         },
         {
+          "command": "UnifiedApexValidator.generateApexDocChunked",
+          "when": "resourceExtname =~ /\\.?cls/i",
+          "group": "z_unifiedApex@15"
+        },
+        {
           "command": "UnifiedApexValidator.formatApexAllman",
           "when": "editorLangId == apex && config.UnifiedApexValidator.enableAllmanFormatter",
-          "group": "z_unifiedApex@15"
+          "group": "z_unifiedApex@16"
         }
       ]
     },

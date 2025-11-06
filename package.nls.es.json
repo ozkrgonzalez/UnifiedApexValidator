@@ -22,6 +22,7 @@
   "walkthrough.step.stayUpdated.description": "Revisa las configuraciones de la extensión y sigue el registro de cambios en GitHub para conocer nuevas funciones, correcciones y mejoras.",
   "command.gettingStarted.title": "UAV: Primeros Pasos",
   "command.removeDebug.title": "UAV: Eliminar System.debug",
+  "command.compareMetadata.title": "UAV: Comparar metadata contra la Org",
   "config.title": "Configuraciones de Unified Apex Validator",
   "config.sfClientId.description": "ID de Cliente de la Aplicación Conectada.",
   "config.sfClientSecret.description": "Secreto de Cliente de la Aplicación Conectada.",
