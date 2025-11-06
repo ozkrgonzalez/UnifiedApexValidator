@@ -364,21 +364,35 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
 
             if (result.kind === 'missing')
             {
-                vscode.window.showInformationMessage(`Carpeta de ${this.label.toLowerCase()} no encontrada.`);
+                vscode.window.showInformationMessage(
+                    localize(
+                        'info.folderView.folderMissing',
+                        'Folder for {0} not found.',
+                        this.label.toLowerCase()
+                    )
+                );
                 this.refresh();
                 return;
             }
 
             if (result.kind === 'error')
             {
-                vscode.window.showErrorMessage(`No se pudieron eliminar los ${this.label.toLowerCase()}.`);
+                vscode.window.showErrorMessage(
+                    localize(
+                        'error.folderView.deleteFailed',
+                        'Could not delete {0}.',
+                        this.label.toLowerCase()
+                    )
+                );
                 this.refresh();
                 return;
             }
 
             if (!result.files.length)
             {
-                vscode.window.showInformationMessage(`${this.label}: sin archivos para eliminar.`);
+                vscode.window.showInformationMessage(
+                    localize('info.folderView.noFilesToDelete', '{0}: no files to delete.', this.label)
+                );
                 this.refresh();
                 return;
             }
@@ -388,12 +402,23 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
             );
 
             this.refresh();
-            vscode.window.showInformationMessage(`${this.label}: archivos eliminados.`);
+            vscode.window.showInformationMessage(
+                localize('info.folderView.filesDeleted', '{0}: files deleted.', this.label)
+            );
         }
         catch (error)
         {
-            console.error(`[UAV][${this.label}] Error eliminando archivos:`, error);
-            vscode.window.showErrorMessage(`No se pudieron eliminar los ${this.label.toLowerCase()}.`);
+            console.error(
+                localize('log.folderView.errorDeleting', '[UAV][{0}] Error deleting files:', this.label),
+                error
+            );
+            vscode.window.showErrorMessage(
+                localize(
+                    'error.folderView.deleteFailed',
+                    'Could not delete {0}.',
+                    this.label.toLowerCase()
+                )
+            );
         }
     }
 
@@ -465,7 +490,10 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
         }
         catch (error)
         {
-            console.error(`[UAV][${this.label}] Error leyendo archivos:`, error);
+            console.error(
+                localize('log.folderView.errorReading', '[UAV][{0}] Error reading files:', this.label),
+                error
+            );
             return { kind: 'error', error };
         }
     }

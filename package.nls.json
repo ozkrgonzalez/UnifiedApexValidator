@@ -42,5 +42,11 @@
     "config.outputDir.description":  "Output folder where generated reports are stored.",
     "config.keepLogFiles.description":  "Keep logs and temporary files after a successful run.",
     "config.enableAllmanFormatter.description":  "Enable the Allman Apex formatter commands and context menus.",
-    "config.traceAst.description":  "Enable AST trace logging."
+    "config.traceAst.description":  "Enable AST trace logging.",
+    "info.folderView.folderMissing": "Folder for {0} not found.",
+    "error.folderView.deleteFailed": "Could not delete {0}.",
+    "info.folderView.noFilesToDelete": "{0}: no files to delete.",
+    "info.folderView.filesDeleted": "{0}: files deleted.",
+    "log.folderView.errorDeleting": "[UAV][{0}] Error deleting files:",
+    "log.folderView.errorReading": "[UAV][{0}] Error reading files:"
 }
