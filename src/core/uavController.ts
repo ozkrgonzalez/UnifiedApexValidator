@@ -348,12 +348,26 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
 
     async clearAll(): Promise<void>
     {
-        const action = await vscode.window.showWarningMessage(
-            `Eliminar todos los ${this.label.toLowerCase()}?`,
-            'Eliminar',
+        const deleteMessage = localize(
+            'warning.folderView.clearAll.confirmMessage',
+            'Eliminar todos los {0}?',
+            this.label.toLowerCase()
+        );
+        const confirmAction = localize(
+            'warning.folderView.clearAll.confirmAction',
+            'Eliminar'
+        );
+        const cancelAction = localize(
+            'warning.folderView.clearAll.cancelAction',
             'Cancelar'
         );
-        if (action !== 'Eliminar')
+
+        const action = await vscode.window.showWarningMessage(
+            deleteMessage,
+            confirmAction,
+            cancelAction
+        );
+        if (action !== confirmAction)
         {
             return;
         }
