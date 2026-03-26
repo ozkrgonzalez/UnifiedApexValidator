@@ -14,7 +14,10 @@ export function setExtensionContext(ctx: vscode.ExtensionContext)
 
 let globalChannel: vscode.OutputChannel | null = null;
 let processHandlersRegistered = false;
-const ignoredUnhandledPatterns: RegExp[] = [/CreateEmbeddingSupplier/i];
+const ignoredUnhandledPatterns: RegExp[] = [
+  /CreateEmbeddingSupplier/i,
+  /command '.*' not found/i,
+];
 
 const ANSI_ESCAPE_REGEX = /\x1B\[[0-?]*[ -/]*[@-~]/g;
 

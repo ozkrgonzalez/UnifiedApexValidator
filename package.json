@@ -3,7 +3,7 @@
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
   "publisher": "ozkrgonzalez",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "icon": "media/icon.png",
   "license": "GPL-3.0-only",
   "repository": "https://github.com/ozkrgonzalez/UnifiedApexValidator.git",
@@ -33,7 +33,8 @@
     "bundle": "esbuild src/extension.ts --bundle --platform=node --external:vscode --outdir=dist --format=cjs",
     "copy-resources": "node scripts/copyResources.js",
     "build": "npm run clean && npm install && npm run compile && npm run bundle && npm run copy-resources",
-    "package": "npm run build && npm install --omit=dev && vsce package"
+    "package": "npm run build && npm install --omit=dev && vsce package",
+    "deploy": "npm run package && for %f in (unifiedapexvalidator-*.vsix) do code --install-extension \"%f\""
   },
   "activationEvents": [
     "onCommand:UnifiedApexValidator.validateApex",
