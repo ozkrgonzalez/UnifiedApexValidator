@@ -1,0 +1,257 @@
+{
+  "E:\\GITHUB\\UnifiedApexValidator\\.claude\\settings.local.json": {
+    "mtime": 1785599808.136271,
+    "ast_hash": "bb7f3dd4c3852d4ab190b9c2c2b0c42d",
+    "semantic_hash": "bb7f3dd4c3852d4ab190b9c2c2b0c42d"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\.vscode\\launch.json": {
+    "mtime": 1762102470.9853582,
+    "ast_hash": "fac5372db6acb6752af57960d9cc138c",
+    "semantic_hash": "fac5372db6acb6752af57960d9cc138c"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\i18n\\extension.i18n.json": {
+    "mtime": 1762454696.9857128,
+    "ast_hash": "f29cdbc0e7778cf4ca38bb20c93fb4ce",
+    "semantic_hash": "f29cdbc0e7778cf4ca38bb20c93fb4ce"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\package.json": {
+    "mtime": 1785599810.4333339,
+    "ast_hash": "8fbeec336b67d0321725eb259b829af7",
+    "semantic_hash": "8fbeec336b67d0321725eb259b829af7"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\package.nls.es.json": {
+    "mtime": 1762454696.9877124,
+    "ast_hash": "13bcf6884aec5d19b2ace43b5fe64e31",
+    "semantic_hash": "13bcf6884aec5d19b2ace43b5fe64e31"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\package.nls.json": {
+    "mtime": 1762454696.9877124,
+    "ast_hash": "58e2d6c0ccd2b0c2ff34e575c23a6f1a",
+    "semantic_hash": "58e2d6c0ccd2b0c2ff34e575c23a6f1a"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\scripts\\copyResources.js": {
+    "mtime": 1762102470.993365,
+    "ast_hash": "fd9e0ae4b801c82fad79c85860ac954f",
+    "semantic_hash": "fd9e0ae4b801c82fad79c85860ac954f"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\IAAnalisis.ts": {
+    "mtime": 1762454696.9887125,
+    "ast_hash": "22d92e25445324e621eb0b8814c9f10a",
+    "semantic_hash": "22d92e25445324e621eb0b8814c9f10a"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\aiDocChunkRunner.ts": {
+    "mtime": 1762102470.9943635,
+    "ast_hash": "894b69b0d3a0fea275ec35ce0d2e8ee1",
+    "semantic_hash": "894b69b0d3a0fea275ec35ce0d2e8ee1"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\apexAllmanFormatter.ts": {
+    "mtime": 1762102470.9943635,
+    "ast_hash": "bfa1c8b50166e9dec43b9eb043c6c110",
+    "semantic_hash": "bfa1c8b50166e9dec43b9eb043c6c110"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\apexAstParser.ts": {
+    "mtime": 1762102470.9943635,
+    "ast_hash": "658a79a68fa3bcd733a694635fe65496",
+    "semantic_hash": "658a79a68fa3bcd733a694635fe65496"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\compareController.ts": {
+    "mtime": 1762454696.9887125,
+    "ast_hash": "ed7cdf5abbb9bfde34cc858de10294db",
+    "semantic_hash": "ed7cdf5abbb9bfde34cc858de10294db"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\generateApexDocChunked.ts": {
+    "mtime": 1762102470.995363,
+    "ast_hash": "c0c0bd0b6d84adfa55c195d264899de4",
+    "semantic_hash": "c0c0bd0b6d84adfa55c195d264899de4"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\patchApplier.ts": {
+    "mtime": 1762102470.995363,
+    "ast_hash": "d91712e67440bd2f2bece7fefb7e73b4",
+    "semantic_hash": "d91712e67440bd2f2bece7fefb7e73b4"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\removeSystemDebugs.ts": {
+    "mtime": 1762454696.9897127,
+    "ast_hash": "1338a1dfd916781294577dce3cefaa8d",
+    "semantic_hash": "1338a1dfd916781294577dce3cefaa8d"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\reportGenerator.ts": {
+    "mtime": 1762454696.9897127,
+    "ast_hash": "fe6ebefe0c2df6511260e2f45aa9ec83",
+    "semantic_hash": "fe6ebefe0c2df6511260e2f45aa9ec83"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\reportViewer.ts": {
+    "mtime": 1762102470.9963665,
+    "ast_hash": "e93cef8bd563cd4c4cfc8cb0c1763a7f",
+    "semantic_hash": "e93cef8bd563cd4c4cfc8cb0c1763a7f"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\testSuite.ts": {
+    "mtime": 1762102470.9963665,
+    "ast_hash": "5c97392d0694d323f2f66d12239f3a55",
+    "semantic_hash": "5c97392d0694d323f2f66d12239f3a55"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\uavController.ts": {
+    "mtime": 1762454696.9897127,
+    "ast_hash": "71e6e3614eb201dacbe86340915b1654",
+    "semantic_hash": "71e6e3614eb201dacbe86340915b1654"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\utils.ts": {
+    "mtime": 1785599810.4343357,
+    "ast_hash": "c4aca3924ebf9034fe979f88e2548436",
+    "semantic_hash": "c4aca3924ebf9034fe979f88e2548436"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\validator.ts": {
+    "mtime": 1762102470.9973629,
+    "ast_hash": "03609924767aa5ff4b6c0a596ae0605f",
+    "semantic_hash": "03609924767aa5ff4b6c0a596ae0605f"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\whereUsedAnalyzer.ts": {
+    "mtime": 1762102470.9973629,
+    "ast_hash": "6ee1778530833c23823c0225eb47dedb",
+    "semantic_hash": "6ee1778530833c23823c0225eb47dedb"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\whereUsedCore.ts": {
+    "mtime": 1762102470.9973629,
+    "ast_hash": "efde17b81b754f40e7f07dfed4576c4c",
+    "semantic_hash": "efde17b81b754f40e7f07dfed4576c4c"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\whereUsedPanel.ts": {
+    "mtime": 1762102470.9973629,
+    "ast_hash": "c3fc4e01067c2f91aeec93c641df3981",
+    "semantic_hash": "c3fc4e01067c2f91aeec93c641df3981"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\whereUsedReport.ts": {
+    "mtime": 1762102470.9983644,
+    "ast_hash": "a393c8547a7d62928fb035d64770bb80",
+    "semantic_hash": "a393c8547a7d62928fb035d64770bb80"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\core\\whereUsedWorkerProcess.ts": {
+    "mtime": 1762102470.9983644,
+    "ast_hash": "77431900534fb9c5ffd9b904b62758db",
+    "semantic_hash": "77431900534fb9c5ffd9b904b62758db"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\extension.ts": {
+    "mtime": 1762454696.9907126,
+    "ast_hash": "23639434df426b2750082969eeba15a3",
+    "semantic_hash": "23639434df426b2750082969eeba15a3"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\i18n.ts": {
+    "mtime": 1762102470.9983644,
+    "ast_hash": "acedcb8f08d49c50d63960ac1ee2d69c",
+    "semantic_hash": "acedcb8f08d49c50d63960ac1ee2d69c"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\providers\\dependenciesProvider.ts": {
+    "mtime": 1762454696.9917123,
+    "ast_hash": "39a1d29df40e23353f10acc3508345f9",
+    "semantic_hash": "39a1d29df40e23353f10acc3508345f9"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\resources\\apex_allman_formatter.js": {
+    "mtime": 1762102470.9993653,
+    "ast_hash": "92a3ed8d05e3f4bf8cf5a0a214b7f5e9",
+    "semantic_hash": "92a3ed8d05e3f4bf8cf5a0a214b7f5e9"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\types\\global.d.ts": {
+    "mtime": 1762102471.0003672,
+    "ast_hash": "66101e493ee3fe263b8151306a60dd6a",
+    "semantic_hash": "66101e493ee3fe263b8151306a60dd6a"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\types\\html-pdf-node.d.ts": {
+    "mtime": 1762102471.001365,
+    "ast_hash": "5eab97ed86677c84ab73f3067dcac774",
+    "semantic_hash": "5eab97ed86677c84ab73f3067dcac774"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\tsconfig.json": {
+    "mtime": 1762102471.001365,
+    "ast_hash": "73d07123981b1fbeef4608a41f6f3039",
+    "semantic_hash": "73d07123981b1fbeef4608a41f6f3039"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\CHANGELOG.md": {
+    "mtime": 1762454696.9837084,
+    "ast_hash": "37dddc7cdb8801093678c7e03a5fd6b5",
+    "semantic_hash": "37dddc7cdb8801093678c7e03a5fd6b5"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\CLAUDE.md": {
+    "mtime": 1785599810.429763,
+    "ast_hash": "0773999ee15bf0951f2c5dbde5e53321",
+    "semantic_hash": "0773999ee15bf0951f2c5dbde5e53321"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\README.md": {
+    "mtime": 1762454696.9847138,
+    "ast_hash": "28ee01b4ab75867ad3e14dd648e468ab",
+    "semantic_hash": "28ee01b4ab75867ad3e14dd648e468ab"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\docs\\walkthrough\\connect-org.md": {
+    "mtime": 1762102470.9893625,
+    "ast_hash": "565497661dde1cd0f50f86ea92db27a0",
+    "semantic_hash": "565497661dde1cd0f50f86ea92db27a0"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\docs\\walkthrough\\dependencies.md": {
+    "mtime": 1762102470.9893625,
+    "ast_hash": "f24c2a22ade293931db5204383203146",
+    "semantic_hash": "f24c2a22ade293931db5204383203146"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\docs\\walkthrough\\einstein.md": {
+    "mtime": 1762102470.9893625,
+    "ast_hash": "1e4b850829fb8ec7d9dcfd70015be195",
+    "semantic_hash": "1e4b850829fb8ec7d9dcfd70015be195"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\docs\\walkthrough\\reports-logs.md": {
+    "mtime": 1762102470.9903636,
+    "ast_hash": "0973304391726ceefd222340ba9e27ab",
+    "semantic_hash": "0973304391726ceefd222340ba9e27ab"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\docs\\walkthrough\\stay-updated.md": {
+    "mtime": 1762102470.9903636,
+    "ast_hash": "a8156979f3c8606e8b8483a3e2efcd26",
+    "semantic_hash": "a8156979f3c8606e8b8483a3e2efcd26"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\docs\\walkthrough\\validate.md": {
+    "mtime": 1762102470.9903636,
+    "ast_hash": "9b056912edde797b7f97998dc016bd10",
+    "semantic_hash": "9b056912edde797b7f97998dc016bd10"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\docs\\walkthrough\\workspace.md": {
+    "mtime": 1762102470.9903636,
+    "ast_hash": "acf43784769c59394ceb03dbff52ff5b",
+    "semantic_hash": "acf43784769c59394ceb03dbff52ff5b"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\resources\\templates\\class_comparison_report.html": {
+    "mtime": 1785599810.4343357,
+    "ast_hash": "36f540b20879dccf6e6a1ed5c67b4e8b",
+    "semantic_hash": "36f540b20879dccf6e6a1ed5c67b4e8b"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\resources\\templates\\code-analyzer.yml": {
+    "mtime": 1762102470.9993653,
+    "ast_hash": "f3f64abd29b312e6d4a576d2c2c3afa9",
+    "semantic_hash": "f3f64abd29b312e6d4a576d2c2c3afa9"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\resources\\templates\\reportTemplate.html": {
+    "mtime": 1762102471.0003672,
+    "ast_hash": "d18b293c1fbd3b4ddadc85b3428ed440",
+    "semantic_hash": "d18b293c1fbd3b4ddadc85b3428ed440"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\resources\\templates\\reportTemplate_pdf.html": {
+    "mtime": 1785599810.4353337,
+    "ast_hash": "7108a97918446ce56816ba5a1651d1f1",
+    "semantic_hash": "7108a97918446ce56816ba5a1651d1f1"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\src\\resources\\templates\\whereUsed_template.html": {
+    "mtime": 1762102471.0003672,
+    "ast_hash": "ba5fadfc146d1eca7998467cc548b17f",
+    "semantic_hash": "ba5fadfc146d1eca7998467cc548b17f"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\media\\apex-icon.svg": {
+    "mtime": 1762102470.9913638,
+    "ast_hash": "2ef0cd98b236a9040c58dbc82e82f373",
+    "semantic_hash": "2ef0cd98b236a9040c58dbc82e82f373"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\media\\apex-iconV1.svg": {
+    "mtime": 1762102470.9913638,
+    "ast_hash": "992ac4ab629ec6f071b2cb4644e63d20",
+    "semantic_hash": "992ac4ab629ec6f071b2cb4644e63d20"
+  },
+  "E:\\GITHUB\\UnifiedApexValidator\\media\\icon.png": {
+    "mtime": 1762102470.9913638,
+    "ast_hash": "ff5fae552a0d10c3e3057aa5fd2eeafe",
+    "semantic_hash": "ff5fae552a0d10c3e3057aa5fd2eeafe"
+  }
+}
