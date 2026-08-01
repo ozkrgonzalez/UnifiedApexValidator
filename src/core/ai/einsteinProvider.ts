@@ -1,27 +1,13 @@
 import axios from 'axios';
 import * as vscode from 'vscode';
-import { localize } from '../i18n';
-import { Logger } from './utils';
-
-interface IAResponse
-{
-    resumen: string;
-}
-
-export class IAConnectionError extends Error
-{
-    constructor(message: string)
-    {
-        super(message);
-        this.name = 'IAConnectionError';
-        Object.setPrototypeOf(this, IAConnectionError.prototype);
-    }
-}
+import { localize } from '../../i18n';
+import { Logger } from '../utils';
+import { IAConnectionError, IAProvider, IAResponse } from './types';
 
 /**
  * Client responsible for talking with the configured Einstein GPT (or compatible) endpoint.
  */
-export class IAAnalisis
+export class EinsteinProvider implements IAProvider
 {
     private logger: Logger;
     private endpoint: string;
@@ -31,18 +17,18 @@ export class IAAnalisis
     private domain: string;
     private basePrompt: string;
 
-    constructor()
+    constructor(clientId: string, clientSecret: string)
     {
         const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
 
         this.endpoint = config.get<string>('sfGptEndpoint') ?? '';
         this.model = config.get<string>('sfGptModel') ?? '';
-        this.clientId = config.get<string>('sfClientId') ?? '';
-        this.clientSecret = config.get<string>('sfClientSecret') ?? '';
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
         this.domain = config.get<string>('sfDomain') ?? 'test.salesforce.com';
         this.basePrompt = config.get<string>('iaPromptTemplate') ?? '';
 
-        this.logger = new Logger('IAAnalisis', true);
+        this.logger = new Logger('IA:einstein', true);
     }
 
     private async getAccessToken(): Promise<string>
@@ -127,6 +113,23 @@ export class IAAnalisis
             let generatedText = '';
             const data = response.data || {};
 
+            // Einstein Models API usage field placement isn't consistently documented
+            // across model backends, so this checks the plausible locations and stays
+            // silent (no warning) if none are present - it's a nice-to-have, not required.
+            const usage = data.parameters?.usage ?? data.generation?.parameters?.usage ?? data.usage;
+            if (usage)
+            {
+                this.logger.info(
+                    localize(
+                        'log.ia.tokenUsage',
+                        '[IA] Token usage - prompt: {0}, completion: {1}, total: {2}',
+                        usage.prompt_tokens ?? usage.promptTokens ?? '?',
+                        usage.completion_tokens ?? usage.completionTokens ?? '?',
+                        usage.total_tokens ?? usage.totalTokens ?? '?'
+                    )
+                );
+            }
+
             if (data.generation?.generatedText)
             {
                 generatedText = data.generation.generatedText;
@@ -182,35 +185,4 @@ export class IAAnalisis
             );
         }
     }
-}
-
-export interface IAConfigStatus
-{
-    ready: boolean;
-    missing: string[];
-}
-
-export function evaluateIaConfig(): IAConfigStatus
-{
-    const config = vscode.workspace.getConfiguration('UnifiedApexValidator');
-    const requiredFields: Array<{ key: string; label: string }> = [
-        { key: 'sfGptEndpoint', label: 'sfGptEndpoint' },
-        { key: 'sfGptModel', label: 'sfGptModel' },
-        { key: 'sfClientId', label: 'sfClientId' },
-        { key: 'sfClientSecret', label: 'sfClientSecret' },
-        { key: 'iaPromptTemplate', label: 'iaPromptTemplate' }
-    ];
-
-    const missing = requiredFields
-        .filter(({ key }) =>
-        {
-            const value = config.get<string>(key);
-            return typeof value !== 'string' || value.trim().length === 0;
-        })
-        .map(({ label }) => label);
-
-    return {
-        ready: missing.length === 0,
-        missing
-    };
 }

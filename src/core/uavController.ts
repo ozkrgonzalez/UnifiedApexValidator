@@ -1,25 +1,30 @@
 ﻿import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs-extra';
+import * as glob from 'glob';
 import MarkdownIt from 'markdown-it';
-import { Logger, parseApexClassesFromPackage, getStorageRoot, cleanUpFiles, getGlobalChannel, ensureOrgAliasConnected, getDefaultConnectedOrg } from './utils';
+import { Logger, parseApexClassesFromPackage, getStorageRoot, cleanUpFiles, getGlobalChannel, ensureOrgAliasConnected, getDefaultConnectedOrg, extractTestClassTag } from './utils';
 import { runValidator } from './validator';
 import { TestSuite } from './testSuite';
-import { IAAnalisis, evaluateIaConfig } from './IAAnalisis';
+import { createIaProvider, evaluateIaConfig } from './ai/providerFactory';
 import { generateReport } from './reportGenerator';
 import { showReport } from './reportViewer';
+import { confirmIfProduction } from './orgs/orgSwitcher';
 import { localize } from '../i18n';
 
 export async function runUAV(uri?: vscode.Uri)
 {
-    process.on('unhandledRejection', (reason: any) =>
+    // El handler global de unhandledRejection ya se registra una sola vez
+    // dentro del constructor de Logger (utils.ts), con la misma lista de
+    // patrones ignorados (incluye CreateEmbeddingSupplier). No registrar
+    // otro aquí evita acumular listeners en `process` en cada corrida.
+    const logger = new Logger('UAVController', true);
+
+    if (!(await confirmIfProduction(logger)))
     {
-    if (String(reason).includes('CreateEmbeddingSupplier'))
-        {
-            return;
-        }
-        console.error('[UAVController] Unhandled Rejection:', reason);
-    });
+        logger.warn(localize('log.uavController.cancelledProduction', 'Validation cancelled by the user (production guardrail).'));
+        return;
+    }
 
     try
     {
@@ -37,15 +42,13 @@ export async function runUAV(uri?: vscode.Uri)
         const mainLog = path.join(logDir, 'Validator.log');
         if (await fs.pathExists(mainLog)) await fs.writeFile(mainLog, '');
 
-        console.log(localize('log.uavController.preCleanupDone', '[UAV][Controller] Pre-run cleanup completed at {0}', storageRoot)); // Localized string
+        logger.info(localize('log.uavController.preCleanupDone', '[UAV][Controller] Pre-run cleanup completed at {0}', storageRoot)); // Localized string
     }
     catch (err)
     {
-        console.warn(localize('log.uavController.preCleanupFailed', '[UAV][Controller] ⚠️ Could not clean logs/temp before execution.'), err); // Localized string
+        logger.warn(localize('log.uavController.preCleanupFailed', '[UAV][Controller] ⚠️ Could not clean logs/temp before execution.') + ' ' + String(err)); // Localized string
     }
 
-    // 🚀 Ahora sí, crear el logger principal
-    const logger = new Logger('UAVController', true);
     logger.info(localize('log.uavController.start', '🚀 Starting Unified Apex Validator run...')); // Localized string
 
     let tempPackagePath: string | undefined;
@@ -89,11 +92,37 @@ export async function runUAV(uri?: vscode.Uri)
                     const tempDirWS = path.join(workspaceFolder.uri.fsPath, '.uav', 'temp');
                     await fs.ensureDir(tempDirWS);
 
+                    const members = new Set<string>([className]);
+                    try
+                    {
+                        const sourceContent = await fs.readFile(sourceUri.fsPath, 'utf8');
+                        for (const testClassName of extractTestClassTag(sourceContent))
+                        {
+                            if (testClassName === className) continue;
+                            const matches = glob.sync(`**/${testClassName}.cls`, { cwd: repoDir, absolute: true });
+                            if (matches.length)
+                            {
+                                members.add(testClassName);
+                                logger.info(localize('log.uavController.testClassFromTag', 'Detected @testClass tag: {0} - added to validation manifest.', testClassName)); // Localized string
+                            }
+                            else
+                            {
+                                logger.warn(localize('log.uavController.testClassTagNotFound', '@testClass tag references "{0}" but no matching .cls file was found under {1}.', testClassName, repoDir)); // Localized string
+                            }
+                        }
+                    }
+                    catch (err)
+                    {
+                        logger.warn(localize('log.uavController.testClassTagReadFailed', 'Could not check {0} for a @testClass tag: {1}', sourceUri.fsPath, String(err))); // Localized string
+                    }
+
+                    const membersXml = Array.from(members).map((member) => `        <members>${member}</members>`).join('\n');
+
                     const packageXml = [
                         '<?xml version="1.0" encoding="UTF-8"?>',
                         '<Package xmlns="http://soap.sforce.com/2006/04/metadata">',
                         '    <types>',
-                        `        <members>${className}</members>`,
+                        membersXml,
                         '        <name>ApexClass</name>',
                         '    </types>',
                         '    <version>64.0</version>',
@@ -175,7 +204,7 @@ export async function runUAV(uri?: vscode.Uri)
 
                 // 4) (Opcional) Analisis IA
                 const skipIASetting = config.get<boolean>('skipIAAnalysis') ?? false;
-                const iaStatus = evaluateIaConfig();
+                const iaStatus = await evaluateIaConfig();
                 const skipIA = skipIASetting || !iaStatus.ready;
                 let iaResults: any[] = [];
 
@@ -186,7 +215,7 @@ export async function runUAV(uri?: vscode.Uri)
 
                     progress.report({ message: localize('progress.uavController.runningAi', 'Running AI analysis...') }); // Localized string
                     logger.info(localize('log.uavController.runningAi', 'Running AI analysis with Einstein GPT...')); // Localized string
-                    const ia = new IAAnalisis();
+                    const ia = await createIaProvider();
 
                     for (const cls of nonTestClasses)
                     {
@@ -322,6 +351,7 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private readonly normalizedExtensions: string[];
+    private readonly logger: Logger;
 
     constructor(
         private folderPath: string,
@@ -333,6 +363,7 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
             .split('|')
             .map((ext) => ext.trim().toLowerCase())
             .filter(Boolean);
+        this.logger = new Logger(`FolderView.${label}`);
     }
 
     refresh(): void
@@ -422,9 +453,8 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
         }
         catch (error)
         {
-            console.error(
-                localize('log.folderView.errorDeleting', '[UAV][{0}] Error deleting files:', this.label),
-                error
+            this.logger.error(
+                localize('log.folderView.errorDeleting', '[UAV][{0}] Error deleting files:', this.label) + ' ' + String(error)
             );
             vscode.window.showErrorMessage(
                 localize(
@@ -458,9 +488,8 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
 
         if (result.kind === 'error')
         {
-            console.error(
-                localize('log.folderView.readError', '[UAV][{0}] Error reading files:', this.label),
-                result.error
+            this.logger.error(
+                localize('log.folderView.readError', '[UAV][{0}] Error reading files:', this.label) + ' ' + String(result.error)
             );
             return [new FileItem(localize('ui.folderView.error', 'Error reading folder'), '', false)];
         }
@@ -504,9 +533,8 @@ export class FolderViewProvider implements vscode.TreeDataProvider<FileItem>
         }
         catch (error)
         {
-            console.error(
-                localize('log.folderView.errorReading', '[UAV][{0}] Error reading files:', this.label),
-                error
+            this.logger.error(
+                localize('log.folderView.errorReading', '[UAV][{0}] Error reading files:', this.label) + ' ' + String(error)
             );
             return { kind: 'error', error };
         }

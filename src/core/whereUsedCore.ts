@@ -440,7 +440,7 @@ async function scanLwcUsage(
     logger: TraceLogger
 ): Promise<void>
 {
-    //logger.info(`RaÃ­z para bÃºsqueda LWC/Aura: ${searchRoot}`);
+    //logger.info(`Raíz para búsqueda LWC/Aura: ${searchRoot}`);
 
     const lwcFiles = await collectMatchingFiles(
         searchRoot,

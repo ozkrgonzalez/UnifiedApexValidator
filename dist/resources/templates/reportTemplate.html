@@ -258,6 +258,47 @@
       font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
       white-space: pre;
     }
+
+    .ai-fix-content {
+      text-align: left;
+      padding: 16px;
+      background: var(--bg-muted);
+    }
+
+    .ai-fix-markdown {
+      max-width: 900px;
+      line-height: 1.5;
+    }
+
+    .ai-fix-markdown h1,
+    .ai-fix-markdown h2,
+    .ai-fix-markdown h3 {
+      margin: 0.6em 0 0.4em;
+    }
+
+    .ai-fix-markdown p {
+      margin: 0.5em 0;
+    }
+
+    .ai-fix-markdown code {
+      font-family: "Cascadia Code", "Consolas", "Courier New", monospace;
+      background: var(--bg-card);
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+
+    .ai-fix-markdown pre {
+      background: #0b1622;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      overflow-x: auto;
+    }
+
+    .ai-fix-markdown pre code {
+      background: none;
+      padding: 0;
+    }
   </style>
 </head>
 <body>
@@ -317,15 +358,20 @@
         <th data-i18n-key="column-severity">{{ reportLabels['column-severity'] }}</th>
         <th data-i18n-key="column-description">{{ reportLabels['column-description'] }}</th>
         <th data-i18n-key="column-view-rule">{{ reportLabels['column-view-rule'] }}</th>
+        <th data-i18n-key="column-ai-fix">{{ reportLabels['column-ai-fix'] }}</th>
       </tr>
       {% for issue in apex_results %}
-      <tr>
+      <tr class="finding-row" data-kind="pmd" data-clase="{{ issue.clase }}" data-linea="{{ issue.linea }}" data-regla="{{ issue.regla }}" data-descripcion="{{ issue.descripcion | escape }}">
         <td>{{ issue.clase }}</td>
         <td>{{ issue.linea }}</td>
         <td>{{ issue.regla }}</td>
         <td>{{ issue.severidad }}</td>
         <td>{{ issue.descripcion }}</td>
         <td>{% if issue.recurso %}<a href="{{ issue.recurso }}" target="_blank"><span data-i18n-key="link-open">{{ reportLabels['link-open'] }}</span></a>{% else %}-{% endif %}</td>
+        <td><button type="button" class="ai-fix-btn" data-i18n-key="button-ai-fix">{{ reportLabels['button-ai-fix'] }}</button></td>
+      </tr>
+      <tr class="ai-fix-row" style="display:none;">
+        <td colspan="7" class="ai-fix-content"></td>
       </tr>
       {% endfor %}
     </table>
@@ -384,9 +430,10 @@
         <th data-i18n-key="column-class">{{ reportLabels['column-class'] }}</th>
         <th data-i18n-key="column-duplicate-lines">{{ reportLabels['column-duplicate-lines'] }}</th>
         <th data-i18n-key="column-snippet">{{ reportLabels['column-snippet'] }}</th>
+        <th data-i18n-key="column-ai-fix">{{ reportLabels['column-ai-fix'] }}</th>
       </tr>
       {% for dup in pmd_results %}
-      <tr>
+      <tr class="finding-row" data-kind="cpd" data-clase="{{ dup.clases }}" data-linea="{{ dup.lines }}" data-regla="{{ dup.regla | default('DetectCopyPasteForApex', true) }}" data-descripcion="{{ dup.descripcion | default('', true) | escape }}">
         <td>{{ dup.clases | replace(',', '<br>') | safe }}</td>
         <td>{{ dup.lines }}</td>
         <td>
@@ -394,6 +441,10 @@
             <script type="text/plain" class="monaco-snippet-data">{{ dup.codeSnippet | escape }}</script>
           </div>
         </td>
+        <td><button type="button" class="ai-fix-btn" data-i18n-key="button-ai-fix">{{ reportLabels['button-ai-fix'] }}</button></td>
+      </tr>
+      <tr class="ai-fix-row" style="display:none;">
+        <td colspan="4" class="ai-fix-content"></td>
       </tr>
       {% endfor %}
     </table>
@@ -459,6 +510,8 @@
         'column-message',
         'column-duplicate-lines',
         'column-snippet',
+        'column-ai-fix',
+        'button-ai-fix',
         'empty-no-issues',
         'empty-no-coverage',
         'empty-no-tests',
@@ -661,6 +714,84 @@
         console.warn('No se pudo cargar Monaco.', error);
         containers.forEach(function (container) {
           renderFallback(container);
+        });
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      var vscodeApi = null;
+      try {
+        if (typeof acquireVsCodeApi === 'function') {
+          vscodeApi = acquireVsCodeApi();
+        }
+      } catch (_error) {
+        vscodeApi = null;
+      }
+
+      var buttons = document.querySelectorAll('.ai-fix-btn');
+      if (!vscodeApi) {
+        buttons.forEach(function (btn) {
+          btn.disabled = true;
+          btn.title = 'Available only in the VS Code report viewer.';
+        });
+        return;
+      }
+
+      var requestSeq = 0;
+      var pending = Object.create(null);
+
+      window.addEventListener('message', function (event) {
+        var msg = event.data;
+        if (!msg || msg.type !== 'aiFixResult' || !msg.requestId) return;
+        var entry = pending[msg.requestId];
+        if (!entry) return;
+        delete pending[msg.requestId];
+        entry(msg);
+      });
+
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var row = btn.closest('tr');
+          var expandRow = row.nextElementSibling;
+          if (!expandRow || !expandRow.classList.contains('ai-fix-row')) return;
+          var contentCell = expandRow.querySelector('.ai-fix-content');
+
+          var requestId = 'fix-' + (++requestSeq) + '-' + Date.now();
+          var originalText = btn.textContent;
+
+          btn.disabled = true;
+          btn.textContent = '⏳';
+          expandRow.style.display = '';
+          contentCell.textContent = 'Asking AI...';
+
+          var snippetEl = row.querySelector('.monaco-snippet-data');
+          var codeSnippet = snippetEl ? snippetEl.textContent : '';
+
+          pending[requestId] = function (msg) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            if (msg.ok) {
+              var wrapper = document.createElement('div');
+              wrapper.className = 'ai-fix-markdown';
+              wrapper.innerHTML = msg.suggestionHtml || '';
+              contentCell.textContent = '';
+              contentCell.appendChild(wrapper);
+            } else {
+              contentCell.textContent = 'Error: ' + msg.error;
+            }
+          };
+
+          vscodeApi.postMessage({
+            type: 'aiFixRequest',
+            requestId: requestId,
+            kind: row.dataset.kind || 'pmd',
+            clase: row.dataset.clase || '',
+            linea: row.dataset.linea || '',
+            regla: row.dataset.regla || '',
+            descripcion: row.dataset.descripcion || '',
+            codeSnippet: codeSnippet
+          });
         });
       });
     })();

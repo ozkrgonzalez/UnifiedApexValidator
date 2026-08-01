@@ -3,7 +3,7 @@ import { ApexAstParser, ApexChunk } from './apexAstParser';
 import { AiDocChunkRunner } from '../core/aiDocChunkRunner';
 import { PatchApplier } from '../core/patchApplier';
 import { Logger } from '../core/utils';
-import { evaluateIaConfig } from './IAAnalisis';
+import { evaluateIaConfig } from './ai/providerFactory';
 import { localize } from '../i18n';
 
 export async function generateApexDocChunked()
@@ -15,7 +15,7 @@ export async function generateApexDocChunked()
         return;
     }
 
-    const iaStatus = evaluateIaConfig();
+    const iaStatus = await evaluateIaConfig();
     if (!iaStatus.ready)
     {
         vscode.window.showWarningMessage(

@@ -1,4 +1,4 @@
-﻿import * as fs from 'fs-extra';
+import * as fs from 'fs-extra';
 import * as path from 'path';
 import { XMLParser } from 'fast-xml-parser';
 import * as vscode from 'vscode';
@@ -12,6 +12,11 @@ export function setExtensionContext(ctx: vscode.ExtensionContext)
     _ctx = ctx;
 }
 
+export function getExtensionContext(): vscode.ExtensionContext | undefined
+{
+    return _ctx;
+}
+
 let globalChannel: vscode.OutputChannel | null = null;
 let processHandlersRegistered = false;
 const ignoredUnhandledPatterns: RegExp[] = [
@@ -20,6 +25,31 @@ const ignoredUnhandledPatterns: RegExp[] = [
 ];
 
 const ANSI_ESCAPE_REGEX = /\x1B\[[0-?]*[ -/]*[@-~]/g;
+const TEST_CLASS_TAG_REGEX = /@testClass\s*:\s*(.+)/i;
+
+/**
+ * Extracts class names referenced by an ApexDoc `@testClass` tag, e.g.
+ * `@testClass : FooTest` or `@testClass : FooTest, BarTest`.
+ */
+export function extractTestClassTag(source: string): string[]
+{
+  const match = source.match(TEST_CLASS_TAG_REGEX);
+  if (!match)
+  {
+    return [];
+  }
+
+  const raw = match[1].replace(/\*+\/?\s*$/, '').trim();
+  if (!raw)
+  {
+    return [];
+  }
+
+  return raw
+    .split(/[,\s]+/)
+    .map((value) => value.trim())
+    .filter((value) => /^[A-Za-z_]\w*$/.test(value));
+}
 
 export function parseSfJson(output?: string): any | undefined
 {
@@ -326,80 +356,157 @@ export interface ConnectedOrgInfo
   alias?: string;
   username: string;
   orgId?: string;
+  instanceUrl?: string;
   isDefault?: boolean;
 }
 
-export async function getDefaultConnectedOrg(logger?: Logger): Promise<ConnectedOrgInfo | null>
+/**
+ * Heuristic used to flag an org as production for UI warnings (org color panel,
+ * pre-run guardrail): true when "prod" appears in the alias, username, or
+ * instance URL. Intentionally simple and override-able by the user via the
+ * org color panel - it is a visual/confirmation aid, not a security control.
+ */
+export function looksLikeProduction(org: { alias?: string; username?: string; instanceUrl?: string }): boolean
 {
-  const sfPath = resolveSfCliPath();
+  const haystack = `${org.alias || ''} ${org.username || ''} ${org.instanceUrl || ''}`.toLowerCase();
+  return haystack.includes('prod');
+}
 
-  try
+export interface ListOrgsOptions
+{
+  forceRefresh?: boolean;
+  context?: vscode.ExtensionContext;
+}
+
+let cachedOrgList: ConnectedOrgInfo[] | null = null;
+let pendingOrgListPromise: Promise<ConnectedOrgInfo[]> | null = null;
+
+export function invalidateOrgCache(): void
+{
+  cachedOrgList = null;
+}
+
+export async function getDefaultConnectedOrg(logger?: Logger, options?: ListOrgsOptions): Promise<ConnectedOrgInfo | null>
+{
+  const orgs = await listConnectedOrgs(logger, options);
+  const active = orgs.find((org) => org.isDefault);
+  if (active)
   {
-    const { stdout, stderr } = await execa(sfPath, ['org', 'list', '--json'], {
-      env: { ...process.env, FORCE_COLOR: '0' }
-    });
-
-    const payload = parseSfJson(stdout) ?? parseSfJson(stderr);
-    const result = payload?.result ?? payload;
-
-    if (!result)
-    {
-      logger?.warn(localize('log.utils.listOrgsParseFailed', 'Could not parse the output of "sf org list --json".')); // Localized string
-      return null;
-    }
-
-    const candidates: any[] = [];
-    if (Array.isArray(result.nonScratchOrgs)) candidates.push(...result.nonScratchOrgs);
-    if (Array.isArray(result.scratchOrgs)) candidates.push(...result.scratchOrgs);
-
-    const defaultUsername: string | undefined =
-      typeof result.defaultUsername === 'string' ? result.defaultUsername :
-      typeof result.defaultDevHubUsername === 'string' ? result.defaultDevHubUsername :
-      undefined;
-
-    let selected: any =
-      candidates.find((org) => org?.isDefaultUsername) ||
-      (defaultUsername ? candidates.find((org) => org?.username === defaultUsername) : undefined);
-
-    if (!selected && defaultUsername)
-    {
-      selected = { username: defaultUsername };
-    }
-
-    if (!selected && candidates.length === 1)
-    {
-      selected = candidates[0];
-    }
-
-    const username = typeof selected?.username === 'string'
-      ? selected.username.trim()
-      : typeof defaultUsername === 'string'
-        ? defaultUsername.trim()
-        : '';
-
-    if (!username)
-    {
-      logger?.warn(localize('log.utils.noDefaultOrgFlag', 'No org with isDefaultUsername was detected in Salesforce CLI.')); // Localized string
-      return null;
-    }
-
-    const alias = typeof selected?.alias === 'string' ? selected.alias.trim() : undefined;
-
-    logger?.info(localize('log.utils.usingDefaultOrg', 'Using Salesforce CLI default org: {0}.', alias || username)); // Localized string
-
-    return {
-      alias: alias || undefined,
-      username,
-      orgId: typeof selected?.orgId === 'string' ? selected.orgId : undefined,
-      isDefault: Boolean(selected?.isDefaultUsername)
-    };
+    logger?.info(localize('log.utils.usingDefaultOrg', 'Using Salesforce CLI default org: {0}.', active.alias || active.username));
+    return active;
   }
-  catch (err: any)
+
+  if (orgs.length === 1)
   {
-    const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
-    logger?.warn(localize('log.utils.defaultOrgLookupFailed', 'Could not obtain the default org from Salesforce CLI: {0}', reason)); // Localized string
-    return null;
+    logger?.info(localize('log.utils.usingDefaultOrg', 'Using Salesforce CLI default org: {0}.', orgs[0].alias || orgs[0].username));
+    return { ...orgs[0], isDefault: true };
   }
+
+  logger?.warn(localize('log.utils.noDefaultOrgFlag', 'No org with isDefaultUsername was detected in Salesforce CLI.'));
+  return null;
+}
+
+/**
+ * Lists every org connected via Salesforce CLI (not just the default one).
+ * Uses caching to avoid repeated slow CLI invocations, and removes execution timeout.
+ */
+export async function listConnectedOrgs(logger?: Logger, options?: ListOrgsOptions): Promise<ConnectedOrgInfo[]>
+{
+  if (!options?.forceRefresh)
+  {
+    if (cachedOrgList && cachedOrgList.length > 0)
+    {
+      return cachedOrgList;
+    }
+
+    if (options?.context)
+    {
+      const persisted = options.context.globalState.get<ConnectedOrgInfo[]>('uav.cachedOrgs');
+      if (Array.isArray(persisted) && persisted.length > 0)
+      {
+        cachedOrgList = persisted;
+        return cachedOrgList;
+      }
+    }
+  }
+
+  if (pendingOrgListPromise)
+  {
+    return pendingOrgListPromise;
+  }
+
+  pendingOrgListPromise = (async (): Promise<ConnectedOrgInfo[]> =>
+  {
+    const sfPath = resolveSfCliPath();
+
+    try
+    {
+      const { stdout, stderr } = await execa(sfPath, ['org', 'list', '--json'], {
+        env: { ...process.env, FORCE_COLOR: '0' }
+      });
+
+      const payload = parseSfJson(stdout) ?? parseSfJson(stderr);
+      const result = payload?.result ?? payload;
+      if (!result)
+      {
+        logger?.warn(localize('log.utils.listOrgsParseFailed', 'Could not parse the output of "sf org list --json".'));
+        return cachedOrgList || [];
+      }
+
+      const candidates: any[] = [];
+      if (Array.isArray(result.nonScratchOrgs)) candidates.push(...result.nonScratchOrgs);
+      if (Array.isArray(result.scratchOrgs)) candidates.push(...result.scratchOrgs);
+
+      const defaultUsername: string | undefined =
+        typeof result.defaultUsername === 'string' ? result.defaultUsername :
+        typeof result.defaultDevHubUsername === 'string' ? result.defaultDevHubUsername :
+        undefined;
+
+      const orgs: ConnectedOrgInfo[] = candidates
+        .filter((org) => typeof org?.username === 'string' && org.username.trim())
+        .map((org): ConnectedOrgInfo =>
+        {
+          const username = org.username.trim();
+          const isDefault = Boolean(org.isDefaultUsername) || (defaultUsername ? username === defaultUsername : false);
+          return {
+            alias: typeof org.alias === 'string' ? org.alias.trim() : undefined,
+            username,
+            orgId: typeof org.orgId === 'string' ? org.orgId : undefined,
+            instanceUrl: typeof org.instanceUrl === 'string' ? org.instanceUrl : undefined,
+            isDefault
+          };
+        });
+
+      if (defaultUsername && !orgs.some((o) => o.isDefault))
+      {
+        const match = orgs.find((o) => o.username === defaultUsername);
+        if (match)
+        {
+          match.isDefault = true;
+        }
+      }
+
+      cachedOrgList = orgs;
+      if (options?.context)
+      {
+        void options.context.globalState.update('uav.cachedOrgs', orgs);
+      }
+
+      return orgs;
+    }
+    catch (err: any)
+    {
+      const reason = err?.shortMessage || err?.stderr || err?.message || String(err);
+      logger?.warn(localize('log.utils.listOrgsFailed', 'Could not list orgs from Salesforce CLI: {0}', reason));
+      return cachedOrgList || [];
+    }
+    finally
+    {
+      pendingOrgListPromise = null;
+    }
+  })();
+
+  return pendingOrgListPromise;
 }
 
 export function resolveSfCliPath(): string

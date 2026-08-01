@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { ApexChunk } from './apexAstParser';
 import { Logger } from './utils';
-import { IAAnalisis, IAConnectionError } from './IAAnalisis';
+import { createIaProvider } from './ai/providerFactory';
+import { IAConnectionError } from './ai/types';
 
 export interface ChunkResult
 {
@@ -20,7 +21,6 @@ export class AiDocChunkRunner
     public static async processChunk(docText: string, chunk: ApexChunk): Promise<ChunkResult>
     {
         const logger = AiDocChunkRunner.logger;
-        const iaClient = new IAAnalisis();
 
         logger.info(`Processing chunk: ${chunk.kind} - ${chunk.name}`);
 
@@ -85,6 +85,7 @@ ${exampleBlock}
 
         try
         {
+            const iaClient = await createIaProvider();
             const result = await iaClient.generate(prompt);
             let out = result?.resumen?.trim() || '';
 

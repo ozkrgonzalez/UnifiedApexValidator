@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execa } from 'execa';
-import { evaluateIaConfig } from '../core/IAAnalisis';
+import { evaluateIaConfig } from '../core/ai/providerFactory';
+import { Logger } from '../core/utils';
 import { localize } from '../i18n';
 
 export type DependencyState = 'ok' | 'outdated' | 'missing';
@@ -29,6 +30,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
     private _onDidChangeTreeData: vscode.EventEmitter<UavDependencyItem | undefined | void> =
         new vscode.EventEmitter();
     readonly onDidChangeTreeData: vscode.Event<UavDependencyItem | undefined | void> = this._onDidChangeTreeData.event;
+    private readonly logger = new Logger('DependenciesProvider');
 
     constructor(private context: vscode.ExtensionContext) {}
 
@@ -146,7 +148,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
             records.push({ dep, status });
         }
 
-        const iaStatus = evaluateIaConfig();
+        const iaStatus = await evaluateIaConfig();
         const iaDep: DepCheck = { label: localize('dependencies.ia.label', 'AI Configuration') };
         const iaItemStatus: DependencyStatus = { state: iaStatus.ready ? 'ok' : 'missing' };
 
@@ -173,7 +175,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
             }
             catch (error)
             {
-                console.error(localize('log.dependencies.customCheckError', '[UAV][dependencies] Error checking custom dependency:'), error);
+                this.logger.error(localize('log.dependencies.customCheckError', '[UAV][dependencies] Error checking custom dependency:') + ' ' + String(error));
                 return { state: 'missing' };
             }
         }
@@ -233,7 +235,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         }
         catch (error)
         {
-            console.warn(localize('log.dependencies.resolveModuleWarning', '[UAV][dependencies] Could not resolve {0} using custom paths.', moduleName), error);
+            this.logger.warn(localize('log.dependencies.resolveModuleWarning', '[UAV][dependencies] Could not resolve {0} using custom paths.', moduleName) + ' ' + String(error));
             return null;
         }
     }
@@ -266,7 +268,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
 
             if (!fs.existsSync(pkgPath))
             {
-                console.warn(localize('log.dependencies.packageJsonMissing', '[UAV][dependencies] package.json not found for prettier-plugin-apex: {0}', pkgPath));
+                this.logger.warn(localize('log.dependencies.packageJsonMissing', '[UAV][dependencies] package.json not found for prettier-plugin-apex: {0}', pkgPath));
                 return { state: 'missing' };
             }
 
@@ -287,7 +289,7 @@ export class DependenciesProvider implements vscode.TreeDataProvider<UavDependen
         }
         catch (error)
         {
-            console.warn(localize('log.dependencies.prettierResolveError', '[UAV][dependencies] Could not resolve prettier-plugin-apex.'), error);
+            this.logger.warn(localize('log.dependencies.prettierResolveError', '[UAV][dependencies] Could not resolve prettier-plugin-apex.') + ' ' + String(error));
             return { state: 'missing' };
         }
     }

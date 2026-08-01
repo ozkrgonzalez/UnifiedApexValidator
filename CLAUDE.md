@@ -44,7 +44,8 @@ The `whereUsedWorkerProcess.ts` is intentionally **not** bundled by esbuild — 
 | `uavController.ts` | Orchestrates the main validation flow (`runUAV`): resolves package.xml, calls validator → test suite → AI analysis → report generation |
 | `validator.ts` | Runs Salesforce Code Analyzer (PMD + CPD) via `sf` CLI using the embedded `code-analyzer.yml` config |
 | `testSuite.ts` | Executes Apex test classes via the `sf` CLI and collects results |
-| `IAAnalisis.ts` | Authenticates with Salesforce OAuth2 and calls Einstein GPT endpoint for AI code review |
+| `ai/providerFactory.ts` | Reads `aiProvider` setting + Secret Storage credentials and builds the matching `IAProvider` (`einsteinProvider.ts`, `anthropicProvider.ts`, `openAICompatibleProvider.ts` — the latter serves both `openai` and `custom`/Mimo) |
+| `ai/credentialsCommands.ts` | Implements **UAV: Set/Clear AI API Key**, storing credentials in `vscode.SecretStorage` (never in settings) |
 | `reportGenerator.ts` | Assembles combined HTML/PDF reports from validation + test + AI results using Nunjucks templates |
 | `reportViewer.ts` | Opens generated reports in a VS Code webview |
 | `compareController.ts` | Compares local Apex classes against a connected Salesforce org |
@@ -82,14 +83,21 @@ The `whereUsedWorkerProcess.ts` is intentionally **not** bundled by esbuild — 
 
 | Setting | Purpose |
 |---------|---------|
-| `sfClientId` / `sfClientSecret` / `sfDomain` | Salesforce OAuth2 credentials for AI features |
-| `sfGptEndpoint` / `sfGptModel` | Einstein GPT endpoint and model |
+| `aiProvider` | `einstein` \| `anthropic` \| `openai` \| `custom` — which AI backend to use for analysis and ApexDoc generation |
+| `aiModel` | Model name for the selected provider (empty = provider-specific default) |
+| `aiCustomEndpoint` | Base URL for the `custom` (OpenAI-compatible) provider |
+| `sfDomain` | Salesforce org domain, used only when `aiProvider = einstein` |
+| `sfGptEndpoint` / `sfGptModel` | Einstein GPT endpoint and model (only relevant when `aiProvider = einstein`) |
 | `sfRepositoryDir` | Root of the Salesforce project (defaults to workspace root) |
 | `sfCliPath` | Path to the `sf` CLI executable (default: `sf`) |
 | `iaPromptTemplate` | Nunjucks-style prompt template for AI analysis |
 | `skipIAAnalysis` | Skip Einstein analysis even if configured |
 | `enableAllmanFormatter` | Gates the Allman format command |
 | `reportLanguage` | `auto` / `es` / `en` for report language |
+
+AI credentials (Einstein Connected App Client ID/Secret, or the BYOK API key for
+`anthropic`/`openai`/`custom`) are never stored as settings — they live in
+`vscode.SecretStorage`, set via **UAV: Set AI API Key** / cleared via **UAV: Clear AI API Key**.
 
 ## External Dependencies Required at Runtime
 - **Salesforce CLI** (`sf`) with the **Code Analyzer plugin** (`@salesforce/plugin-code-analyzer`) v5+

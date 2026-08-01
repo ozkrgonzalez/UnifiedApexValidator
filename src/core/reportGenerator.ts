@@ -50,6 +50,8 @@ const REPORT_TRANSLATIONS: Record<ReportLanguage, Record<string, string>> = {
     'column-duplicate-lines': 'Líneas duplicadas',
     'column-snippet': 'Fragmento',
     'column-reference': 'Referencia',
+    'column-ai-fix': 'IA',
+    'button-ai-fix': '🤖 Sugerir fix',
     'empty-no-issues': '✅ No se encontraron problemas.',
     'empty-no-coverage': 'ℹ️ No hay datos de cobertura.',
     'empty-no-tests': '⚠️ No se ejecutaron pruebas.',
@@ -96,6 +98,8 @@ const REPORT_TRANSLATIONS: Record<ReportLanguage, Record<string, string>> = {
     'column-duplicate-lines': 'Duplicate Lines',
     'column-snippet': 'Snippet',
     'column-reference': 'Reference',
+    'column-ai-fix': 'AI',
+    'button-ai-fix': '🤖 Suggest fix',
     'empty-no-issues': '✅ No issues found.',
     'empty-no-coverage': 'ℹ️ No coverage data available.',
     'empty-no-tests': '⚠️ No tests were executed.',
@@ -196,7 +200,14 @@ export async function generateReport(outputDir: string, data: any) {
     const pdfTemplatePath = path.join(path.dirname(templatePath), 'reportTemplate_pdf.html');
     if (fs.existsSync(pdfTemplatePath)) {
       try {
-        const pdfHtml = env.render('reportTemplate_pdf.html', templateContext);
+        // wkhtmltopdf's QtWebKit engine cannot render color emoji glyphs (they show as
+        // blank boxes), so the PDF-only context uses emoji-stripped labels while the
+        // HTML report (rendered in a real browser) keeps them.
+        const pdfTemplateContext = {
+          ...templateContext,
+          reportLabels: stripEmojiFromLabels(reportLabels)
+        };
+        const pdfHtml = env.render('reportTemplate_pdf.html', pdfTemplateContext);
         pdfHtmlPath = path.join(finalOutputDir, 'reporte_validaciones_pdf.html');
         await fs.writeFile(pdfHtmlPath, pdfHtml, 'utf8');
         pdfHtmlTempCreated = true;
@@ -254,7 +265,11 @@ async function tryGeneratePdfHybrid(htmlPath: string, pdfPath: string, logger: L
 
     logger.info(localize('log.reportGenerator.wkhtmltopdfStart', 'Generating PDF with wkhtmltopdf at {0}...', wkPath));
     await new Promise<void>((resolve, reject) => {
-      child_process.execFile(wkPath, [htmlPath, pdfPath], (err) => (err ? reject(err) : resolve()));
+      child_process.execFile(
+        wkPath,
+        ['--encoding', 'utf-8', '--enable-local-file-access', htmlPath, pdfPath],
+        (err) => (err ? reject(err) : resolve())
+      );
     });
     logger.info(localize('log.reportGenerator.wkhtmltopdfSuccess', 'PDF generated successfully with wkhtmltopdf.'));
     return true;
@@ -293,6 +308,16 @@ function formatGeneratedAt(date: Date): string {
   } catch {
     return date.toISOString();
   }
+}
+
+const EMOJI_PATTERN = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu;
+
+function stripEmojiFromLabels(labels: Record<string, string>): Record<string, string> {
+  const safe: Record<string, string> = {};
+  for (const [key, value] of Object.entries(labels)) {
+    safe[key] = value.replace(EMOJI_PATTERN, '').replace(/\s{2,}/g, ' ').trim();
+  }
+  return safe;
 }
 
 function formatIAResults(iaResults: any[]): Record<string, any> {

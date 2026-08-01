@@ -1,4 +1,4 @@
-﻿import * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import { fork } from 'child_process';
@@ -7,23 +7,28 @@ import { FolderViewProvider, runUAV } from './core/uavController';
 import { runCompareApexClasses } from './core/compareController';
 import { Logger, setExtensionContext } from './core/utils';
 import { generateApexDocChunked } from './core/generateApexDocChunked';
-import { evaluateIaConfig } from './core/IAAnalisis';
+import { evaluateIaConfig } from './core/ai/providerFactory';
+import { registerAiCredentialCommands } from './core/ai/credentialsCommands';
+import { testAiConnection } from './core/ai/testConnection';
 import { formatApexAllman } from './core/apexAllmanFormatter';
 import { removeSystemDebugs } from './core/removeSystemDebugs';
 import { showWhereUsedPanel } from './core/whereUsedPanel';
 import { WhereUsedEntry } from './core/whereUsedCore';
+import { OrgItem, OrgsProvider } from './core/orgs/orgsProvider';
+import { createOrgStatusBarItem, pickAndSwitchOrg, promptSetOrgColor, refreshActiveOrgIndicator, switchToOrg } from './core/orgs/orgSwitcher';
 import { localize } from './i18n';
 
 
 /**
- * Punto de entrada de la extensiÃ³n Unified Apex Validator.
- * Se ejecuta al activar la extensiÃ³n por comando.
+ * Punto de entrada de la extensión Unified Apex Validator.
+ * Se ejecuta al activar la extensión por comando.
  */
 export async function activate(context: vscode.ExtensionContext) {
+    const logger = new Logger('Extension', false);
     console.log(localize('log.extension.activated', '[UAV][extension] Unified Apex Validator activated.')); // Localized string
     console.log(localize('log.extension.storagePath', '[UAV][extension] globalStorageUri: {0}', context.globalStorageUri.fsPath)); // Localized string
 
-    // ðŸ§  Dependencias
+    // 🧠 Dependencias
     const dependenciesProvider = new DependenciesProvider(context);
     vscode.window.registerTreeDataProvider('uav.dependenciesView', dependenciesProvider);
 
@@ -135,7 +140,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
         catch (error)
         {
-            console.error(localize('log.extension.dependenciesError', '[UAV][extension] Error evaluating dependencies:'), error);
+            logger.error(localize('log.extension.dependenciesError', '[UAV][extension] Error evaluating dependencies:') + ' ' + String(error));
             dependencyStatusItem.text = 'UAV Ready $(warning)';
             dependencyStatusItem.tooltip = new vscode.MarkdownString(
                 localize(
@@ -156,12 +161,12 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('uav.showGettingStarted', async () => { await openGettingStarted(); })
     );
 
-    // âš™ï¸ Habilita el comando â€œActualizar dependenciaâ€
+    // ⚙️ Habilita el comando “Actualizar dependencia”
     registerDependencyUpdater(context);
 
-    const syncIaContext = () =>
+    const syncIaContext = async () =>
     {
-        const iaStatus = evaluateIaConfig();
+        const iaStatus = await evaluateIaConfig();
         void vscode.commands.executeCommand('setContext', 'uav.iaReady', iaStatus.ready);
         if (!iaStatus.ready)
         {
@@ -169,32 +174,79 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     };
 
-    syncIaContext();
+    void syncIaContext();
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((event) =>
         {
             if (event.affectsConfiguration('UnifiedApexValidator'))
             {
-                syncIaContext();
+                void syncIaContext();
                 dependenciesProvider.refresh();
                 void updateDependencyStatus();
             }
+        }),
+        context.secrets.onDidChange((event) =>
+        {
+            if (event.key.startsWith('uav.'))
+            {
+                void syncIaContext();
+                dependenciesProvider.refresh();
+                void updateDependencyStatus();
+            }
+        }),
+        ...registerAiCredentialCommands(context)
+    );
+
+    // 🗂️ Organizaciones
+    const orgsProvider = new OrgsProvider(context);
+    const orgsView = vscode.window.createTreeView('uav.orgsView', { treeDataProvider: orgsProvider });
+    const orgLogger = new Logger('OrgsView');
+    createOrgStatusBarItem(context);
+    void refreshActiveOrgIndicator(context, orgLogger);
+
+    context.subscriptions.push(
+        orgsView,
+        vscode.commands.registerCommand('uav.orgsView.refresh', () =>
+        {
+            orgsProvider.refresh(true);
+            void refreshActiveOrgIndicator(context, orgLogger, { forceRefresh: true });
+        }),
+        vscode.commands.registerCommand('UnifiedApexValidator.switchOrg', async (item?: OrgItem) =>
+        {
+            if (item)
+            {
+                await switchToOrg(context, item.org, orgLogger);
+            }
+            else
+            {
+                await pickAndSwitchOrg(context, orgLogger);
+            }
+            orgsProvider.refresh();
+        }),
+        vscode.commands.registerCommand('UnifiedApexValidator.setOrgColor', async (item?: OrgItem) =>
+        {
+            if (!item)
+            {
+                return;
+            }
+            await promptSetOrgColor(context, item.org, orgLogger);
+            orgsProvider.refresh();
         })
     );
 
-    // ðŸ“‚ Rutas base
+    // 📂 Rutas base
     const outputDir = vscode.workspace.getConfiguration('UnifiedApexValidator').get<string>('outputDir') || path.join(context.globalStorageUri.fsPath, 'output');
     const logDir = path.join(context.globalStorageUri.fsPath, '.uav', 'logs');
 
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(outputDir));
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(logDir));
 
-    // ðŸ“Š Reportes
+    // 📊 Reportes
     const reportsProvider = new FolderViewProvider(outputDir, 'html|pdf', localize('ui.reportsView.label', 'Reports')); // Localized string
     const reportsView = vscode.window.createTreeView('uav.reportsView', { treeDataProvider: reportsProvider });
     context.subscriptions.push(reportsView);
 
-    // ðŸªµ Logs
+    // 🪵 Logs
     const logsProvider = new FolderViewProvider(logDir, 'log', localize('ui.logsView.label', 'Logs')); // Localized string
     const logsView = vscode.window.createTreeView('uav.logsView', { treeDataProvider: logsProvider });
     context.subscriptions.push(logsView);
@@ -254,7 +306,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
         catch (error)
         {
-            console.error(localize('log.extension.badgesError', '[UAV][extension] Error updating view badges:'), error);
+            logger.error(localize('log.extension.badgesError', '[UAV][extension] Error updating view badges:') + ' ' + String(error));
         }
     };
 
@@ -262,7 +314,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(reportsProvider.onDidChangeTreeData(() => { void updateFolderBadges(); }), logsProvider.onDidChangeTreeData(() => { void updateFolderBadges(); })
     );
 
-    // ðŸ”„ Comandos comunes
+    // 🔄 Comandos comunes
     context.subscriptions.push(
         vscode.commands.registerCommand('uav.reportsView.refresh', () => reportsProvider.refresh()),
         vscode.commands.registerCommand('uav.logsView.refresh', () => logsProvider.refresh()),
@@ -280,7 +332,7 @@ export async function activate(context: vscode.ExtensionContext) {
         await vscode.workspace.fs.createDirectory(context.globalStorageUri);
         console.log(localize('log.extension.globalFolderReady', '[UAV][extension] Global storage folder ready.')); // Localized string
     } catch (err) {
-        console.error(localize('log.extension.globalFolderError', '[UAV][extension] Error creating global folder.'), err); // Localized string
+        logger.error(localize('log.extension.globalFolderError', '[UAV][extension] Error creating global folder.') + ' ' + String(err)); // Localized string
     }
 
     const walkthroughCompleteKey = 'uav.walkthrough.completed';
@@ -291,7 +343,7 @@ export async function activate(context: vscode.ExtensionContext) {
         await context.globalState.update(walkthroughCompleteKey, true);
     }
 
-    // ðŸ§ª ValidaciÃ³n Apex
+    // 🧪 Validación Apex
     const validateApexCmd = vscode.commands.registerCommand(
         'UnifiedApexValidator.validateApex',
         async (uri: vscode.Uri) => {
@@ -299,13 +351,13 @@ export async function activate(context: vscode.ExtensionContext) {
                 console.log(localize('log.extension.runUav.start', '[UAV][extension] Running runUAV()...')); // Localized string
                 await runUAV(uri);
             } catch (error: any) {
-                console.error(localize('log.extension.runUav.error', '[UAV][extension] Error running UAV:'), error); // Localized string
+                logger.error(localize('log.extension.runUav.error', '[UAV][extension] Error running UAV:') + ' ' + String(error)); // Localized string
                 vscode.window.showErrorMessage(localize('command.validate.error', 'Error running UAV: {0}', error.message)); // Localized string
             }
         }
     );
 
-    // ðŸ§­ Nueva funcionalidad: comparar clases Apex contra una org
+    // 🧭 Nueva funcionalidad: comparar clases Apex contra una org
     const compareApexClassesCmd = vscode.commands.registerCommand(
         'UnifiedApexValidator.compareApexClasses',
         async (uri?: vscode.Uri) => {
@@ -319,15 +371,15 @@ export async function activate(context: vscode.ExtensionContext) {
                     try {
                         await runCompareApexClasses(uri);
                     } catch (err: any) {
-                        console.error(localize('log.compare.error', '[UAV][extension] Error during comparison:'), err); // Localized string
-                        vscode.window.showErrorMessage(localize('command.compare.error', 'âŒ Error comparing classes: {0}', err.message)); // Localized string
+                        logger.error(localize('log.compare.error', '[UAV][extension] Error during comparison:') + ' ' + String(err)); // Localized string
+                        vscode.window.showErrorMessage(localize('command.compare.error', '❌ Error comparing classes: {0}', err.message)); // Localized string
                     }
                 }
             );
         }
     );
 
-    // ðŸ§  Generar ApexDoc con Einstein (modo chunked)
+    // 🧠 Generar ApexDoc con Einstein (modo chunked)
     const generateApexDocChunkedCmd = vscode.commands.registerCommand(
         'UnifiedApexValidator.generateApexDocChunked',
         async () =>
@@ -338,8 +390,8 @@ export async function activate(context: vscode.ExtensionContext) {
             }
             catch (error: any)
             {
-                console.error(localize('log.apexdoc.error', '[UAV][extension] Error generating ApexDoc:'), error); // Localized string
-                vscode.window.showErrorMessage(localize('command.apexdoc.error', 'âŒ Error generating ApexDoc: {0}', error.message)); // Localized string
+                logger.error(localize('log.apexdoc.error', '[UAV][extension] Error generating ApexDoc:') + ' ' + String(error)); // Localized string
+                vscode.window.showErrorMessage(localize('command.apexdoc.error', '❌ Error generating ApexDoc: {0}', error.message)); // Localized string
             }
         }
     );
@@ -419,13 +471,19 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    const testAiConnectionCmd = vscode.commands.registerCommand(
+        'UnifiedApexValidator.testAiConnection',
+        async () => { await testAiConnection(); }
+    );
+
     context.subscriptions.push(
         validateApexCmd,
         compareApexClassesCmd,
         generateApexDocChunkedCmd,
         formatApexAllmanCmd,
         removeSystemDebugsCmd,
-        whereIsUsedCmd
+        whereIsUsedCmd,
+        testAiConnectionCmd
     );
     //vscode.window.showInformationMessage('Unified Apex Validator activado.');
 }
@@ -541,7 +599,7 @@ function runWhereIsUsedWorker(
         const child = fork(workerPath, [], {
             stdio: ['ignore', 'pipe', 'pipe', 'ipc']
         });
-        // ðŸ’¡ Fuerza UTF-8 para stdout/stderr del worker
+        // 💡 Fuerza UTF-8 para stdout/stderr del worker
         child.stdout?.setEncoding('utf8');
         child.stderr?.setEncoding('utf8');
 
@@ -635,7 +693,7 @@ function runWhereIsUsedWorker(
 }
 
 /**
- * OpciÃ³n de limpieza al desactivar la extensiÃ³n.
+ * Opción de limpieza al desactivar la extensión.
  */
 export function deactivate() {
     vscode.window.showInformationMessage(localize('info.extension.deactivated', 'Unified Apex Validator deactivated.')); // Localized string

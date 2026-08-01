@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte de ComparaciÃ³n de Clases Apex</title>
+    <title>Reporte de Comparación de Clases Apex</title>
 
-    <!-- Prism.js para resaltar cÃ³digo -->
+    <!-- Prism.js para resaltar código -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
 
     <!-- Font Awesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Chart.js para el grÃ¡fico de resumen -->
+    <!-- Chart.js para el gráfico de resumen -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Estilos personalizados -->
@@ -745,13 +745,13 @@
             if (changes.length > 0) {
                 diffEditors[index].currentDiffIndex++;
                 if (diffEditors[index].currentDiffIndex >= changes.length) {
-                    diffEditors[index].currentDiffIndex = 0; // Reinicia al inicio si pasa el Ãºltimo
+                    diffEditors[index].currentDiffIndex = 0; // Reinicia al inicio si pasa el último
                 }
 
                 const nextLine = changes[diffEditors[index].currentDiffIndex];
                 diffEditor.revealLineInCenter(nextLine);
 
-                // ðŸ”¹ Aplicar resaltado en la diferencia actual
+                // 🔹 Aplicar resaltado en la diferencia actual
                 highlightCurrentDifference(diffEditor, nextLine, index);
             } else {
                 alert("No se encontraron diferencias.");
@@ -765,7 +765,7 @@
             editor.getModifiedEditor().deltaDecorations(diffEditors[index].decorations, []);
         }
 
-        // Aplicar nueva decoraciÃ³n en la lÃ­nea actual
+        // Aplicar nueva decoración en la línea actual
         diffEditors[index].decorations = editor.getModifiedEditor().deltaDecorations([], [{
             range: new monaco.Range(lineNumber, 1, lineNumber, 1),
             options: {

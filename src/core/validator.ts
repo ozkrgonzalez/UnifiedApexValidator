@@ -15,8 +15,8 @@ export async function runValidator(
   progress: vscode.Progress<{ message?: string }>,
   repoDir: string
 ) {
-  console.log(localize('log.validator.init', '[UAV][Validator] runValidator() initialized'));
   logger = new Logger('Validator', true);
+  logger.info(localize('log.validator.init', '[UAV][Validator] runValidator() initialized'));
 
   try {
     const workspaceFolder =

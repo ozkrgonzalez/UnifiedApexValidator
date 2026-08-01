@@ -7,6 +7,7 @@ import * as glob from "glob";
 import { parseMetadataTypesFromPackage, getStorageRoot, Logger, PackageTypeMembers } from "./utils";
 import { localize } from "../i18n";
 import { generateComparisonReport } from "./reportGenerator";
+import { confirmIfProduction } from "./orgs/orgSwitcher";
 
 function normalizeForComparison(source: string): string
 {
@@ -780,6 +781,12 @@ export async function runCompareApexClasses(uri?: vscode.Uri)
 {
   const logger = new Logger("compareController", true);
   logger.info(localize('log.compareController.start', 'Starting metadata comparison...')); // Localized string
+
+  if (!(await confirmIfProduction(logger)))
+  {
+    logger.warn(localize('log.compareController.cancelledProduction', 'Comparison cancelled by the user (production guardrail).'));
+    return;
+  }
 
   const workspace = vscode.workspace.workspaceFolders?.[0];
   if (!workspace)

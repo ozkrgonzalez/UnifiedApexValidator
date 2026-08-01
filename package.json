@@ -3,7 +3,7 @@
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
   "publisher": "ozkrgonzalez",
-  "version": "2.0.2",
+  "version": "2.0.5",
   "icon": "media/icon.png",
   "license": "GPL-3.0-only",
   "repository": "https://github.com/ozkrgonzalez/UnifiedApexValidator.git",
@@ -68,6 +68,10 @@
         {
           "id": "uav.logsView",
           "name": "%view.logs%"
+        },
+        {
+          "id": "uav.orgsView",
+          "name": "%view.orgs%"
         }
       ]
     },
@@ -216,6 +220,31 @@
       {
         "command": "UnifiedApexValidator.removeSystemDebugs",
         "title": "%command.removeDebug.title%"
+      },
+      {
+        "command": "UnifiedApexValidator.setAiApiKey",
+        "title": "UAV: Set AI API Key"
+      },
+      {
+        "command": "UnifiedApexValidator.clearAiApiKey",
+        "title": "UAV: Clear AI API Key"
+      },
+      {
+        "command": "UnifiedApexValidator.testAiConnection",
+        "title": "UAV: Test AI Connection"
+      },
+      {
+        "command": "uav.orgsView.refresh",
+        "title": "Refresh Orgs",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "UnifiedApexValidator.switchOrg",
+        "title": "UAV: Switch Org"
+      },
+      {
+        "command": "UnifiedApexValidator.setOrgColor",
+        "title": "Set Org Color..."
       }
     ],
     "menus": {
@@ -249,6 +278,18 @@
           "command": "uav.logsView.openFolder",
           "when": "view == uav.logsView",
           "group": "navigation"
+        },
+        {
+          "command": "uav.orgsView.refresh",
+          "when": "view == uav.orgsView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "UnifiedApexValidator.setOrgColor",
+          "when": "view == uav.orgsView && viewItem == uavOrgItem",
+          "group": "inline"
         }
       ],
       "explorer/context": [
@@ -324,15 +365,32 @@
     "configuration": {
       "title": "%config.title%",
       "properties": {
-        "UnifiedApexValidator.sfClientId": {
+        "UnifiedApexValidator.aiProvider": {
           "type": "string",
-          "default": "",
-          "description": "%config.sfClientId.description%"
+          "enum": [
+            "einstein",
+            "anthropic",
+            "openai",
+            "custom"
+          ],
+          "enumDescriptions": [
+            "Salesforce Einstein GPT (Connected App credentials, configured via \"UAV: Set AI API Key\").",
+            "Anthropic Claude, using your own API key.",
+            "OpenAI, using your own API key.",
+            "Any OpenAI-compatible endpoint (e.g. Mimo, self-hosted), using your own API key."
+          ],
+          "default": "einstein",
+          "description": "%config.aiProvider.description%"
         },
-        "UnifiedApexValidator.sfClientSecret": {
+        "UnifiedApexValidator.aiModel": {
           "type": "string",
           "default": "",
-          "description": "%config.sfClientSecret.description%"
+          "description": "%config.aiModel.description%"
+        },
+        "UnifiedApexValidator.aiCustomEndpoint": {
+          "type": "string",
+          "default": "",
+          "description": "%config.aiCustomEndpoint.description%"
         },
         "UnifiedApexValidator.sfDomain": {
           "type": "string",
@@ -452,23 +510,6 @@
       }
     }
   },
-  "files": [
-    "dist",
-    "media",
-    "resources/templates",
-    "docs/walkthrough",
-    "node_modules/fs-extra",
-    "node_modules/universalify",
-    "node_modules/graceful-fs",
-    "node_modules/jsonfile",
-    "node_modules/nunjucks",
-    "node_modules/html-pdf-node",
-    "node_modules/axios",
-    "node_modules/fast-xml-parser",
-    "node_modules/winston",
-    "node_modules/dotenv",
-    "node_modules/vscode-nls"
-  ],
   "vsce": {
     "dependencies": true
   },
@@ -491,7 +532,6 @@
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/glob": "^8.1.0",
-    "@types/html-pdf-node": "^1.0.2",
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^24.7.2",
     "@types/nunjucks": "^3.2.6",
